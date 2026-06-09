@@ -1,18 +1,42 @@
 [
   {
     "id": 1,
-    "nombre": "Laboratorio A1",
-    "ubicacion": "Planta Baja",
-    "capacidad": 30,
-    "recursos": ["proyector", "computadoras"],
+    "nombre": "Aula 910",
+    "ubicacion": "Ed. Possetto - Piso 1",
+    "capacidad": 45,
+    "recursos": ["proyector", "pizarra", "aire acondicionado"],
     "activa": true
   },
   {
     "id": 2,
+    "nombre": "Laboratorio A6",
+    "ubicacion": "Ed. Possetto - Planta Baja",
+    "capacidad": 30,
+    "recursos": ["proyector", "computadoras", "parlantes"],
+    "activa": true
+  },
+  {
+    "id": 3,
     "nombre": "Aula Magna",
-    "ubicacion": "Primer Piso",
-    "capacidad": 100,
-    "recursos": ["proyector", "parlantes"],
+    "ubicacion": "Ed. Principal - Planta Baja",
+    "capacidad": 150,
+    "recursos": ["proyector", "parlantes", "micrófono", "escenario"],
+    "activa": true
+  },
+  {
+    "id": 4,
+    "nombre": "A4",
+    "ubicacion": "Ed. Principal - Piso 2",
+    "capacidad": 60,
+    "recursos": ["pizarra"],
+    "activa": false
+  },
+  {
+    "id": 5,
+    "nombre": "Sala de Reuniones B",
+    "ubicacion": "Ed. Possetto - Piso 2",
+    "capacidad": 15,
+    "recursos": ["televisor", "pizarra inteligente"],
     "activa": true
   }
 ]
