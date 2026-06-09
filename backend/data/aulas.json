@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "nombre": "Laboratorio A1",
+    "ubicacion": "Planta Baja",
+    "capacidad": 30,
+    "recursos": ["proyector", "computadoras"],
+    "activa": true
+  },
+  {
+    "id": 2,
+    "nombre": "Aula Magna",
+    "ubicacion": "Primer Piso",
+    "capacidad": 100,
+    "recursos": ["proyector", "parlantes"],
+    "activa": true
+  }
+]
