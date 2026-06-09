@@ -1,44 +1,46 @@
 import express from 'express';
-// Acá importarías tus funciones desde el controlador y tus middlewares
-// import reservasController from '../controllers/reservas.controller.js';
+// Acá importamos todas las funciones de tu controlador
+import * as reservasController from '../controllers/reservas.controller.js';
+
+// (Más adelante, cuando armes el middleware de autenticación, vas a descomentar esto)
 // import { verificarToken, verificarRolAdmin } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
 // --- RUTAS GENERALES ---
 
-// GET /api/reservas/resumen - Resumen para administración
+// GET /api/reservas/resumen - Resumen para administración [cite: 102]
 // IMPORTANTE: Esta ruta DEBE ir antes que las que tienen /:id
-router.get('/resumen', reservasController.obtenerResumen); // 
+router.get('/resumen', reservasController.obtenerResumen); 
 
-// GET /api/reservas - Lista las reservas (acá por query params llegarán los filtros)
-router.get('/', reservasController.listarReservas); // [cite: 101]
+// GET /api/reservas - Lista las reservas con filtros [cite: 101]
+router.get('/', reservasController.listarReservas); 
 
-// POST /api/reservas - Crea una nueva reserva
-router.post('/', reservasController.crearReserva); // [cite: 105]
+// POST /api/reservas - Crea una nueva reserva [cite: 105]
+router.post('/', reservasController.crearReserva); 
 
 
 // --- RUTAS CON ID DE RESERVA ---
 
-// GET /api/reservas/:id - Ver detalle de una reserva específica
-router.get('/:id', reservasController.obtenerReservaPorId); // [cite: 103]
+// GET /api/reservas/:id - Ver detalle de una reserva específica [cite: 103]
+router.get('/:id', reservasController.obtenerReservaPorId); 
 
-// GET /api/reservas/:id/historial - Ver historial de cambios
-router.get('/:id/historial', reservasController.obtenerHistorial); // [cite: 104]
+// GET /api/reservas/:id/historial - Ver historial de cambios [cite: 104]
+router.get('/:id/historial', reservasController.obtenerHistorial); 
 
-// PUT /api/reservas/:id - Editar una reserva
-router.put('/:id', reservasController.editarReserva); // [cite: 106]
+// PUT /api/reservas/:id - Editar una reserva [cite: 106]
+router.put('/:id', reservasController.editarReserva); 
 
 
 // --- ACCIONES DE ESTADO (PATCH) ---
 
-// PATCH /api/reservas/:id/cancelar
-router.patch('/:id/cancelar', reservasController.cancelarReserva); // [cite: 107]
+// PATCH /api/reservas/:id/cancelar [cite: 107]
+router.patch('/:id/cancelar', reservasController.cancelarReserva); 
 
-// PATCH /api/reservas/:id/aprobar
-router.patch('/:id/aprobar', reservasController.aprobarReserva); // [cite: 108]
+// PATCH /api/reservas/:id/aprobar [cite: 108]
+router.patch('/:id/aprobar', reservasController.aprobarReserva); 
 
-// PATCH /api/reservas/:id/rechazar
-router.patch('/:id/rechazar', reservasController.rechazarReserva); // [cite: 109]
+// PATCH /api/reservas/:id/rechazar [cite: 109]
+router.patch('/:id/rechazar', reservasController.rechazarReserva); 
 
 export default router;
