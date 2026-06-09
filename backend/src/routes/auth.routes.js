@@ -1,13 +1,14 @@
-const express = require('express');
-const router = express.Router();
-const jwt = require('jsonwebtoken');
-const fs = require('fs');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import fs from 'fs';
 
+const router = express.Router();
 const SECRET_KEY = "clave_secreta_para_el_tp"; 
 
 router.post('/login', (req, res) => {
     const { email, password } = req.body;
     
+    // Acá leemos el archivo con tus usuarios
     const usuarios = JSON.parse(fs.readFileSync('./data/usuarios.json', 'utf-8'));
     
     const usuario = usuarios.find(u => u.email === email);
@@ -25,4 +26,4 @@ router.post('/login', (req, res) => {
     res.json({ mensaje: "Login exitoso", token });
 });
 
-module.exports = router;
+export default router;
