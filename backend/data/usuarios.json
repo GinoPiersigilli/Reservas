@@ -1,10 +1,26 @@
 [
   {
-    "id": 1,
+    "id": "usr-admin",
     "nombre": "Admin General",
     "email": "admin@dds.com",
-    "passwordHash": "aca_va_la_contraseña_hasheada",
+    "passwordHash": "123456",
     "rol": "admin",
+    "activo": true
+  },
+  {
+    "id": "usr-001",
+    "nombre": "Gino",
+    "email": "comun@dds.com",
+    "passwordHash": "123456",
+    "rol": "usuario",
+    "activo": true
+  },
+  {
+    "id": "usr-002",
+    "nombre": "Ana Perez",
+    "email": "ana@dds.com",
+    "passwordHash": "123456",
+    "rol": "usuario",
     "activo": true
   }
 ]

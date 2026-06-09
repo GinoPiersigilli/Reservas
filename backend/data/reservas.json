@@ -1,0 +1,26 @@
+[
+  {
+    "id": "res-1001",
+    "aulaId": "aula-1",
+    "usuarioId": "usr-001",
+    "fecha": "2026-06-18",
+    "horaInicio": "09:00",
+    "horaFin": "11:00",
+    "cantidadPersonas": 35,
+    "motivo": "Clase de consulta Análisis 2",
+    "estado": "aprobada",
+    "createdAt": "2026-06-08T10:30:00"
+  },
+  {
+    "id": "res-1002",
+    "aulaId": "aula-2",
+    "usuarioId": "usr-002",
+    "fecha": "2026-06-19",
+    "horaInicio": "14:00",
+    "horaFin": "16:00",
+    "cantidadPersonas": 15,
+    "motivo": "Práctica de Sistemas",
+    "estado": "pendiente",
+    "createdAt": "2026-06-08T11:00:00"
+  }
+]

@@ -1,18 +1,42 @@
 [
   {
-    "id": 1,
-    "nombre": "Laboratorio A1",
-    "ubicacion": "Planta Baja",
-    "capacidad": 30,
-    "recursos": ["proyector", "computadoras"],
+    "id": "aula-1",
+    "nombre": "A4",
+    "ubicacion": "Edificio Principal - Piso 1",
+    "capacidad": 45,
+    "recursos": ["proyector", "pizarra"],
     "activa": true
   },
   {
-    "id": 2,
-    "nombre": "Aula Magna",
-    "ubicacion": "Primer Piso",
+    "id": "aula-2",
+    "nombre": "Laboratorio A6",
+    "ubicacion": "Edificio Anexo - Planta Baja",
+    "capacidad": 20,
+    "recursos": ["proyector", "computadoras", "aire acondicionado"],
+    "activa": true
+  },
+  {
+    "id": "aula-3",
+    "nombre": "Auditorio 910",
+    "ubicacion": "Edificio Central - Piso 2",
     "capacidad": 100,
-    "recursos": ["proyector", "parlantes"],
+    "recursos": ["proyector", "parlantes", "micrófono"],
+    "activa": true
+  },
+  {
+    "id": "aula-4",
+    "nombre": "B2",
+    "ubicacion": "Edificio Principal - Planta Baja",
+    "capacidad": 30,
+    "recursos": ["pizarra"],
+    "activa": true
+  },
+  {
+    "id": "aula-5",
+    "nombre": "Sala de Reuniones",
+    "ubicacion": "Edificio Anexo - Piso 1",
+    "capacidad": 10,
+    "recursos": ["televisor", "pizarra"],
     "activa": true
   }
 ]
