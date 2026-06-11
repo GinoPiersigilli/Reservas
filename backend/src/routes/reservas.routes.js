@@ -1,34 +1,28 @@
 import express from 'express';
-// Acá traemos tus controles
 import { verificarToken, soloAdmin } from '../middleware/auth.middleware.js';
 
-const router = express.Router();
+// ¡ACÁ ESTÁ EL CAMBIO! Traemos todas las funciones reales de tu controlador
+import * as reservasController from '../controllers/reservas.controller.js';
 
-const reservasController = {
-    obtenerResumen: (req, res) => res.send("Resumen funcionando"),
-    listarReservas: (req, res) => res.send("Listado funcionando"),
-    crearReserva: (req, res) => res.send("Crear funcionando"),
-    obtenerReservaPorId: (req, res) => res.send("Detalle funcionando"),
-    obtenerHistorial: (req, res) => res.send("Historial funcionando"),
-    editarReserva: (req, res) => res.send("Editar funcionando"),
-    cancelarReserva: (req, res) => res.send("Cancelar funcionando"),
-    aprobarReserva: (req, res) => res.send("Aprobar funcionando"),
-    rechazarReserva: (req, res) => res.send("Rechazar funcionando")
-};
+const router = express.Router();
 
 // Rutas públicas (no tienen el control en el medio)
 router.get('/resumen', reservasController.obtenerResumen); 
 router.get('/', reservasController.listarReservas); 
 
-// Rutas protegidas (ACÁ ESTÁ LA CLAVE: el verificarToken frena el pedido antes de crear)
+// Rutas protegidas (Usuario logueado)
 router.post('/', verificarToken, reservasController.crearReserva); 
 router.get('/:id', verificarToken, reservasController.obtenerReservaPorId); 
-router.get('/:id/historial', verificarToken, reservasController.obtenerHistorial); 
+// Ojo acá: le puse "obtenerHistorialDeReserva" para que coincida exactamente con el nombre que usamos en el controlador
+router.get('/:id/historial', verificarToken, reservasController.obtenerHistorialDeReserva); 
 
 // Rutas de administrador (tienen doble control)
 router.put('/:id', verificarToken, soloAdmin, reservasController.editarReserva); 
-router.patch('/:id/cancelar', verificarToken, soloAdmin, reservasController.cancelarReserva); 
 router.patch('/:id/aprobar', verificarToken, soloAdmin, reservasController.aprobarReserva); 
 router.patch('/:id/rechazar', verificarToken, soloAdmin, reservasController.rechazarReserva); 
+
+// ¡PEQUEÑA CORRECCIÓN ACÁ!
+// Le saqué el "soloAdmin" a la ruta de cancelar.
+router.patch('/:id/cancelar', verificarToken, reservasController.cancelarReserva); 
 
 export default router;
