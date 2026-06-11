@@ -29,6 +29,19 @@ app.use('/api/aulas', aulaRoutes);
 app.use(manejadorErrores);
 
 async function seedDatabase() {
+  // --- NUEVA VALIDACIÓN ---
+  // Contamos si ya existen usuarios en la base de datos
+  const cantidadUsuarios = await Usuario.count();
+  
+  // Si ya hay datos, salimos de la función con un "return" para no duplicar nada
+  if (cantidadUsuarios > 0) {
+    console.log('✅ La base de datos ya tiene información. Omitiendo la carga de semillas.');
+    return; 
+  }
+  
+  console.log('Base de datos vacía. Cargando datos semilla...');
+  // -------------------------
+
   // --- Usuarios ---
   // Contraseñas de prueba: admin123 y user123
   const [admin, david, laura] = await Promise.all([
@@ -81,21 +94,21 @@ async function seedDatabase() {
 
   // --- Historial ---
   await HistorialReserva.bulkCreate([
-    { reservaId: reservas[0].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-05T08:15:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[0].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-05T08:15:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
     { reservaId: reservas[0].id, usuarioId: admin.id, accion: 'aprobacion', fechaHora: new Date('2026-06-05T10:00:00'), valorAnterior: { estado: 'pendiente' },   valorNuevo: { estado: 'aprobada'  } },
-    { reservaId: reservas[1].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-06T10:20:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
-    { reservaId: reservas[2].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-07T09:00:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[1].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-06T10:20:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[2].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-07T09:00:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
     { reservaId: reservas[2].id, usuarioId: admin.id, accion: 'cancelacion',fechaHora: new Date('2026-06-07T14:30:00'), valorAnterior: { estado: 'pendiente' },   valorNuevo: { estado: 'cancelada' } },
-    { reservaId: reservas[3].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-07T11:45:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[3].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-07T11:45:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
     { reservaId: reservas[3].id, usuarioId: admin.id, accion: 'rechazo',    fechaHora: new Date('2026-06-08T09:00:00'), valorAnterior: { estado: 'pendiente' },   valorNuevo: { estado: 'rechazada' } },
-    { reservaId: reservas[4].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-08T14:10:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[4].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-08T14:10:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
     { reservaId: reservas[4].id, usuarioId: admin.id, accion: 'aprobacion', fechaHora: new Date('2026-06-08T15:00:00'), valorAnterior: { estado: 'pendiente' },   valorNuevo: { estado: 'aprobada'  } },
-    { reservaId: reservas[5].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-08T16:30:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
-    { reservaId: reservas[6].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T08:00:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[5].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-08T16:30:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[6].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T08:00:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
     { reservaId: reservas[6].id, usuarioId: admin.id, accion: 'aprobacion', fechaHora: new Date('2026-06-09T08:30:00'), valorAnterior: { estado: 'pendiente' },   valorNuevo: { estado: 'aprobada'  } },
-    { reservaId: reservas[7].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T09:15:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
-    { reservaId: reservas[8].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T10:05:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
-    { reservaId: reservas[9].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T11:30:00'), valorAnterior: null,                     valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[7].id, usuarioId: admin.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T09:15:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[8].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T10:05:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
+    { reservaId: reservas[9].id, usuarioId: david.id, accion: 'creacion',   fechaHora: new Date('2026-06-09T11:30:00'), valorAnterior: null,                    valorNuevo: { estado: 'pendiente' } },
   ]);
 
   console.log('✅ Datos de prueba cargados correctamente.');
@@ -104,7 +117,7 @@ async function seedDatabase() {
   console.log('   laura@utnfrc.edu.ar  →  user123');
 }
 
-sequelize.sync({ force: true })
+sequelize.sync()
   .then(async () => {
     console.log('Tablas creadas y base de datos sincronizada correctamente.');
     await seedDatabase();
