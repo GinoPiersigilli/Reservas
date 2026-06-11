@@ -1,25 +1,25 @@
 [
   {
-    "id": "usr-admin",
-    "nombre": "Admin General",
-    "email": "admin@dds.com",
-    "passwordHash": "123456",
+    "id": 1,
+    "nombre": "Administrador Bedelía",
+    "email": "admin@utnfrc.edu.ar",
+    "passwordHash": "$2b$10$AdminHashSimuladoDeBcrypt123", 
     "rol": "admin",
     "activo": true
   },
   {
-    "id": "usr-001",
-    "nombre": "Gino",
-    "email": "comun@dds.com",
-    "passwordHash": "123456",
+    "id": 2,
+    "nombre": "David Ismael López Rodriguez",
+    "email": "david@utnfrc.edu.ar",
+    "passwordHash": "$2b$10$UserHashSimuladoDeBcrypt456", 
     "rol": "usuario",
     "activo": true
   },
   {
-    "id": "usr-002",
-    "nombre": "Ana Perez",
-    "email": "ana@dds.com",
-    "passwordHash": "123456",
+    "id": 3,
+    "nombre": "Laura Gómez",
+    "email": "laura@utnfrc.edu.ar",
+    "passwordHash": "$2b$10$UserHashSimuladoDeBcrypt789", 
     "rol": "usuario",
     "activo": true
   }

@@ -1,42 +1,42 @@
 [
   {
-    "id": "aula-1",
-    "nombre": "A4",
-    "ubicacion": "Edificio Principal - Piso 1",
+    "id": 1,
+    "nombre": "Aula 910",
+    "ubicacion": "Ed. Possetto - Piso 1",
     "capacidad": 45,
-    "recursos": ["proyector", "pizarra"],
+    "recursos": ["proyector", "pizarra", "aire acondicionado"],
     "activa": true
   },
   {
-    "id": "aula-2",
+    "id": 2,
     "nombre": "Laboratorio A6",
-    "ubicacion": "Edificio Anexo - Planta Baja",
-    "capacidad": 20,
-    "recursos": ["proyector", "computadoras", "aire acondicionado"],
-    "activa": true
-  },
-  {
-    "id": "aula-3",
-    "nombre": "Auditorio 910",
-    "ubicacion": "Edificio Central - Piso 2",
-    "capacidad": 100,
-    "recursos": ["proyector", "parlantes", "micrófono"],
-    "activa": true
-  },
-  {
-    "id": "aula-4",
-    "nombre": "B2",
-    "ubicacion": "Edificio Principal - Planta Baja",
+    "ubicacion": "Ed. Possetto - Planta Baja",
     "capacidad": 30,
-    "recursos": ["pizarra"],
+    "recursos": ["proyector", "computadoras", "parlantes"],
     "activa": true
   },
   {
-    "id": "aula-5",
-    "nombre": "Sala de Reuniones",
-    "ubicacion": "Edificio Anexo - Piso 1",
-    "capacidad": 10,
-    "recursos": ["televisor", "pizarra"],
+    "id": 3,
+    "nombre": "Aula Magna",
+    "ubicacion": "Ed. Principal - Planta Baja",
+    "capacidad": 150,
+    "recursos": ["proyector", "parlantes", "micrófono", "escenario"],
+    "activa": true
+  },
+  {
+    "id": 4,
+    "nombre": "A4",
+    "ubicacion": "Ed. Principal - Piso 2",
+    "capacidad": 60,
+    "recursos": ["pizarra"],
+    "activa": false
+  },
+  {
+    "id": 5,
+    "nombre": "Sala de Reuniones B",
+    "ubicacion": "Ed. Possetto - Piso 2",
+    "capacidad": 15,
+    "recursos": ["televisor", "pizarra inteligente"],
     "activa": true
   }
 ]

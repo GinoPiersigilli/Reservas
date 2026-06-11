@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "reservaId": 1,
+    "usuarioId": 1,
+    "accion": "creacion",
+    "fechaHora": "2026-06-08T10:30:00",
+    "valorAnterior": null,
+    "valorNuevo": { "estado": "pendiente" }
+  }
+]
