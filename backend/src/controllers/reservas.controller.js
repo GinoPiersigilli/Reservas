@@ -33,7 +33,7 @@ export const aprobarReserva = async (req, res, next) => {
     
     // Este ID lo vas a sacar del token JWT del administrador que está logueado
     // const usuarioIdAdmin = req.usuario.id; 
-    const usuarioIdAdmin = 1; // Hardcodeado temporalmente para probar
+    const usuarioIdAdmin = req.usuario.id; 
 
     const reservaAprobada = await reservasService.aprobarReserva(id, usuarioIdAdmin);
     
@@ -102,18 +102,8 @@ export const listarReservas = async (req, res, next) => {
 export const obtenerReservaPorId = async (req, res, next) => {
   try {
     const { id } = req.params;
-    res.status(200).json({ mensaje: `Detalle de la reserva ${id} en construcción` });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ==========================================
-// OBTENER RESUMEN
-// ==========================================
-export const obtenerResumen = async (req, res, next) => {
-  try {
-    res.status(200).json({ mensaje: "Resumen administrativo en construcción" });
+    const reserva = await reservasService.obtenerReservaPorId(id);
+    res.status(200).json(reserva);
   } catch (error) {
     next(error);
   }
@@ -125,7 +115,22 @@ export const obtenerResumen = async (req, res, next) => {
 export const editarReserva = async (req, res, next) => {
   try {
     const { id } = req.params;
-    res.status(200).json({ mensaje: `Edición de la reserva ${id} en construcción` });
+    const datos  = req.body;
+    const usuarioIdAdmin = req.usuario.id;
+    const reservaEditada = await reservasService.editarReserva(id, datos, usuarioIdAdmin);
+    res.status(200).json(reservaEditada);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// OBTENER RESUMEN
+// ==========================================
+export const obtenerResumen = async (req, res, next) => {
+  try {
+    const resumen = await reservasService.obtenerResumen();
+    res.status(200).json(resumen);
   } catch (error) {
     next(error);
   }
@@ -137,7 +142,9 @@ export const editarReserva = async (req, res, next) => {
 export const rechazarReserva = async (req, res, next) => {
   try {
     const { id } = req.params;
-    res.status(200).json({ mensaje: `Rechazo de la reserva ${id} en construcción` });
+    const usuarioIdAdmin = req.usuario.id;
+    const reservaRechazada = await reservasService.rechazarReserva(id, usuarioIdAdmin);
+    res.status(200).json(reservaRechazada);
   } catch (error) {
     next(error);
   }
