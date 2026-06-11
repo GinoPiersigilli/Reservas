@@ -15,11 +15,6 @@ router.get('/:id/historial', verificarToken, reservasController.obtenerHistorial
 router.put('/:id', verificarToken, soloAdmin, reservasController.editarReserva);
 router.patch('/:id/aprobar', verificarToken, soloAdmin, reservasController.aprobarReserva);
 router.patch('/:id/rechazar', verificarToken, soloAdmin, reservasController.rechazarReserva);
-router.patch(
-    '/:id/cancelar',
-    verificarToken,
-    esPropietarioOAdmin,
-    reservasController.cancelarReserva
-);
+router.patch('/:id/cancelar',verificarToken,esPropietarioOAdmin,reservasController.cancelarReserva);
 
 export default router;

@@ -8,19 +8,11 @@ import HistorialReserva from '../models/historial.model.js'; // Lo importamos pa
 export const crearReserva = async (req, res, next) => {
   try {
     const datosReserva = req.body;
-    
-    // Importante: cuando tengas la autenticación lista, el ID viene del JWT
-    // datosReserva.usuarioId = req.usuario.id; 
-
+    datosReserva.usuarioId = req.usuario.id; // ← descomentado y limpio
     const nuevaReserva = await reservasService.crearNuevaReserva(datosReserva);
-
-    // Respondemos con status HTTP 201 (Creado) coherente [cite: 119]
     res.status(201).json(nuevaReserva);
-
   } catch (error) {
-    // ¡CAMBIO CLAVE! 
-    // Ahora le pasamos el error a next() y nuestro middleware centralizado se encarga
-    next(error); 
+    next(error);
   }
 };
 
@@ -84,12 +76,8 @@ export const cancelarReserva = async (req, res, next) => {
 
 export const listarReservas = async (req, res, next) => {
   try {
-    // El enunciado pide filtros combinables por fecha, estado, aulaId y texto [cite: 57]
-    const { fecha, estado, aulaId, q } = req.query;
-    
-    // Llamamos al servicio que debería manejar la lógica de búsqueda paginada y ordenada [cite: 69, 183]
-    const reservas = await reservasService.obtenerReservas({ fecha, estado, aulaId, q });
-    
+    const { fecha, estado, aulaId, q, page, limit, sortBy, order } = req.query;
+    const reservas = await reservasService.obtenerReservas({ fecha, estado, aulaId, q, page, limit, sortBy, order });
     res.status(200).json(reservas);
   } catch (error) {
     next(error);

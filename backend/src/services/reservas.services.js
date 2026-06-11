@@ -10,9 +10,11 @@ export const crearNuevaReserva = async (datosReserva) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
 
   // Validar que la horaInicio sea menor a horaFin
-  if (horaInicio >= horaFin) {
-    throw new Error('La hora de inicio debe ser menor a la hora de fin');
-  }
+if (horaInicio >= horaFin) {
+  const error = new Error('La hora de inicio debe ser menor a la hora de fin');
+  error.status = 400;
+  throw error;
+}
 
   // ← AGREGÁS ESTO
   if (horaInicio < '08:00' || horaFin > '22:00') {
