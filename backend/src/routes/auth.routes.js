@@ -1,29 +1,35 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
+// Importamos el modelo de Usuario para hablar con la base de datos
+import Usuario from '../models/usuario.model.js'; 
 
 const router = express.Router();
 const SECRET_KEY = "clave_secreta_para_el_tp"; 
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     
-    // Acá leemos el archivo con tus usuarios
-    const usuarios = JSON.parse(fs.readFileSync('./data/usuarios.json', 'utf-8'));
-    
-    const usuario = usuarios.find(u => u.email === email);
+    try {
+        // En vez de leer el JSON, buscamos el email en la tabla de SQLite
+        const usuario = await Usuario.findOne({ where: { email: email } });
 
-    if (!usuario || password !== "123456") {
-        return res.status(401).json({ error: "Credenciales inválidas" });
+        // Si no lo encuentra o la contraseña no es 123456 (dejé tu misma regla)
+        if (!usuario || password !== "123456") {
+            return res.status(401).json({ error: "Credenciales inválidas" });
+        }
+
+        // Armamos el token
+        const token = jwt.sign(
+            { id: usuario.id, rol: usuario.rol }, 
+            SECRET_KEY, 
+            { expiresIn: '2h' } 
+        );
+
+        res.json({ mensaje: "Login exitoso", token });
+    } catch (error) {
+        console.error("Error en el login:", error);
+        res.status(500).json({ error: "Hubo un problema al iniciar sesión" });
     }
-
-    const token = jwt.sign(
-        { id: usuario.id, rol: usuario.rol }, 
-        SECRET_KEY, 
-        { expiresIn: '2h' } 
-    );
-
-    res.json({ mensaje: "Login exitoso", token });
 });
 
 export default router;
