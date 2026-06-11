@@ -1,10 +1,10 @@
-// src/routes/auth.routes.js
 import express from 'express';
 import { loginUsuario, registrarUsuario } from '../services/auth.services.js';
+import { validarLogin, validarRegistro } from '../middleware/validacion.middleware.js';
 
 const router = express.Router();
 
-router.post('/register', async (req, res, next) => {
+router.post('/register', validarRegistro, async (req, res, next) => {
   try {
     const usuario = await registrarUsuario(req.body);
     res.status(201).json(usuario);
@@ -14,7 +14,7 @@ router.post('/register', async (req, res, next) => {
   }
 });
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', validarLogin, async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const resultado = await loginUsuario(email, password);
@@ -26,3 +26,4 @@ router.post('/login', async (req, res, next) => {
 });
 
 export default router;
+

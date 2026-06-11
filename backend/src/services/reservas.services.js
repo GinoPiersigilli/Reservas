@@ -9,9 +9,16 @@ import { registrarAccion } from './historial.services.js';
 export const crearNuevaReserva = async (datosReserva) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
 
-  // 1. Validar que la horaInicio sea menor a horaFin
+  // Validar que la horaInicio sea menor a horaFin
   if (horaInicio >= horaFin) {
     throw new Error('La hora de inicio debe ser menor a la hora de fin');
+  }
+
+  // ← AGREGÁS ESTO
+  if (horaInicio < '08:00' || horaFin > '22:00') {
+    const error = new Error('Las reservas solo se permiten entre las 08:00 y las 22:00');
+    error.status = 400;
+    throw error;
   }
 
   // 2. Buscar el aula en la base de datos
