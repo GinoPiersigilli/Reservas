@@ -26,15 +26,21 @@ if (horaInicio >= horaFin) {
   // 2. Buscar el aula en la base de datos
   const aula = await Aula.findByPk(aulaId);
   if (!aula) {
-    throw new Error('El aula solicitada no existe');
+    const error = new Error('El aula solicitada no existe');
+    error.status = 400;
+    throw error;
   }
   if (!aula.activa) {
-    throw new Error('El aula no está activa para nuevas reservas');
+    const error = new Error('El aula no está activa para nuevas reservas');
+    error.status = 400;
+    throw error;
   }
 
   // 3. Validar la capacidad
   if (cantidadPersonas > aula.capacidad) {
-    throw new Error('La cantidad de personas supera la capacidad del aula');
+    const error = new Error('La cantidad de personas supera la capacidad del aula');
+    error.status = 400;
+    throw error;
   }
 
   // 4. Validar que no haya superposición horaria
@@ -55,7 +61,9 @@ if (horaInicio >= horaFin) {
   });
 
   if (reservaExistente) {
-    throw new Error('El aula ya está reservada en ese horario');
+    const error = new Error('El aula ya está reservada en ese horario');
+    error.status = 400;
+    throw error;
   }
 
   // 5. Si pasó todas las pruebas, creamos la reserva
