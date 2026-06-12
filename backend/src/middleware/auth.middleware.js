@@ -1,53 +1,46 @@
-import jwt from 'jsonwebtoken';
-import Reserva from '../models/reserva.model.js';
+// src/middleware/auth.middleware.js
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const SECRET_KEY = "mi_clave_secreta_super_segura_dds_2026";
+const KEYCLOAK_BASE_URL = 'http://localhost:8081';
+const KEYCLOAK_REALM = 'dds-aulas';
+const KEYCLOAK_CLIENT_ID = 'dds-aulas-client';
 
-export const verificarToken = (req, res, next) => {
-    const authHeader = req.headers.authorization;
+const issuer = `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}`;
+const jwksUri = `${issuer}/protocol/openid-connect/certs`;
+const JWKS = createRemoteJWKSet(new URL(jwksUri));
 
-    if (!authHeader) {
-        return res.status(401).json({ error: "No enviaste el token de acceso" });
-    }
+export const verificarToken = async (req, res, next) => {
+  const authorization = req.get('authorization');
 
-    const token = authHeader.split(' ')[1];
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return res.status(401).json({ error: 'Token no informado' });
+  }
 
-    try {
-        const decodificado = jwt.verify(token, SECRET_KEY);
-        req.usuario = decodificado; 
-        next(); 
-    } catch (error) {
-        return res.status(401).json({ error: "Token inválido o vencido" });
-    }
+  const token = authorization.substring(7);
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer
+    });
+
+    req.usuario = {
+      id: payload.sub,
+      nombre: payload.given_name || payload.preferred_username,
+      email: payload.email,
+      rol: payload.realm_access?.roles?.includes('admin') ? 'admin' : 'usuario'
+    };
+
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      error: 'Token inválido o expirado'
+    });
+  }
 };
 
 export const soloAdmin = (req, res, next) => {
-    if (!req.usuario || req.usuario.rol !== 'admin') {
-        return res.status(403).json({
-            error: "Acceso denegado: se requieren permisos de administrador"
-        });
-    }
-
-    next();
-};
-
-export const esPropietarioOAdmin = async (req, res, next) => {
-    const reserva = await Reserva.findByPk(req.params.id);
-
-    if (!reserva) {
-        return res.status(404).json({
-            error: "Reserva no encontrada"
-        });
-    }
-
-    if (
-        req.usuario.rol === 'admin' ||
-        reserva.usuarioId === req.usuario.id
-    ) {
-        return next();
-    }
-
-    return res.status(403).json({
-        error: "No tienes permisos para esta acción"
-    });
+  if (!req.usuario || req.usuario.rol !== 'admin') {
+    return res.status(403).json({ error: 'Acceso denegado: se requiere rol admin' });
+  }
+  next();
 };

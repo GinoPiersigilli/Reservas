@@ -8,6 +8,7 @@ import DetalleReserva from './pages/DetalleReserva.jsx';
 import FormularioReserva from './pages/FormularioReserva.jsx';
 import Resumen from './pages/Resumen.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Callback from './pages/Callback.jsx';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Route path="/" element={<Navigate to="/reservas" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/callback" element={<Callback />} />
 
       <Route path="/reservas" element={
         <RutaProtegida><Reservas /></RutaProtegida>
