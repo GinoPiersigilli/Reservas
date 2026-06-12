@@ -6,7 +6,7 @@ import Aula from './src/models/aula.model.js';
 import Reserva from './src/models/reserva.model.js';
 import HistorialReserva from './src/models/historial.model.js';
 
-const PORT = process.env.PORT || 3001;
+const PORT = 3000;
 
 async function seedDatabase() {
   // --- NUEVA VALIDACIÓN ---
