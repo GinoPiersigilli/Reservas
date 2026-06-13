@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || 'http://localhost:8081';
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'reservas-aulas';
-const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'frontend';
+const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'reservas-aulas-client';
 const JWT_SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura_dds_2026';
 
 const issuer = `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}`;

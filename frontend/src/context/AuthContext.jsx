@@ -4,7 +4,7 @@ const AuthContext = createContext(null);
 
 const KEYCLOAK_BASE_URL = import.meta.env.VITE_KEYCLOAK_BASE_URL || 'http://localhost:8081';
 const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'reservas-aulas';
-const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'frontend';
+const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'reservas-aulas-client';
 const REDIRECT_URI = import.meta.env.VITE_KEYCLOAK_REDIRECT_URI || 'http://localhost:5173/callback';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 

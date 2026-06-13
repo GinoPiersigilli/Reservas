@@ -6,7 +6,7 @@ const router = express.Router();
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || 'http://localhost:8081';
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'reservas-aulas';
-const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'frontend';
+const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'reservas-aulas-client';
 const REDIRECT_URI = process.env.KEYCLOAK_REDIRECT_URI || 'http://localhost:5173/callback';
 
 router.get('/login', (req, res) => {

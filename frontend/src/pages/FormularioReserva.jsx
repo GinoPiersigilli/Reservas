@@ -103,19 +103,32 @@ const FormularioReserva = () => {
           <div className="form-row">
             <label htmlFor="aulaId">Aula *</label>
             <select 
-              id="aulaId"
               name="aulaId" 
               value={form.aulaId} 
               onChange={handleChange} 
-              required
-            >
-              <option value="">Seleccioná un aula</option>
-              {aulas.map(a => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre} — {a.ubicacion} (cap. {a.capacidad})
-                </option>
-              ))}
-            </select>
+            required
+            style={{
+            width: '100%',
+            padding: '10px 14px',
+            backgroundColor: '#1E293B',
+            color: '#F8FAFC',
+            border: '1px solid #334155',
+            borderRadius: '8px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            appearance: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 14px center'
+  }}
+>
+  <option value="" style={{ backgroundColor: '#1E293B' }}>Seleccioná un aula</option>
+  {aulas.map(a => (
+    <option key={a.id} value={a.id} style={{ backgroundColor: '#1E293B' }}>
+      {a.nombre} — {a.ubicacion} (cap. {a.capacidad})
+    </option>
+  ))}
+</select>
           </div>
 
           <div className="form-row">
