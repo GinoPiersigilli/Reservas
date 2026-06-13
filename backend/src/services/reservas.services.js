@@ -5,6 +5,9 @@ import Aula from '../models/aula.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
 
+const WORK_HOUR_START = process.env.WORK_HOUR_START || '08:00';
+const WORK_HOUR_END = process.env.WORK_HOUR_END || '22:00';
+
 // Función para crear una nueva reserva
 export const crearNuevaReserva = async (datosReserva) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
@@ -16,9 +19,8 @@ if (horaInicio >= horaFin) {
   throw error;
 }
 
-  // ← AGREGÁS ESTO
-  if (horaInicio < '08:00' || horaFin > '22:00') {
-    const error = new Error('Las reservas solo se permiten entre las 08:00 y las 22:00');
+  if (horaInicio < WORK_HOUR_START || horaFin > WORK_HOUR_END) {
+    const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
     error.status = 400;
     throw error;
   }
@@ -26,15 +28,21 @@ if (horaInicio >= horaFin) {
   // 2. Buscar el aula en la base de datos
   const aula = await Aula.findByPk(aulaId);
   if (!aula) {
-    throw new Error('El aula solicitada no existe');
+    const error = new Error('El aula solicitada no existe');
+    error.status = 404;
+    throw error;
   }
   if (!aula.activa) {
-    throw new Error('El aula no está activa para nuevas reservas');
+    const error = new Error('El aula no está activa para nuevas reservas');
+    error.status = 400;
+    throw error;
   }
 
   // 3. Validar la capacidad
   if (cantidadPersonas > aula.capacidad) {
-    throw new Error('La cantidad de personas supera la capacidad del aula');
+    const error = new Error('La cantidad de personas supera la capacidad del aula');
+    error.status = 400;
+    throw error;
   }
 
   // 4. Validar que no haya superposición horaria
@@ -55,7 +63,9 @@ if (horaInicio >= horaFin) {
   });
 
   if (reservaExistente) {
-    throw new Error('El aula ya está reservada en ese horario');
+    const error = new Error('El aula ya está reservada en ese horario');
+    error.status = 400;
+    throw error;
   }
 
   // 5. Si pasó todas las pruebas, creamos la reserva
@@ -282,9 +292,9 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
     throw error;
   }
 
-  // Validar horario laboral (08:00 - 22:00)
-  if (nuevaInicio < '08:00' || nuevaFin > '22:00') {
-    const error = new Error('Las reservas solo se permiten entre las 08:00 y las 22:00');
+  // Validar horario laboral mediante configuración
+  if (nuevaInicio < WORK_HOUR_START || nuevaFin > WORK_HOUR_END) {
+    const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
     error.status = 400;
     throw error;
   }
@@ -349,7 +359,10 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
 // RESUMEN ADMINISTRATIVO
 // ==========================================
 export const obtenerResumen = async () => {
-  const [porEstado, porAula, proximas] = await Promise.all([
+  const fechaHoy = new Date().toISOString().split('T')[0];
+  const horaAhora = new Date().toTimeString().slice(0, 5);
+
+  const [porEstado, porAula, proximasHoy] = await Promise.all([
     // Total por estado
     Reserva.findAll({
       attributes: ['estado', [sequelize.fn('COUNT', sequelize.col('id')), 'total']],
@@ -362,16 +375,17 @@ export const obtenerResumen = async () => {
       order:  [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
       limit:  5
     }),
-    // Próximas reservas aprobadas o pendientes
+    // Próximas reservas del día
     Reserva.findAll({
       where: {
         estado: { [Op.in]: ['pendiente', 'aprobada'] },
-        fecha:  { [Op.gte]: new Date().toISOString().split('T')[0] }
+        fecha:  fechaHoy,
+        horaInicio: { [Op.gte]: horaAhora }
       },
-      order: [['fecha', 'ASC'], ['horaInicio', 'ASC']],
+      order: [['horaInicio', 'ASC']],
       limit: 10
     })
   ]);
 
-  return { porEstado, porAula, proximas };
+  return { porEstado, porAula, proximasHoy };
 };

@@ -61,4 +61,23 @@ describe('Auth routes', () => {
     expect(response.body).toHaveProperty('token');
     expect(response.body.usuario).toHaveProperty('email', 'login@example.com');
   });
+
+  it('rejects login with invalid credentials', async () => {
+    const password = 'login123';
+
+    await Usuario.create({
+      nombre: 'Login User 2',
+      email: 'login2@example.com',
+      passwordHash: await bcrypt.hash(password, 10),
+      rol: 'usuario',
+      activo: true
+    });
+
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'login2@example.com', password: 'wrongpassword' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error', 'Credenciales inválidas');
+  });
 });
