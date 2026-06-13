@@ -182,3 +182,10 @@
     border-right-color: var(--border);
   }
 }
+/* Apunta directamente a las opciones dentro de tu select */
+select option {
+  background-color: #1e293b;
+  /* Un gris oscuro/azul como el de tu fondo */
+  color: #ffffff;
+  /* Texto blanco */
+}

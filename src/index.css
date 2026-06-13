@@ -109,3 +109,11 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+select,
+select option {
+  background-color: #16171d !important;
+  /* Usé el mismo color de tu --bg oscuro */
+  color: #f3f4f6 !important;
+  /* Usé tu color --text-h */
+  color-scheme: dark;
+}
