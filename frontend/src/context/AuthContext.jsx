@@ -3,16 +3,43 @@ import { createContext, useContext, useState } from 'react';
 const AuthContext = createContext(null);
 
 const KEYCLOAK_BASE_URL = import.meta.env.VITE_KEYCLOAK_BASE_URL || 'http://localhost:8081';
-const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'reservas-aulas';
+const KEYCLOAK_REALM    = import.meta.env.VITE_KEYCLOAK_REALM    || 'reservas-aulas';
 const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'reservas-aulas-client';
-const REDIRECT_URI = import.meta.env.VITE_KEYCLOAK_REDIRECT_URI || 'http://localhost:5173/callback';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const REDIRECT_URI      = import.meta.env.VITE_KEYCLOAK_REDIRECT_URI || 'http://localhost:5173/callback';
+const API_BASE_URL      = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(() => {
     const guardado = localStorage.getItem('usuario');
     return guardado ? JSON.parse(guardado) : null;
   });
+
+  const iniciarSesionLocal = async (email, password) => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.error || 'Credenciales inválidas');
+
+    const payload = JSON.parse(atob(data.token.split('.')[1]));
+
+    const datosUsuario = {
+      id:     payload.id,
+      nombre: payload.nombre,
+      email:  payload.email,
+      rol:    payload.rol
+    };
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('usuario', JSON.stringify(datosUsuario));
+    setUsuario(datosUsuario);
+
+    window.location.href = '/reservas';
+  };
 
   const iniciarLogin = () => {
     const authUrl =
@@ -39,10 +66,10 @@ export const AuthProvider = ({ children }) => {
     const payload = JSON.parse(atob(data.access_token.split('.')[1]));
 
     const datosUsuario = {
-      id: payload.sub,
+      id:     payload.sub,
       nombre: payload.given_name || payload.preferred_username,
-      email: payload.email,
-      rol: payload.realm_access?.roles?.includes('admin') ? 'admin' : 'usuario'
+      email:  payload.email,
+      rol:    payload.realm_access?.roles?.includes('admin') ? 'admin' : 'usuario'
     };
 
     localStorage.setItem('token', data.access_token);
@@ -64,7 +91,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, iniciarLogin, procesarCallback, cerrarSesion }}>
+    <AuthContext.Provider value={{ usuario, iniciarLogin, iniciarSesionLocal, procesarCallback, cerrarSesion }}>
       {children}
     </AuthContext.Provider>
   );

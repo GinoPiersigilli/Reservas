@@ -62,7 +62,7 @@ const Resumen = () => {
           <div className="label">Pendientes</div>
         </div>
         <div className="metric">
-          <div className="value">{resumen.proximas.length}</div>
+          <div className="value">{resumen.proximasHoy.length}</div>
           <div className="label">Próximas reservas</div>
         </div>
       </div>
@@ -135,14 +135,14 @@ const Resumen = () => {
             </tr>
           </thead>
           <tbody>
-            {resumen.proximas.length === 0 && (
+            {resumen.proximasHoy.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-soft)' }}>
                   No hay próximas reservas
                 </td>
               </tr>
             )}
-            {resumen.proximas.map((r) => (
+            {resumen.proximasHoy.map((r) => (
               <tr key={r.id}>
                 <td style={{ fontWeight: 500 }}>#{r.id}</td>
                 <td>{r.aulaId}</td>

@@ -1,1 +1,1 @@
-const HistorialReserva = ({ historial }) => {
+const HistorialReserva = ({ historial }) => {}

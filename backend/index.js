@@ -13,8 +13,26 @@ const PORT = process.env.PORT || 3001;
 const SISTEMA_ID = 0;
 
 async function seedDatabase() {
+  const cantidadUsuarios = await Usuario.count();
+  if (cantidadUsuarios === 0) {
+  await Promise.all([
+    Usuario.create({
+      nombre: 'Administrador Bedelía',
+      email: 'admin@utnfrc.edu.ar',
+      passwordHash: await bcrypt.hash('admin123', 10),
+      rol: 'admin',
+      activo: true
+    }),
+    Usuario.create({
+      nombre: 'David López',
+      email: 'david@utnfrc.edu.ar',
+      passwordHash: await bcrypt.hash('user123', 10),
+      rol: 'usuario',
+      activo: true
+    })
+  ]);
+}
   const cantidadAulas = await Aula.count();
-
   if (cantidadAulas > 0) {
     console.log('✅ La base de datos ya tiene información. Omitiendo la carga de semillas.');
     return;
