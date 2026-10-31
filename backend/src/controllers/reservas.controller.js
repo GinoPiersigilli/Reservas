@@ -1,6 +1,5 @@
 // src/controllers/reservas.controller.js
 import * as reservasService from '../services/reservas.services.js';
-import HistorialReserva from '../models/historial.model.js'; // Lo importamos para el GET del historial
 
 // ==========================================
 // CREAR RESERVA
@@ -22,13 +21,10 @@ export const crearReserva = async (req, res, next) => {
 export const aprobarReserva = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    // Este ID lo vas a sacar del token JWT del administrador que está logueado
-    // const usuarioIdAdmin = req.usuario.id; 
-    const usuarioIdAdmin = req.usuario.id; 
+    const usuarioIdAdmin = req.usuario.id;
 
     const reservaAprobada = await reservasService.aprobarReserva(id, usuarioIdAdmin);
-    
+
     // Status HTTP 200 coherente para modificaciones exitosas [cite: 119]
     res.status(200).json(reservaAprobada);
 
@@ -43,12 +39,7 @@ export const aprobarReserva = async (req, res, next) => {
 export const obtenerHistorialDeReserva = async (req, res, next) => {
   try {
     const { id } = req.params; // El ID de la reserva
-
-    // Buscamos todos los registros del historial que coincidan con este reservaId
-    const historial = await HistorialReserva.findAll({
-      where: { reservaId: id },
-      order: [['fechaHora', 'DESC']] // Los ordenamos del más nuevo al más viejo
-    });
+    const historial = await reservasService.obtenerHistorialDeReserva(id, req.usuario);
 
     res.status(200).json(historial);
 
@@ -56,28 +47,28 @@ export const obtenerHistorialDeReserva = async (req, res, next) => {
     next(error);
   }
 };
+
 export const cancelarReserva = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    // Asumimos que tu middleware verificarToken inyecta los datos del usuario en req.usuario
-    // req.usuario debería tener algo como { id: 1, rol: 'usuario' }
-    const usuarioLogueado = req.usuario; 
+    const usuarioLogueado = req.usuario;
 
     const reservaCancelada = await reservasService.cancelarReserva(id, usuarioLogueado);
-    
+
     res.status(200).json(reservaCancelada);
 
   } catch (error) {
     next(error);
   }
 };
-// Agregá esto a tu src/controllers/reservas.controller.js
 
 export const listarReservas = async (req, res, next) => {
   try {
     const { fecha, estado, aulaId, q, page, limit, sortBy, order } = req.query;
-    const reservas = await reservasService.obtenerReservas({ fecha, estado, aulaId, q, page, limit, sortBy, order });
+    const reservas = await reservasService.obtenerReservas(
+      { fecha, estado, aulaId, q, page, limit, sortBy, order },
+      req.usuario
+    );
     res.status(200).json(reservas);
   } catch (error) {
     next(error);
@@ -90,7 +81,7 @@ export const listarReservas = async (req, res, next) => {
 export const obtenerReservaPorId = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const reserva = await reservasService.obtenerReservaPorId(id);
+    const reserva = await reservasService.obtenerReservaPorId(id, req.usuario);
     res.status(200).json(reserva);
   } catch (error) {
     next(error);

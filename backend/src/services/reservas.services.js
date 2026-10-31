@@ -1,5 +1,6 @@
 // services/reservas.service.js
 import Reserva from '../models/reserva.model.js';
+import HistorialReserva from '../models/historial.model.js';
 import sequelize from '../config/database.js';
 import Aula from '../models/aula.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
@@ -185,8 +186,13 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
 // ==========================================
 // OBTENER RESERVAS (con filtros)
 // ==========================================
-export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, sortBy, order }) => {
+export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, sortBy, order, usuario } = {}, usuarioParam) => {
   const where = {};
+  const usuarioActual = usuarioParam || usuario;
+
+  if (usuarioActual && usuarioActual.rol !== 'admin') {
+    where.usuarioId = usuarioActual.id;
+  }
 
   if (fecha)   where.fecha   = fecha;
   if (estado)  where.estado  = estado;
@@ -249,7 +255,7 @@ export const rechazarReserva = async (reservaId, usuarioIdAdmin) => {
 // ==========================================
 // OBTENER RESERVA POR ID
 // ==========================================
-export const obtenerReservaPorId = async (reservaId) => {
+export const obtenerReservaPorId = async (reservaId, usuario) => {
   const reserva = await Reserva.findByPk(reservaId);
 
   if (!reserva) {
@@ -258,7 +264,27 @@ export const obtenerReservaPorId = async (reservaId) => {
     throw error;
   }
 
+  if (usuario && usuario.rol !== 'admin' && String(reserva.usuarioId) !== String(usuario.id)) {
+    const error = new Error('La reserva no existe');
+    error.status = 404;
+    throw error;
+  }
+
   return reserva;
+};
+
+// ==========================================
+// OBTENER HISTORIAL DE UNA RESERVA
+// ==========================================
+export const obtenerHistorialDeReserva = async (reservaId, usuario) => {
+  await obtenerReservaPorId(reservaId, usuario);
+
+  const historial = await HistorialReserva.findAll({
+    where: { reservaId },
+    order: [['fechaHora', 'DESC']]
+  });
+
+  return historial;
 };
 
 // ==========================================

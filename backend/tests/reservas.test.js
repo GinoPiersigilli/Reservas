@@ -10,19 +10,24 @@ import Reserva from '../src/models/reserva.model.js';
 
 let adminToken;
 let usuarioToken;
+let otroUsuarioToken;
 let usuario;
+let otroUsuario;
 let aula;
 let reservaPendiente;
+let reservaOtroUsuario;
 
 beforeAll(async () => {
   await sequelize.sync({ force: true });
 
   const passwordHash = await bcrypt.hash('password123', 10);
   const admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });
-  usuario = await Usuario.create({ nombre: 'User Test', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
+  usuario = await Usuario.create({ nombre: 'User Test A', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
+  otroUsuario = await Usuario.create({ nombre: 'User Test B', email: 'userb@test.com', passwordHash, rol: 'usuario', activo: true });
 
   adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h' });
   usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
+  otroUsuarioToken = jwt.sign({ id: otroUsuario.id, nombre: otroUsuario.nombre, email: otroUsuario.email, rol: otroUsuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
 
   aula = await Aula.create({ nombre: 'Aula de Prueba', ubicacion: 'Piso 1', capacidad: 20, recursos: 'pizarra', activa: true });
 
@@ -33,7 +38,18 @@ beforeAll(async () => {
     horaInicio: '10:00',
     horaFin: '12:00',
     cantidadPersonas: 10,
-    motivo: 'Reserva de prueba',
+    motivo: 'Reserva de prueba usuario A',
+    estado: 'pendiente'
+  });
+
+  reservaOtroUsuario = await Reserva.create({
+    aulaId: aula.id,
+    usuarioId: otroUsuario.id,
+    fecha: '2026-06-20',
+    horaInicio: '14:00',
+    horaFin: '16:00',
+    cantidadPersonas: 8,
+    motivo: 'Reserva de prueba usuario B',
     estado: 'pendiente'
   });
 });
@@ -74,6 +90,33 @@ describe('Reservas API', () => {
     expect(responseFiltered.status).toBe(200);
     expect(responseFiltered.body).toHaveProperty('datos');
     expect(responseFiltered.body.datos.every((r) => r.estado === 'pendiente')).toBe(true);
+  });
+
+  it('should not show other users reservations to a normal user in the list', async () => {
+    const response = await request(app)
+      .get('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.datos.length).toBeGreaterThan(0);
+    expect(response.body.datos.every((r) => r.usuarioId === usuario.id)).toBe(true);
+    expect(response.body.datos.some((r) => r.id === reservaOtroUsuario.id)).toBe(false);
+  });
+
+  it('should return 404 when user A requests reservation or history of user B', async () => {
+    const detailResponse = await request(app)
+      .get(`/api/reservas/${reservaOtroUsuario.id}`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+
+    expect(detailResponse.status).toBe(404);
+    expect(detailResponse.body).toHaveProperty('error', 'La reserva no existe');
+
+    const historyResponse = await request(app)
+      .get(`/api/reservas/${reservaOtroUsuario.id}/historial`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+
+    expect(historyResponse.status).toBe(404);
+    expect(historyResponse.body).toHaveProperty('error', 'La reserva no existe');
   });
 
   it('should return reservation detail for existing id', async () => {
