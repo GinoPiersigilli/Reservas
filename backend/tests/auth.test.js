@@ -1,6 +1,7 @@
 import request from 'supertest';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import env, { validarEnv } from '../src/config/env.js';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
@@ -13,7 +14,7 @@ afterAll(async () => {
   await sequelize.close();
 });
 
-describe('Auth routes & token verification', () => {
+describe('Auth routes, token verification & env validation', () => {
   it('logs in an existing user', async () => {
     const password = 'login123';
 
@@ -66,5 +67,20 @@ describe('Auth routes & token verification', () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+  });
+
+  it('aborts startup when JWT_SECRET is missing in development or production', async () => {
+    expect(() => validarEnv({ NODE_ENV: 'development', JWT_SECRET: '' })).toThrow(/JWT_SECRET/);
+    expect(() => validarEnv({ NODE_ENV: 'production', CLERK_SECRET_KEY: 'sk_test_123' })).toThrow(/JWT_SECRET/);
+    expect(() => validarEnv({ NODE_ENV: 'production', JWT_SECRET: 'secreto_valido' })).toThrow(/CLERK_SECRET_KEY/);
+
+    const originalJwtSecret = process.env.JWT_SECRET;
+    try {
+      delete process.env.JWT_SECRET;
+      jest.resetModules();
+      await expect(import('../src/config/env.js')).rejects.toThrow(/JWT_SECRET/);
+    } finally {
+      process.env.JWT_SECRET = originalJwtSecret || env.JWT_SECRET;
+    }
   });
 });

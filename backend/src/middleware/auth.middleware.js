@@ -1,10 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { createClerkClient, verifyToken } from '@clerk/backend';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura_dds_2026';
+import env from '../config/env.js';
 
 const clerkClient = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY
+  secretKey: env.CLERK_SECRET_KEY
 });
 
 export const verificarToken = async (req, res, next) => {
@@ -18,7 +17,7 @@ export const verificarToken = async (req, res, next) => {
 
   // Intentar con JWT local primero (usuarios de prueba)
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, env.JWT_SECRET);
     req.usuario = {
       id:     payload.id,
       nombre: payload.nombre,
@@ -31,7 +30,7 @@ export const verificarToken = async (req, res, next) => {
   // Intentar con Clerk verificando firma real
   try {
     const verified = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY
+      secretKey: env.CLERK_SECRET_KEY
     });
     const clerkUser = await clerkClient.users.getUser(verified.sub);
 

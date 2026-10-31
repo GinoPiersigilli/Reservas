@@ -1,3 +1,4 @@
+import env from './src/config/env.js';
 import app from './src/app.js';
 import sequelize from './src/config/database.js';
 import bcrypt from 'bcrypt';
@@ -6,7 +7,7 @@ import Reserva from './src/models/reserva.model.js';
 import Usuario from './src/models/usuario.model.js';
 import HistorialReserva from './src/models/historial.model.js';
 
-const PORT = process.env.PORT || 3001;
+const PORT = env.PORT;
 
 // ID fijo para representar acciones del sistema en el historial
 // Las reservas y el historial pueden usar este valor cuando no hay usuario real.
@@ -109,7 +110,7 @@ async function seedDatabase() {
   console.log('   Usuarios: gestionados por Keycloak (http://localhost:8081)');
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (env.NODE_ENV !== 'test') {
   sequelize.sync()
     .then(async () => {
       console.log('Tablas creadas y base de datos sincronizada correctamente.');

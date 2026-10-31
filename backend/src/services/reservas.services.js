@@ -4,9 +4,10 @@ import sequelize from '../config/database.js';
 import Aula from '../models/aula.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
+import env from '../config/env.js';
 
-const WORK_HOUR_START = process.env.WORK_HOUR_START || '08:00';
-const WORK_HOUR_END = process.env.WORK_HOUR_END || '22:00';
+const WORK_HOUR_START = env.WORK_HOUR_START;
+const WORK_HOUR_END = env.WORK_HOUR_END;
 
 // Función para crear una nueva reserva
 export const crearNuevaReserva = async (datosReserva) => {

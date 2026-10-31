@@ -1,13 +1,12 @@
 import request from 'supertest';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import env from '../src/config/env.js';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
 import Aula from '../src/models/aula.model.js';
 import Reserva from '../src/models/reserva.model.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura_dds_2026';
 
 let adminToken;
 let usuarioToken;
@@ -22,8 +21,8 @@ beforeAll(async () => {
   const admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });
   usuario = await Usuario.create({ nombre: 'User Test', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
 
-  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, JWT_SECRET, { expiresIn: '2h' });
-  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, JWT_SECRET, { expiresIn: '2h' });
+  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h' });
+  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
 
   aula = await Aula.create({ nombre: 'Aula de Prueba', ubicacion: 'Piso 1', capacidad: 20, recursos: 'pizarra', activa: true });
 
@@ -149,7 +148,7 @@ describe('Reservas API', () => {
   });
 
   it('should reject invalid edit because of schedule conflict', async () => {
-    const reservaConflicto = await Reserva.create({
+    await Reserva.create({
       aulaId: aula.id,
       usuarioId: usuario.id,
       fecha: '2026-06-21',
@@ -185,6 +184,7 @@ describe('Reservas API', () => {
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error', 'El aula ya está reservada en ese horario');
   });
+
   it('should reject approving a cancelled reservation', async () => {
     const reservaCancelada = await Reserva.create({
       aulaId: aula.id,
