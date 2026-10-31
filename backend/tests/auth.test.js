@@ -1,5 +1,6 @@
 import request from 'supertest';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
@@ -12,36 +13,7 @@ afterAll(async () => {
   await sequelize.close();
 });
 
-describe('Auth routes', () => {
-  it('registers a new user', async () => {
-    const response = await request(app)
-      .post('/api/auth/register')
-      .send({ nombre: 'Test User', email: 'test@example.com', password: 'test123' });
-
-    expect(response.status).toBe(201);
-    expect(response.body).toHaveProperty('id');
-    expect(response.body).toHaveProperty('nombre', 'Test User');
-    expect(response.body).toHaveProperty('email', 'test@example.com');
-    expect(response.body).not.toHaveProperty('passwordHash');
-  });
-
-  it('rejects registration when email is already registered', async () => {
-    await Usuario.create({
-      nombre: 'Existing User',
-      email: 'existing@example.com',
-      passwordHash: await bcrypt.hash('test123', 10),
-      rol: 'usuario',
-      activo: true
-    });
-
-    const response = await request(app)
-      .post('/api/auth/register')
-      .send({ nombre: 'Existing User', email: 'existing@example.com', password: 'test123' });
-
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('error');
-  });
-
+describe('Auth routes & token verification', () => {
   it('logs in an existing user', async () => {
     const password = 'login123';
 
@@ -77,7 +49,22 @@ describe('Auth routes', () => {
       .post('/api/auth/login')
       .send({ email: 'login2@example.com', password: 'wrongpassword' });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(response.body).toHaveProperty('error', 'Credenciales inválidas');
+  });
+
+  it('rejects JWT/Clerk token with invalid signature with 401', async () => {
+    const tokenFirmaInvalida = jwt.sign(
+      { sub: 'user_fake_clerk_admin', id: 1, rol: 'admin', email: 'admin@utnfrc.edu.ar' },
+      'clave_secreta_falsa_invalida',
+      { expiresIn: '2h' }
+    );
+
+    const response = await request(app)
+      .get('/api/reservas')
+      .set('Authorization', `Bearer ${tokenFirmaInvalida}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
   });
 });

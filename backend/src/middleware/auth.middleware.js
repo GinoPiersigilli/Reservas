@@ -1,20 +1,11 @@
 import jwt from 'jsonwebtoken';
+import { createClerkClient, verifyToken } from '@clerk/backend';
 
-const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || 'http://localhost:8081';
-const KEYCLOAK_REALM    = process.env.KEYCLOAK_REALM    || 'reservas-aulas';
-const JWT_SECRET        = process.env.JWT_SECRET        || 'mi_clave_secreta_super_segura_dds_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura_dds_2026';
 
-const issuer  = `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}`;
-const jwksUri = `${issuer}/protocol/openid-connect/certs`;
-
-let jose;
-let JWKS;
-
-const getJose = async () => {
-  if (!jose) jose = await import('jose');
-  if (!JWKS)  JWKS = jose.createRemoteJWKSet(new URL(jwksUri));
-  return jose;
-};
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY
+});
 
 export const verificarToken = async (req, res, next) => {
   const authorization = req.get('authorization');
@@ -25,6 +16,7 @@ export const verificarToken = async (req, res, next) => {
 
   const token = authorization.substring(7);
 
+  // Intentar con JWT local primero (usuarios de prueba)
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     req.usuario = {
@@ -34,19 +26,22 @@ export const verificarToken = async (req, res, next) => {
       rol:    payload.rol
     };
     return next();
-  } catch {
+  } catch {}
 
-  }
-
+  // Intentar con Clerk verificando firma real
   try {
-    const { jwtVerify } = await getJose();
-    const { payload } = await jwtVerify(token, JWKS, { issuer });
+    const verified = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY
+    });
+    const clerkUser = await clerkClient.users.getUser(verified.sub);
+
     req.usuario = {
-      id:     payload.sub,
-      nombre: payload.given_name || payload.preferred_username,
-      email:  payload.email,
-      rol:    payload.realm_access?.roles?.includes('admin') ? 'admin' : 'usuario'
+      id:     clerkUser.id,
+      nombre: clerkUser.firstName || clerkUser.username || clerkUser.emailAddresses[0]?.emailAddress,
+      email:  clerkUser.emailAddresses[0]?.emailAddress,
+      rol:    clerkUser.publicMetadata?.rol || 'usuario'
     };
+
     return next();
   } catch {
     return res.status(401).json({ error: 'Token inválido o expirado' });
