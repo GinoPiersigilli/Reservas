@@ -18,7 +18,7 @@ let reservaPendiente;
 let reservaOtroUsuario;
 
 beforeAll(async () => {
-  await sequelize.sync({ force: true });
+  await sequelize.sync();
 
   const passwordHash = await bcrypt.hash('password123', 10);
   const admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });

@@ -7,7 +7,7 @@ import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
 
 beforeAll(async () => {
-  await sequelize.sync({ force: true });
+  await sequelize.sync();
 });
 
 afterAll(async () => {
