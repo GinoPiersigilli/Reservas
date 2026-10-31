@@ -92,6 +92,24 @@ describe('Reservas API', () => {
     expect(responseFiltered.body.datos.every((r) => r.estado === 'pendiente')).toBe(true);
   });
 
+  it('should cap limit=100000 to 100 in obtenerReservas', async () => {
+    const response = await request(app)
+      .get('/api/reservas?limit=100000')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.porPagina).toBe(100);
+  });
+
+  it('should not fail when sortBy or order are invalid', async () => {
+    const response = await request(app)
+      .get('/api/reservas?sortBy=columnaInexistente&order=cualquierCosa')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.datos)).toBe(true);
+  });
+
   it('should not show other users reservations to a normal user in the list', async () => {
     const response = await request(app)
       .get('/api/reservas')

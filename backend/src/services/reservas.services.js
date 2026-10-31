@@ -9,6 +9,7 @@ import env from '../config/env.js';
 
 const WORK_HOUR_START = env.WORK_HOUR_START;
 const WORK_HOUR_END = env.WORK_HOUR_END;
+const SORT_BY_PERMITIDOS = ['createdAt', 'fecha', 'horaInicio', 'estado', 'aulaId', 'id'];
 
 // Función para crear una nueva reserva
 export const crearNuevaReserva = async (datosReserva) => {
@@ -199,10 +200,17 @@ export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, s
   if (aulaId)  where.aulaId  = aulaId;
   if (q)       where.motivo  = { [Op.like]: `%${q}%` };
 
-  const pagina    = parseInt(page)  || 1;
-  const porPagina = parseInt(limit) || 10;
-  const columna   = sortBy  || 'createdAt';
-  const direccion = order   || 'DESC';
+  const parsedPage  = parseInt(page, 10);
+  const pagina      = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
+
+  const parsedLimit = parseInt(limit, 10);
+  const porPagina   = Number.isNaN(parsedLimit) || parsedLimit < 1
+    ? 10
+    : Math.min(parsedLimit, 100);
+
+  const columna     = SORT_BY_PERMITIDOS.includes(sortBy) ? sortBy : 'createdAt';
+  const orderUpper  = typeof order === 'string' ? order.toUpperCase() : '';
+  const direccion   = orderUpper === 'ASC' || orderUpper === 'DESC' ? orderUpper : 'DESC';
 
   const { count, rows } = await Reserva.findAndCountAll({
     where,
