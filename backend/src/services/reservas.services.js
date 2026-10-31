@@ -147,14 +147,17 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
     throw error;
   }
 
-  // 2. Validación de permisos (La clave que pide el PDF)
-  // Si es un usuario común, verificamos que sea el dueño de la reserva
-  if (usuarioLogueado.rol === 'usuario') {
-    if (reservaActual.usuarioId !== usuarioLogueado.id) {
-      const error = new Error("No tienes permiso para cancelar esta reserva");
-      error.status = 403; // 403 Forbidden como exige el enunciado
-      throw error;
-    }
+  // 2. Validación de permisos por lista explícita (admin o dueño)
+  const esAdmin = usuarioLogueado?.rol === 'admin';
+  const esDuenio =
+    usuarioLogueado?.id !== undefined &&
+    usuarioLogueado?.id !== null &&
+    String(reservaActual.usuarioId) === String(usuarioLogueado.id);
+
+  if (!esAdmin && !esDuenio) {
+    const error = new Error("No tienes permiso para cancelar esta reserva");
+    error.status = 403;
+    throw error;
   }
 
   // 3. Validación de estado

@@ -137,6 +137,28 @@ describe('Reservas API', () => {
     expect(historyResponse.body).toHaveProperty('error', 'La reserva no existe');
   });
 
+  it('should reject cancelarReserva with 403 when user is neither admin nor owner (including non-standard role)', async () => {
+    const responseOtroUsuario = await request(app)
+      .patch(`/api/reservas/${reservaOtroUsuario.id}/cancelar`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+
+    expect(responseOtroUsuario.status).toBe(403);
+    expect(responseOtroUsuario.body).toHaveProperty('error', 'No tienes permiso para cancelar esta reserva');
+
+    const tokenRolDesconocido = jwt.sign(
+      { id: 99999, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
+      env.JWT_SECRET,
+      { expiresIn: '2h' }
+    );
+
+    const responseRolDesconocido = await request(app)
+      .patch(`/api/reservas/${reservaOtroUsuario.id}/cancelar`)
+      .set('Authorization', `Bearer ${tokenRolDesconocido}`);
+
+    expect(responseRolDesconocido.status).toBe(403);
+    expect(responseRolDesconocido.body).toHaveProperty('error', 'No tienes permiso para cancelar esta reserva');
+  });
+
   it('should return reservation detail for existing id', async () => {
     const response = await request(app)
       .get(`/api/reservas/${reservaPendiente.id}`)
