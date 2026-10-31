@@ -13,10 +13,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@clerk/backend": "^3.8.4",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",
     "sequelize": "^6.37.8",
