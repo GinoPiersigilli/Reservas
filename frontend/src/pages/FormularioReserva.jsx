@@ -19,6 +19,7 @@ const FormularioReserva = () => {
   const [aulas, setAulas] = useState([]);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [aulaCargando, setAulaCargando] = useState(true);
 
   useEffect(() => {
     const cargarAulas = async () => {
@@ -27,6 +28,8 @@ const FormularioReserva = () => {
         setAulas(res.data.filter(a => a.activa));
       } catch {
         setError('Error al cargar las aulas');
+      } finally {
+        setAulaCargando(false);
       }
     };
     cargarAulas();
@@ -56,18 +59,43 @@ const FormularioReserva = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const validar = () => {
+    if (!form.aulaId) {
+      setError('Debes seleccionar un aula');
+      return false;
+    }
+    if (!form.fecha) {
+      setError('Debes seleccionar una fecha');
+      return false;
+    }
+    if (!form.horaInicio || !form.horaFin) {
+      setError('Debes especificar horario de inicio y fin');
+      return false;
+    }
+    if (form.horaInicio >= form.horaFin) {
+      setError('La hora de inicio debe ser menor que la hora de fin');
+      return false;
+    }
+    if (form.horaInicio < '08:00' || form.horaFin > '22:00') {
+      setError('Las reservas solo se permiten entre las 08:00 y las 22:00');
+      return false;
+    }
+    if (!form.cantidadPersonas || form.cantidadPersonas < 1) {
+      setError('Debes indicar al menos una persona');
+      return false;
+    }
+    if (!form.motivo.trim()) {
+      setError('Debes especificar un motivo para la reserva');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
-    if (form.horaInicio >= form.horaFin) {
-      setError('La hora de inicio debe ser menor a la hora de fin');
-      return;
-    }
-    if (form.horaInicio < '08:00' || form.horaFin > '22:00') {
-      setError('Las reservas solo se permiten entre las 08:00 y las 22:00');
-      return;
-    }
+    if (!validar()) return;
 
     setCargando(true);
     try {
@@ -79,11 +107,23 @@ const FormularioReserva = () => {
         navigate(`/reservas/${res.data.id}`);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al guardar la reserva');
+      // Manejo de errores específicos del backend
+      const errorMsg = err.response?.data?.error || '';
+      if (errorMsg.includes('capacidad')) {
+        setError('La cantidad de personas excede la capacidad del aula');
+      } else if (errorMsg.includes('superposición') || errorMsg.includes('ocupada')) {
+        setError('El horario solicitado no está disponible. El aula ya tiene una reserva en ese período');
+      } else if (errorMsg.includes('pasada')) {
+        setError('No puedes reservar para una fecha pasada');
+      } else {
+        setError('Ocurrió un error al guardar la reserva. Intenta nuevamente');
+      }
     } finally {
       setCargando(false);
     }
   };
+
+  const aulaSeleccionada = aulas.find(a => a.id == form.aulaId);
 
   return (
     <div>
@@ -92,122 +132,290 @@ const FormularioReserva = () => {
       <div className="page-header">
         <div>
           <h1>{esEdicion ? 'Editar reserva' : 'Nueva reserva'}</h1>
-          <p className="page-sub">
-            {esEdicion ? 'Actualiza los detalles de tu reserva' : 'Crea una nueva reserva en el aula'}
+          <p className="text-secondary">
+            {esEdicion 
+              ? 'Modifica los detalles de tu reserva' 
+              : 'Completa el formulario para reservar un aula'}
           </p>
         </div>
       </div>
 
-      <div className="card fade-in">
-        <form onSubmit={handleSubmit} className="form-grid">
-          <div className="form-row">
-            <label htmlFor="aulaId">Aula *</label>
-            <select 
-              name="aulaId" 
-              value={form.aulaId} 
-              onChange={handleChange} 
-            required
-            style={{
-            width: '100%',
-            padding: '10px 14px',
-            backgroundColor: '#1E293B',
-            color: '#F8FAFC',
-            border: '1px solid #334155',
-            borderRadius: '8px',
-            fontSize: '14px',
-            cursor: 'pointer',
-            appearance: 'none',
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 14px center'
-  }}
->
-  <option value="" style={{ backgroundColor: '#1E293B' }}>Seleccioná un aula</option>
-  {aulas.map(a => (
-    <option key={a.id} value={a.id} style={{ backgroundColor: '#1E293B' }}>
-      {a.nombre} — {a.ubicacion} (cap. {a.capacidad})
-    </option>
-  ))}
-</select>
-          </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+        gap: '24px'
+      }}>
+        {/* Formulario */}
+        <div className="card fade-in">
+          <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '16px' }}>
+            {esEdicion ? 'Editar detalles' : 'Información de la reserva'}
+          </h3>
 
-          <div className="form-row">
-            <label htmlFor="fecha">Fecha *</label>
-            <input 
-              id="fecha"
-              type="date" 
-              name="fecha" 
-              value={form.fecha} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Aula */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#111827',
+                marginBottom: '6px'
+              }}>
+                Aula<span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <select 
+                name="aulaId" 
+                value={form.aulaId} 
+                onChange={handleChange}
+                disabled={aulaCargando}
+                required
+              >
+                <option value="">
+                  {aulaCargando ? 'Cargando aulas...' : 'Selecciona un aula'}
+                </option>
+                {aulas.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre} – {a.ubicacion} (cap. {a.capacidad})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="form-row">
-            <label htmlFor="horaInicio">Hora de inicio *</label>
-            <input 
-              id="horaInicio"
-              type="time" 
-              name="horaInicio" 
-              value={form.horaInicio} 
-              onChange={handleChange} 
-              required 
-              min="08:00"
-              max="22:00"
-            />
-          </div>
+            {/* Fecha */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#111827',
+                marginBottom: '6px'
+              }}>
+                Fecha<span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input 
+                type="date" 
+                name="fecha" 
+                value={form.fecha} 
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <div className="form-row">
-            <label htmlFor="horaFin">Hora de fin *</label>
-            <input 
-              id="horaFin"
-              type="time" 
-              name="horaFin" 
-              value={form.horaFin} 
-              onChange={handleChange} 
-              required 
-              min="08:00"
-              max="22:00"
-            />
-          </div>
+            {/* Horarios */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#111827',
+                  marginBottom: '6px'
+                }}>
+                  Hora de inicio<span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input 
+                  type="time" 
+                  name="horaInicio" 
+                  value={form.horaInicio} 
+                  onChange={handleChange}
+                  min="08:00"
+                  max="22:00"
+                  required
+                />
+                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
+                  Desde las 08:00
+                </p>
+              </div>
 
-          <div className="form-row">
-            <label htmlFor="cantidadPersonas">Cantidad de personas *</label>
-            <input 
-              id="cantidadPersonas"
-              type="number" 
-              name="cantidadPersonas" 
-              value={form.cantidadPersonas} 
-              onChange={handleChange} 
-              required 
-              min="1" 
-            />
-          </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#111827',
+                  marginBottom: '6px'
+                }}>
+                  Hora de fin<span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input 
+                  type="time" 
+                  name="horaFin" 
+                  value={form.horaFin} 
+                  onChange={handleChange}
+                  min="08:00"
+                  max="22:00"
+                  required
+                />
+                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
+                  Hasta las 22:00
+                </p>
+              </div>
+            </div>
 
-          <div className="form-row">
-            <label htmlFor="motivo">Motivo de la reserva *</label>
-            <input 
-              id="motivo"
-              type="text" 
-              name="motivo" 
-              placeholder="Ej: Reunión de proyecto"
-              value={form.motivo} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
+            {/* Cantidad de personas */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#111827',
+                marginBottom: '6px'
+              }}>
+                Cantidad de personas<span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input 
+                type="number" 
+                name="cantidadPersonas" 
+                value={form.cantidadPersonas} 
+                onChange={handleChange}
+                min="1"
+                required
+              />
+              {aulaSeleccionada && (
+                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
+                  Capacidad: hasta {aulaSeleccionada.capacidad} personas
+                </p>
+              )}
+            </div>
 
-          {error && <div className="alert alert--error" style={{ gridColumn: '1 / -1' }}>{error}</div>}
+            {/* Motivo */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#111827',
+                marginBottom: '6px'
+              }}>
+                Motivo<span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input 
+                type="text" 
+                name="motivo" 
+                placeholder="Ej: Reunión de proyecto, Clase"
+                value={form.motivo} 
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', marginTop: '8px' }}>
-            <button type="submit" className="btn-primary" disabled={cargando}>
-              {cargando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear reserva'}
-            </button>
-            <button type="button" onClick={() => navigate(-1)} className="btn-ghost">
-              Cancelar
-            </button>
+            {/* Error */}
+            {error && (
+              <div className="alert alert-error">
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Botones */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                disabled={cargando}
+                style={{ flex: 1 }}
+              >
+                {cargando ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear reserva'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => navigate(-1)} 
+                className="btn-ghost"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Resumen (lado derecho) */}
+        {(form.aulaId || form.fecha || form.horaInicio) && (
+          <div className="card" style={{ height: 'fit-content' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>
+              Resumen
+            </h3>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              padding: '12px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '6px'
+            }}>
+              {aulaSeleccionada && (
+                <div>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                    Aula
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
+                    {aulaSeleccionada.nombre}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    {aulaSeleccionada.ubicacion}
+                  </p>
+                </div>
+              )}
+
+              {form.fecha && (
+                <div>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                    Fecha
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
+                    {new Date(form.fecha).toLocaleDateString('es-AR', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+
+              {form.horaInicio && form.horaFin && (
+                <div>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                    Horario
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
+                    {form.horaInicio} – {form.horaFin}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    {(() => {
+                      const start = form.horaInicio.split(':');
+                      const end = form.horaFin.split(':');
+                      const duracion = (parseInt(end[0]) - parseInt(start[0])) * 60 + 
+                                     (parseInt(end[1]) - parseInt(start[1]));
+                      return `Duración: ${duracion} minutos`;
+                    })()}
+                  </p>
+                </div>
+              )}
+
+              {form.cantidadPersonas && (
+                <div>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                    Personas
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
+                    {form.cantidadPersonas}
+                  </p>
+                </div>
+              )}
+
+              {form.motivo && (
+                <div>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                    Motivo
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
+                    {form.motivo}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );
