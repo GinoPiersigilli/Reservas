@@ -5,9 +5,10 @@ import env, { validarEnv } from '../src/config/env.js';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
+import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
-beforeAll(async () => {
-  await sequelize.sync();
+beforeEach(async () => {
+  await limpiarBaseDeDatos();
 });
 
 afterAll(async () => {
