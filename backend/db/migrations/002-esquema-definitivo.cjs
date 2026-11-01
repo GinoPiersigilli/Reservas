@@ -201,6 +201,10 @@ module.exports = {
       // --- 1. Revertir usuarios ---
       await queryInterface.sequelize.query('ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;', { transaction });
       await queryInterface.removeColumn('usuarios', 'createdAt', { transaction });
+      await queryInterface.sequelize.query(
+        'UPDATE usuarios SET "passwordHash" = \'\' WHERE "passwordHash" IS NULL;',
+        { transaction }
+      );
       await queryInterface.changeColumn('usuarios', 'passwordHash', {
         type: Sequelize.STRING,
         allowNull: false
