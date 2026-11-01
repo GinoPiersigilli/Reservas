@@ -52,7 +52,9 @@ export const loginUsuario = async (email, password) => {
   }
 
   // 3. Comparar la contraseña enviada con el hash guardado en la BD
-  const passwordValida = await bcrypt.compare(password, usuario.passwordHash);
+  const passwordValida = usuario.passwordHash
+    ? await bcrypt.compare(password, usuario.passwordHash)
+    : false;
   if (!passwordValida) {
     const error = new Error('Credenciales inválidas');
     error.status = 400;
