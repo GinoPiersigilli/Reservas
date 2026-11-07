@@ -5,6 +5,7 @@ import env, { validarEnv } from '../src/config/env.js';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
+import { registrarUsuario } from '../src/services/auth.services.js';
 import { sincronizarUsuarioClerk } from '../src/middleware/auth.middleware.js';
 import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
@@ -120,5 +121,70 @@ describe('Auth routes, token verification & env validation', () => {
     expect(nuevo.clerkId).toBe('user_nuevo456');
     expect(nuevo.rol).toBe('admin');
     expect(nuevo.passwordHash).toBeNull();
+
+    // Vincular usuario existente por email cuando aún no tenía clerkId
+    const preexistente = await Usuario.create({
+      nombre: 'Usuario Local Preexistente',
+      email: 'preexistente@utnfrc.edu.ar',
+      passwordHash: await bcrypt.hash('clave123', 10),
+      clerkId: null,
+      rol: 'usuario',
+      activo: true
+    });
+
+    const vinculadoPorEmail = await sincronizarUsuarioClerk({
+      id: 'user_clerk_vincular_email',
+      firstName: 'Usuario',
+      lastName: 'Preexistente',
+      emailAddresses: [{ emailAddress: 'preexistente@utnfrc.edu.ar' }],
+      publicMetadata: { rol: 'admin' }
+    });
+
+    expect(vinculadoPorEmail.id).toBe(preexistente.id);
+    expect(vinculadoPorEmail.clerkId).toBe('user_clerk_vincular_email');
+    expect(vinculadoPorEmail.rol).toBe('admin');
+  });
+
+  it('validates login required fields and rejects inactive user', async () => {
+    const resSinCampos = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'solo@email.com' });
+    expect(resSinCampos.status).toBe(400);
+    expect(resSinCampos.body).toHaveProperty('error', 'Email y contraseña son obligatorios');
+
+    const password = 'login123';
+    await Usuario.create({
+      nombre: 'Inactive User',
+      email: 'inactivo@example.com',
+      passwordHash: await bcrypt.hash(password, 10),
+      rol: 'usuario',
+      activo: false
+    });
+
+    const resInactivo = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'inactivo@example.com', password });
+    expect(resInactivo.status).toBe(401);
+  });
+
+  it('registers a new user with registrarUsuario and rejects duplicate email', async () => {
+    const creado = await registrarUsuario({
+      nombre: 'Nuevo Usuario',
+      email: 'nuevo@utnfrc.edu.ar',
+      password: 'password123'
+    });
+
+    expect(creado).toHaveProperty('id');
+    expect(creado).toHaveProperty('email', 'nuevo@utnfrc.edu.ar');
+    expect(creado).toHaveProperty('rol', 'usuario');
+    expect(creado).not.toHaveProperty('passwordHash');
+
+    await expect(
+      registrarUsuario({
+        nombre: 'Duplicado',
+        email: 'nuevo@utnfrc.edu.ar',
+        password: 'password123'
+      })
+    ).rejects.toThrow('El email ya está registrado');
   });
 });

@@ -778,4 +778,363 @@ describe('Reservas API', () => {
     expect(resFkAula.status).toHaveBeenCalledWith(404);
     expect(resFkAula.json).toHaveBeenCalledWith({ error: 'El aula solicitada no existe' });
   });
+
+  // ==========================================
+  // TESTS FASE 4 — COBERTURA DE REGLAS DE NEGOCIO
+  // ==========================================
+
+  it('should list only active classrooms on public GET /api/aulas without requiring token', async () => {
+    await Aula.create({
+      nombre: 'Aula Inactiva X',
+      ubicacion: 'Subsuelo',
+      capacidad: 25,
+      recursos: 'pizarra',
+      activa: false
+    });
+
+    const response = await request(app).get('/api/aulas');
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body.some((a) => a.id === aula.id)).toBe(true);
+    expect(response.body.every((a) => a.activa === true)).toBe(true);
+  });
+
+  it('should validate all creation business rules (missing fields, non-existent/inactive aula, working hours, start<end, history)', async () => {
+    const fecha = fechaFutura(3);
+
+    // 1. Campos obligatorios faltantes
+    const resFaltantes = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({ aulaId: aula.id });
+    expect(resFaltantes.status).toBe(400);
+    expect(resFaltantes.body.error).toMatch(/Faltan campos obligatorios/i);
+
+    // 2. Aula inexistente -> 404
+    const resAulaNoExiste = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: 99999,
+        fecha,
+        horaInicio: '10:00',
+        horaFin: '12:00',
+        cantidadPersonas: 10,
+        motivo: 'Aula inexistente'
+      });
+    expect(resAulaNoExiste.status).toBe(404);
+    expect(resAulaNoExiste.body).toHaveProperty('error', 'El aula solicitada no existe');
+
+    // 3. Aula inactiva -> 400
+    const aulaInactiva = await Aula.create({
+      nombre: 'Aula Cerrada',
+      ubicacion: 'Piso 3',
+      capacidad: 30,
+      recursos: 'pizarra',
+      activa: false
+    });
+    const resAulaInactiva = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aulaInactiva.id,
+        fecha,
+        horaInicio: '10:00',
+        horaFin: '12:00',
+        cantidadPersonas: 10,
+        motivo: 'Reserva en aula inactiva'
+      });
+    expect(resAulaInactiva.status).toBe(400);
+    expect(resAulaInactiva.body.error).toMatch(/no está activa/i);
+
+    // 4. horaInicio >= horaFin -> 400
+    const resHoraInvertida = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha,
+        horaInicio: '14:00',
+        horaFin: '12:00',
+        cantidadPersonas: 10,
+        motivo: 'Horario invertido'
+      });
+    expect(resHoraInvertida.status).toBe(400);
+    expect(resHoraInvertida.body).toHaveProperty('error', 'La hora de inicio debe ser menor a la hora de fin');
+
+    // 5. Fuera de horario laboral (08:00 a 22:00) -> 400
+    const resTemprano = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha,
+        horaInicio: '07:00',
+        horaFin: '09:00',
+        cantidadPersonas: 10,
+        motivo: 'Antes de las 08:00'
+      });
+    expect(resTemprano.status).toBe(400);
+    expect(resTemprano.body).toHaveProperty('error', 'Las reservas solo se permiten entre las 08:00 y las 22:00');
+
+    const resTarde = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha,
+        horaInicio: '21:00',
+        horaFin: '22:30',
+        cantidadPersonas: 10,
+        motivo: 'Después de las 22:00'
+      });
+    expect(resTarde.status).toBe(400);
+    expect(resTarde.body).toHaveProperty('error', 'Las reservas solo se permiten entre las 08:00 y las 22:00');
+
+    // 6. Creación válida registra historial con accion 'creacion'
+    const resValida = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha,
+        horaInicio: '10:00',
+        horaFin: '12:00',
+        cantidadPersonas: 12,
+        motivo: 'Creación con historial'
+      });
+    expect(resValida.status).toBe(201);
+
+    const resHistorial = await request(app)
+      .get(`/api/reservas/${resValida.body.id}/historial`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(resHistorial.status).toBe(200);
+    expect(resHistorial.body).toHaveLength(1);
+    expect(resHistorial.body[0]).toMatchObject({
+      accion: 'creacion',
+      valorAnterior: null,
+      valorNuevo: { estado: 'pendiente' }
+    });
+  });
+
+  it('should cover complete state transition flow, role permissions, and history entries', async () => {
+    const fecha = fechaFutura(4);
+
+    // Usuario común no puede rechazar ni editar ni ver resumen -> 403
+    const resRechazarUsuario = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/rechazar`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(resRechazarUsuario.status).toBe(403);
+
+    const resEditarUsuario = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({ motivo: 'Intento usuario' });
+    expect(resEditarUsuario.status).toBe(403);
+
+    const resResumenUsuario = await request(app)
+      .get('/api/reservas/resumen')
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(resResumenUsuario.status).toBe(403);
+
+    // 1. pendiente -> aprobada (solo admin) + luego aprobada -> cancelada (admin o propietario)
+    const resAprobar = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/aprobar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resAprobar.status).toBe(200);
+    expect(resAprobar.body.estado).toBe('aprobada');
+
+    // No se puede rechazar una aprobada
+    const resRechazarAprobada = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/rechazar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resRechazarAprobada.status).toBe(400);
+    expect(resRechazarAprobada.body).toHaveProperty('error', 'Solo se pueden rechazar reservas pendientes');
+
+    // aprobada -> cancelada por el propietario
+    const resCancelarAprobada = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/cancelar`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(resCancelarAprobada.status).toBe(200);
+    expect(resCancelarAprobada.body.estado).toBe('cancelada');
+
+    // No se puede volver a cancelar una cancelada
+    const resReCancelar = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/cancelar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resReCancelar.status).toBe(400);
+    expect(resReCancelar.body).toHaveProperty('error', 'Solo se pueden cancelar reservas pendientes o aprobadas');
+
+    // 2. pendiente -> rechazada (admin) y verificar que rechazada no puede cambiar ni bloquea horario
+    const resParaRechazar = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha,
+        horaInicio: '15:00',
+        horaFin: '17:00',
+        cantidadPersonas: 10,
+        motivo: 'Reserva a rechazar'
+      });
+    expect(resParaRechazar.status).toBe(201);
+
+    const resRechazar = await request(app)
+      .patch(`/api/reservas/${resParaRechazar.body.id}/rechazar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resRechazar.status).toBe(200);
+    expect(resRechazar.body.estado).toBe('rechazada');
+
+    // rechazada -> no puede aprobarse, rechazarse ni cancelarse
+    const resAprobarRechazada = await request(app)
+      .patch(`/api/reservas/${resParaRechazar.body.id}/aprobar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resAprobarRechazada.status).toBe(400);
+
+    const resCancelarRechazada = await request(app)
+      .patch(`/api/reservas/${resParaRechazar.body.id}/cancelar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resCancelarRechazada.status).toBe(400);
+
+    // rechazada no bloquea disponibilidad en el mismo horario
+    const resSobreRechazada = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${otroUsuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha,
+        horaInicio: '15:00',
+        horaFin: '17:00',
+        cantidadPersonas: 10,
+        motivo: 'Nueva reserva sobre rechazada'
+      });
+    expect(resSobreRechazada.status).toBe(201);
+
+    // 404 en acciones sobre reserva inexistente
+    const resAprobar404 = await request(app)
+      .patch('/api/reservas/99999/aprobar')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resAprobar404.status).toBe(404);
+
+    const resRechazar404 = await request(app)
+      .patch('/api/reservas/99999/rechazar')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resRechazar404.status).toBe(404);
+
+    const resCancelar404 = await request(app)
+      .patch('/api/reservas/99999/cancelar')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resCancelar404.status).toBe(404);
+  });
+
+  it('should validate all edit reservation rules (self-overlap exclusion, cancelled/rejected block, history)', async () => {
+    // 1. Editar la propia reserva desplazando dentro de su propio horario no genera auto-conflicto
+    const resEditOk = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        horaInicio: '10:30',
+        horaFin: '11:30',
+        cantidadPersonas: 15,
+        motivo: 'Motivo editado por admin'
+      });
+    expect(resEditOk.status).toBe(200);
+    expect(resEditOk.body.horaInicio).toBe('10:30');
+    expect(resEditOk.body.horaFin).toBe('11:30');
+    expect(resEditOk.body.cantidadPersonas).toBe(15);
+    expect(resEditOk.body.motivo).toBe('Motivo editado por admin');
+
+    // Verificar registro de edición en historial
+    const resHist = await request(app)
+      .get(`/api/reservas/${reservaPendiente.id}/historial`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resHist.status).toBe(200);
+    expect(resHist.body.some((h) => h.accion === 'edicion')).toBe(true);
+
+    // 2. Validaciones de horario y capacidad en edición
+    const resEditHoraInv = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ horaInicio: '15:00', horaFin: '14:00' });
+    expect(resEditHoraInv.status).toBe(400);
+
+    const resEditFueraHorario = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ horaInicio: '07:00', horaFin: '09:00' });
+    expect(resEditFueraHorario.status).toBe(400);
+
+    const resEditCapacidad = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ cantidadPersonas: 999 });
+    expect(resEditCapacidad.status).toBe(400);
+
+    const resEditAula404 = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ aulaId: 99999 });
+    expect(resEditAula404.status).toBe(404);
+
+    const resEditReserva404 = await request(app)
+      .put('/api/reservas/99999')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ motivo: 'No existe' });
+    expect(resEditReserva404.status).toBe(404);
+
+    // 3. No se puede editar una reserva cancelada o rechazada
+    await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/cancelar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    const resEditCancelada = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ motivo: 'Intento editar cancelada' });
+    expect(resEditCancelada.status).toBe(400);
+    expect(resEditCancelada.body).toHaveProperty('error', 'No se puede editar una reserva cancelada o rechazada');
+  });
+
+  it('should filter by fecha, aulaId, estado, q and paginate results on GET /api/reservas', async () => {
+    const fechaFiltro = fechaFutura(10);
+    const otraAula = await Aula.create({
+      nombre: 'Aula Filtro 2',
+      ubicacion: 'Piso 2',
+      capacidad: 40,
+      recursos: 'proyector',
+      activa: true
+    });
+
+    await Reserva.create({
+      aulaId: otraAula.id,
+      usuarioId: usuario.id,
+      fecha: fechaFiltro,
+      horaInicio: '09:00',
+      horaFin: '11:00',
+      cantidadPersonas: 15,
+      motivo: 'Seminario Especial de Inteligencia Artificial',
+      estado: 'aprobada'
+    });
+
+    const resPorQ = await request(app)
+      .get(`/api/reservas?q=Inteligencia&fecha=${fechaFiltro}&aulaId=${otraAula.id}&estado=aprobada`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(resPorQ.status).toBe(200);
+    expect(resPorQ.body.total).toBe(1);
+    expect(resPorQ.body.datos[0].motivo).toContain('Inteligencia Artificial');
+
+    // Paginación: page 1 y page 2 con limit=1
+    const resPag1 = await request(app)
+      .get('/api/reservas?page=1&limit=1&sortBy=id&order=ASC')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const resPag2 = await request(app)
+      .get('/api/reservas?page=2&limit=1&sortBy=id&order=ASC')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(resPag1.status).toBe(200);
+    expect(resPag2.status).toBe(200);
+    expect(resPag1.body.datos).toHaveLength(1);
+    expect(resPag2.body.datos).toHaveLength(1);
+    expect(resPag1.body.datos[0].id).not.toBe(resPag2.body.datos[0].id);
+  });
 });
