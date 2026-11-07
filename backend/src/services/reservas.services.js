@@ -349,13 +349,27 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
         throw error;
       }
 
-      const { fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datos;
+      const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datos;
 
-      // Tomamos los valores nuevos o los actuales si no vienen en el body
-      const nuevaFecha     = fecha            || reserva.fecha;
-      const nuevaInicio    = horaInicio       || reserva.horaInicio;
-      const nuevaFin       = horaFin          || reserva.horaFin;
-      const nuevaCantidad  = cantidadPersonas || reserva.cantidadPersonas;
+      // Tomamos los valores nuevos o los actuales si son undefined
+      const nuevoAulaId   = aulaId           !== undefined ? aulaId           : reserva.aulaId;
+      const nuevaFecha    = fecha            !== undefined ? fecha            : reserva.fecha;
+      const nuevaInicio   = horaInicio       !== undefined ? horaInicio       : reserva.horaInicio;
+      const nuevaFin      = horaFin          !== undefined ? horaFin          : reserva.horaFin;
+      const nuevaCantidad = cantidadPersonas !== undefined ? cantidadPersonas : reserva.cantidadPersonas;
+      const nuevoMotivo   = motivo           !== undefined ? motivo           : reserva.motivo;
+
+      if (!Number.isInteger(Number(nuevaCantidad)) || Number(nuevaCantidad) <= 0) {
+        const error = new Error('La cantidad de personas debe ser un número entero mayor a 0');
+        error.status = 400;
+        throw error;
+      }
+
+      if (typeof nuevoMotivo !== 'string' || nuevoMotivo.trim().length === 0) {
+        const error = new Error('El motivo no puede estar vacío');
+        error.status = 400;
+        throw error;
+      }
 
       if (nuevaInicio >= nuevaFin) {
         const error = new Error('La hora de inicio debe ser menor a la hora de fin');
@@ -370,8 +384,18 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
         throw error;
       }
 
-      // Validar capacidad con el aula actual
-      const aula = await Aula.findByPk(reserva.aulaId, { transaction });
+      // Validar existencia, estado activo y capacidad del aula
+      const aula = await Aula.findByPk(nuevoAulaId, { transaction });
+      if (!aula) {
+        const error = new Error('El aula solicitada no existe');
+        error.status = 404;
+        throw error;
+      }
+      if (!aula.activa) {
+        const error = new Error('El aula no está activa para nuevas reservas');
+        error.status = 400;
+        throw error;
+      }
       if (nuevaCantidad > aula.capacidad) {
         const error = new Error('La cantidad de personas supera la capacidad del aula');
         error.status = 400;
@@ -382,7 +406,7 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
       const conflicto = await Reserva.findOne({
         where: {
           id:     { [Op.ne]: reservaId },
-          aulaId: reserva.aulaId,
+          aulaId: nuevoAulaId,
           fecha:  nuevaFecha,
           estado: { [Op.in]: ['pendiente', 'aprobada'] },
           [Op.and]: [
@@ -407,12 +431,13 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
         motivo:           reserva.motivo
       };
 
-      // Aplicar cambios
-      if (fecha)            reserva.fecha            = fecha;
-      if (horaInicio)       reserva.horaInicio       = horaInicio;
-      if (horaFin)          reserva.horaFin          = horaFin;
-      if (cantidadPersonas) reserva.cantidadPersonas = cantidadPersonas;
-      if (motivo)           reserva.motivo           = motivo;
+      // Aplicar cambios usando !== undefined
+      if (aulaId           !== undefined) reserva.aulaId           = aulaId;
+      if (fecha            !== undefined) reserva.fecha            = fecha;
+      if (horaInicio       !== undefined) reserva.horaInicio       = horaInicio;
+      if (horaFin          !== undefined) reserva.horaFin          = horaFin;
+      if (cantidadPersonas !== undefined) reserva.cantidadPersonas = cantidadPersonas;
+      if (motivo           !== undefined) reserva.motivo           = motivo;
 
       await reserva.save({ transaction });
 
