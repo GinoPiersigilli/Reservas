@@ -6,7 +6,7 @@ const RutaProtegida = ({ children }) => {
   const { isLoaded, isSignedIn } = useUser();
   const { usuario } = useAuth();
 
-  if (!isLoaded) return <p style={{ padding: '20px' }}>Cargando...</p>;
+  if (!isLoaded) return <p>Cargando…</p>;
 
   if (!isSignedIn && !usuario) return <Navigate to="/login" replace />;
 

@@ -60,9 +60,6 @@
 /* ===================== LAYOUT ===================== */
 #root {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: var(--gap-lg);
   min-height: 100vh;
   display: flex;
   flex-direction: column;

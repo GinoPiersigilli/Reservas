@@ -63,7 +63,7 @@
   --foco-ancho: 2px;
   --foco-offset: 2px;
 
-  /* Dimensiones de componentes e íconos */
+  /* Dimensiones de componentes, layout e íconos */
   --icono-sm: 16px;
   --icono-md: 20px;
   --icono-lg: 24px;
@@ -72,10 +72,19 @@
   --control-min-tactil: 44px;
   --textarea-min-altura: 96px;
   --esqueleto-altura: 16px;
+  --auth-panel-ancho: 400px;
+  --sidebar-ancho: 240px;
+  --topbar-altura: 56px;
+  --grilla-aula-ancho: 160px;
+  --grilla-celda-ancho: 40px;
+  --grilla-celda-altura: 44px;
+  --linea-ahora-ancho: 2px;
   --dialogo-max-ancho: 440px;
   --toast-max-ancho: 400px;
   --contenedor-max-ancho: 1200px;
   --opacidad-deshabilitado: 0.55;
+  --z-linea-ahora: 5;
+  --z-menu-movil: 900;
   --z-modal: 1000;
   --z-toast: 1100;
 
