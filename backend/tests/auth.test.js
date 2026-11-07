@@ -5,6 +5,7 @@ import env, { validarEnv } from '../src/config/env.js';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
+import { sincronizarUsuarioClerk } from '../src/middleware/auth.middleware.js';
 import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
 beforeEach(async () => {
@@ -83,5 +84,41 @@ describe('Auth routes, token verification & env validation', () => {
     } finally {
       process.env.JWT_SECRET = originalJwtSecret || env.JWT_SECRET;
     }
+  });
+
+  it('provisions and links Clerk users locally preserving migrated clerkId id', async () => {
+    const placeholder = await Usuario.create({
+      nombre: 'Usuario Clerk [PLACEHOLDER user_migrado123]',
+      email: 'user_migrado123@placeholder.clerk.local',
+      passwordHash: null,
+      clerkId: 'user_migrado123',
+      rol: 'usuario',
+      activo: true
+    });
+
+    const vinculado = await sincronizarUsuarioClerk({
+      id: 'user_migrado123',
+      firstName: 'Gino',
+      lastName: 'Clerk',
+      emailAddresses: [{ emailAddress: 'gino.clerk@utnfrc.edu.ar' }],
+      publicMetadata: { rol: 'usuario' }
+    });
+
+    expect(vinculado.id).toBe(placeholder.id);
+    expect(vinculado.email).toBe('gino.clerk@utnfrc.edu.ar');
+    expect(vinculado.nombre).toBe('Gino Clerk');
+
+    const nuevo = await sincronizarUsuarioClerk({
+      id: 'user_nuevo456',
+      firstName: 'Ana',
+      lastName: 'Gómez',
+      emailAddresses: [{ emailAddress: 'ana.gomez@utnfrc.edu.ar' }],
+      publicMetadata: { rol: 'admin' }
+    });
+
+    expect(typeof nuevo.id).toBe('number');
+    expect(nuevo.clerkId).toBe('user_nuevo456');
+    expect(nuevo.rol).toBe('admin');
+    expect(nuevo.passwordHash).toBeNull();
   });
 });
