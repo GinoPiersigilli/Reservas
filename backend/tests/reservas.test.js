@@ -7,7 +7,18 @@ import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
 import Aula from '../src/models/aula.model.js';
 import Reserva from '../src/models/reserva.model.js';
+import { hoyArgentina } from '../src/utils/fecha.js';
 import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
+
+const fechaFutura = (diasOffset) => {
+  const [anio, mes, dia] = hoyArgentina().split('-').map(Number);
+  const d = new Date(Date.UTC(anio, mes - 1, dia));
+  d.setUTCDate(d.getUTCDate() + diasOffset);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 let passwordHash;
 let adminToken;
@@ -36,10 +47,12 @@ beforeEach(async () => {
 
   aula = await Aula.create({ nombre: 'Aula de Prueba', ubicacion: 'Piso 1', capacidad: 20, recursos: 'pizarra', activa: true });
 
+  const fechaBase = fechaFutura(1);
+
   reservaPendiente = await Reserva.create({
     aulaId: aula.id,
     usuarioId: usuario.id,
-    fecha: '2026-06-20',
+    fecha: fechaBase,
     horaInicio: '10:00',
     horaFin: '12:00',
     cantidadPersonas: 10,
@@ -50,7 +63,7 @@ beforeEach(async () => {
   reservaOtroUsuario = await Reserva.create({
     aulaId: aula.id,
     usuarioId: otroUsuario.id,
-    fecha: '2026-06-20',
+    fecha: fechaBase,
     horaInicio: '14:00',
     horaFin: '16:00',
     cantidadPersonas: 8,
@@ -191,7 +204,7 @@ describe('Reservas API', () => {
       .set('Authorization', `Bearer ${usuarioToken}`)
       .send({
         aulaId: aula.id,
-        fecha: '2026-06-21',
+        fecha: fechaFutura(2),
         horaInicio: '12:30',
         horaFin: '13:30',
         cantidadPersonas: 10,
@@ -211,7 +224,7 @@ describe('Reservas API', () => {
       .set('Authorization', `Bearer ${usuarioToken}`)
       .send({
         aulaId: aula.id,
-        fecha: '2026-06-22',
+        fecha: fechaFutura(3),
         horaInicio: '09:00',
         horaFin: '10:00',
         cantidadPersonas: 50,
@@ -228,7 +241,7 @@ describe('Reservas API', () => {
       .set('Authorization', `Bearer ${usuarioToken}`)
       .send({
         aulaId: aula.id,
-        fecha: '2026-06-20',
+        fecha: fechaFutura(1),
         horaInicio: '11:00',
         horaFin: '13:00',
         cantidadPersonas: 5,
@@ -240,10 +253,11 @@ describe('Reservas API', () => {
   });
 
   it('should reject invalid edit because of schedule conflict', async () => {
+    const fechaEdicion = fechaFutura(2);
     await Reserva.create({
       aulaId: aula.id,
       usuarioId: usuario.id,
-      fecha: '2026-06-21',
+      fecha: fechaEdicion,
       horaInicio: '14:00',
       horaFin: '16:00',
       cantidadPersonas: 5,
@@ -254,7 +268,7 @@ describe('Reservas API', () => {
     const reservaParaEditar = await Reserva.create({
       aulaId: aula.id,
       usuarioId: usuario.id,
-      fecha: '2026-06-21',
+      fecha: fechaEdicion,
       horaInicio: '16:00',
       horaFin: '18:00',
       cantidadPersonas: 5,
@@ -266,7 +280,7 @@ describe('Reservas API', () => {
       .put(`/api/reservas/${reservaParaEditar.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        fecha: '2026-06-21',
+        fecha: fechaEdicion,
         horaInicio: '15:30',
         horaFin: '17:00',
         cantidadPersonas: 5,
@@ -281,7 +295,7 @@ describe('Reservas API', () => {
     const reservaCancelada = await Reserva.create({
       aulaId: aula.id,
       usuarioId: usuario.id,
-      fecha: '2026-06-23',
+      fecha: fechaFutura(4),
       horaInicio: '08:00',
       horaFin: '09:00',
       cantidadPersonas: 5,
