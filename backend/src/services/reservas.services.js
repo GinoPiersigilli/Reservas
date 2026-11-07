@@ -6,6 +6,7 @@ import Aula from '../models/aula.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
 import env from '../config/env.js';
+import { hoyArgentina, horaActualArgentina } from '../utils/fecha.js';
 
 const WORK_HOUR_START = env.WORK_HOUR_START;
 const WORK_HOUR_END = env.WORK_HOUR_END;
@@ -440,8 +441,8 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
 // RESUMEN ADMINISTRATIVO
 // ==========================================
 export const obtenerResumen = async () => {
-  const fechaHoy = new Date().toISOString().split('T')[0];
-  const horaAhora = new Date().toTimeString().slice(0, 5);
+  const fechaHoy = hoyArgentina();
+  const horaAhora = horaActualArgentina();
 
   const [porEstado, porAula, proximasHoy] = await Promise.all([
     // Total por estado
