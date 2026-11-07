@@ -1,50 +1,71 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { SignUp } from '@clerk/clerk-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button, Field, Input, Toast } from '../components/ui/index.js';
+import { clerkAppearance } from '../config/clerkAppearance.js';
 import { register } from '../services/auth.service.js';
+import { TEXTOS } from '../textos.js';
+import styles from './Auth.module.css';
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ nombre: '', email: '', password: '', confirmPassword: '' });
-  const [error, setError] = useState(null);
+  const [form, setForm] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [erroresCampo, setErroresCampo] = useState({});
+  const [errorGeneral, setErrorGeneral] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [mostrarClerk, setMostrarClerk] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (evento) => {
+    const { name, value } = evento.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (erroresCampo[name]) {
+      setErroresCampo((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    // Validación básica
+  const validar = () => {
+    const nuevosErrores = {};
     if (!form.nombre.trim()) {
-      setError('Por favor ingresa tu nombre');
-      return;
+      nuevosErrores.nombre = 'Ingrese su nombre completo.';
     }
-    if (!form.email.includes('@')) {
-      setError('Por favor ingresa un email válido');
-      return;
+    if (!form.email.trim() || !form.email.includes('@')) {
+      nuevosErrores.email = 'Ingrese un correo electrónico válido.';
     }
-    if (form.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
+    if (!form.password || form.password.length < 6) {
+      nuevosErrores.password = 'La contraseña debe tener al menos 6 caracteres.';
     }
     if (form.password !== form.confirmPassword) {
-      setError('Las contraseñas no coinciden');
-      return;
+      nuevosErrores.confirmPassword = 'Las contraseñas no coinciden.';
     }
+    setErroresCampo(nuevosErrores);
+    return Object.keys(nuevosErrores).length === 0;
+  };
+
+  const handleSubmit = async (evento) => {
+    evento.preventDefault();
+    setErrorGeneral(null);
+
+    if (!validar()) return;
 
     setCargando(true);
     try {
-      await register(form.nombre, form.email, form.password);
-      navigate('/login', { state: { mensaje: 'Cuenta creada exitosamente. Por favor inicia sesión.' } });
+      await register(form.nombre.trim(), form.email.trim(), form.password);
+      navigate('/login', {
+        state: { mensaje: 'Cuenta creada. Ingrese con sus credenciales.' }
+      });
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Error al registrarse';
-      if (errorMsg.includes('email') || errorMsg.includes('ya existe')) {
-        setError('Este email ya está registrado');
+      const errorMsg = err.response?.data?.error || 'No se pudo completar el registro.';
+      if (errorMsg.toLowerCase().includes('email') || errorMsg.toLowerCase().includes('ya existe')) {
+        setErroresCampo({ email: 'Este email ya está registrado.' });
+        setErrorGeneral(errorMsg);
       } else {
-        setError(errorMsg);
+        setErrorGeneral(errorMsg);
       }
     } finally {
       setCargando(false);
@@ -52,172 +73,113 @@ const Register = () => {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '20px',
-      backgroundColor: '#f9fafb'
-    }}>
-      <div className="card fade-in" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '40px'
-      }}>
-        <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-          <div style={{
-            fontSize: '28px',
-            fontWeight: 600,
-            color: '#111827',
-            marginBottom: '8px'
-          }}>
-            📚 Crear cuenta
-          </div>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '14px',
-            margin: 0
-          }}>
-            Únete al sistema de reservas de aulas
-          </p>
-        </div>
+    <main className={styles.contenedor}>
+      <div className={styles.panel}>
+        <header className={styles.cabecera}>
+          <h1 className={styles.titulo}>{TEXTOS.registro.titulo}</h1>
+          <p className={styles.subtitulo}>{TEXTOS.registro.subtitulo}</p>
+        </header>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label htmlFor="nombre" style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#111827',
-              marginBottom: '6px'
-            }}>
-              Nombre completo
-            </label>
-            <input
-              id="nombre"
+        {errorGeneral ? <Toast tipo="error" mensaje={errorGeneral} /> : null}
+
+        <form onSubmit={handleSubmit} className={styles.formulario} noValidate>
+          <Field
+            id="nombre"
+            etiqueta={TEXTOS.registro.nombre}
+            error={erroresCampo.nombre}
+            obligatorio
+          >
+            <Input
               type="text"
               name="nombre"
-              placeholder="Tu nombre"
               value={form.nombre}
               onChange={handleChange}
-              required
-              autoFocus
+              autoComplete="name"
             />
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="email" style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#111827',
-              marginBottom: '6px'
-            }}>
-              Email
-            </label>
-            <input
-              id="email"
+          <Field
+            id="email"
+            etiqueta={TEXTOS.registro.correo}
+            error={erroresCampo.email}
+            obligatorio
+          >
+            <Input
               type="email"
               name="email"
-              placeholder="tu@email.com"
               value={form.email}
               onChange={handleChange}
-              required
+              autoComplete="email"
             />
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="password" style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#111827',
-              marginBottom: '6px'
-            }}>
-              Contraseña
-            </label>
-            <input
-              id="password"
+          <Field
+            id="password"
+            etiqueta={TEXTOS.registro.contrasena}
+            ayuda="Mínimo 6 caracteres."
+            error={erroresCampo.password}
+            obligatorio
+          >
+            <Input
               type="password"
               name="password"
-              placeholder="••••••••"
               value={form.password}
               onChange={handleChange}
-              required
+              autoComplete="new-password"
             />
-            <p style={{
-              fontSize: '11px',
-              color: '#9ca3af',
-              margin: '4px 0 0'
-            }}>
-              Mínimo 6 caracteres
-            </p>
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="confirmPassword" style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#111827',
-              marginBottom: '6px'
-            }}>
-              Confirmar contraseña
-            </label>
-            <input
-              id="confirmPassword"
+          <Field
+            id="confirmPassword"
+            etiqueta={TEXTOS.registro.confirmarContrasena}
+            error={erroresCampo.confirmPassword}
+            obligatorio
+          >
+            <Input
               type="password"
               name="confirmPassword"
-              placeholder="••••••••"
               value={form.confirmPassword}
               onChange={handleChange}
-              required
+              autoComplete="new-password"
             />
-          </div>
+          </Field>
 
-          {error && (
-            <div className="alert alert-error">
-              <span>{error}</span>
-            </div>
-          )}
-
-          <button 
-            type="submit" 
-            className="btn-primary"
-            disabled={cargando}
-            style={{ width: '100%', marginTop: '8px' }}
-          >
-            {cargando ? 'Creando cuenta...' : 'Registrarse'}
-          </button>
+          <Button type="submit" variante="primario" bloque cargando={cargando}>
+            {TEXTOS.registro.registrar}
+          </Button>
         </form>
 
-        <div style={{
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb',
-          textAlign: 'center',
-          fontSize: '14px',
-          color: '#6b7280'
-        }}>
-          ¿Ya tienes cuenta?{' '}
-          <Link 
-            to="/login"
-            style={{
-              color: '#2563eb',
-              textDecoration: 'none',
-              fontWeight: 500,
-              transition: 'color 200ms'
-            }}
-            onMouseOver={(e) => e.target.style.color = '#1d4ed8'}
-            onMouseOut={(e) => e.target.style.color = '#2563eb'}
-          >
-            Inicia sesión aquí
-          </Link>
+        <div className={styles.separador} aria-hidden="true">
+          <span>{TEXTOS.login.separadorO}</span>
         </div>
-      </div>
-    </div>
-  );
-};
 
-export default Register;
+        <div className={styles.bloqueClerk}>
+          <Button
+            type="button"
+            variante="secundario"
+            bloque
+            aria-expanded={mostrarClerk}
+            onClick={() => setMostrarClerk((prev) => !prev)}
+          >
+            Continuar con Clerk / Google
+          </Button>
+
+          {mostrarClerk ? (
+            <SignUp
+              routing="hash"
+              redirectUrl="/reservas"
+              appearance={clerkAppearance}
+            />
+          ) : null}
+        </div>
+
+        <footer className={styles.pie}>
+          {TEXTOS.registro.conCuenta}{' '}
+          <Link to="/login" className={styles.enlace}>
+            {TEXTOS.registro.ingresar}
+          </Link>
+        </footer>
+      </div>
+    </main>
+  );
+}

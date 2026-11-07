@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Toast } from '../components/ui/index.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import styles from './Auth.module.css';
 
 const Callback = () => {
   const { procesarCallback } = useAuth();
@@ -24,11 +26,16 @@ const Callback = () => {
 
     procesarCallback(code)
       .then(() => navigate('/reservas'))
-      .catch(() => setError('Error al procesar el login. Intentá de nuevo.'));
+      .catch(() => setError('No se pudo procesar el inicio de sesión. Intente de nuevo.'));
   }, [navigate, procesarCallback]);
 
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
-  return <p>Procesando login...</p>;
+  return (
+    <main className={styles.contenedor}>
+      <div className={styles.panel}>
+        {error ? <Toast tipo="error" mensaje={error} /> : <p>Procesando inicio de sesión…</p>}
+      </div>
+    </main>
+  );
 };
 
 export default Callback;
