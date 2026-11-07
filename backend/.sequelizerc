@@ -1,0 +1,15 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const sequelizeRcConfig = {
+  config: path.resolve(__dirname, 'db', 'config.cjs'),
+  'models-path': path.resolve(__dirname, 'src', 'models'),
+  'seeders-path': path.resolve(__dirname, 'db', 'seeders'),
+  'migrations-path': path.resolve(__dirname, 'db', 'migrations')
+};
+
+export { sequelizeRcConfig as 'module.exports' };
+export default sequelizeRcConfig;

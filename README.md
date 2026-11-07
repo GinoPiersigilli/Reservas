@@ -3,55 +3,40 @@
 Esta aplicación permite reservar aulas de forma simple y segura: un usuario puede crear y gestionar sus propias solicitudes, y un administrador puede aprobar, rechazar o cancelar reservas desde una interfaz clara.
 
 Está construida con:
-- Backend: Node.js + Express + Sequelize + SQLite
+- Backend: Node.js + Express + Sequelize + PostgreSQL
 - Frontend: React + Vite + React Router
-- Autenticación: Keycloak + JWT
-- Contenedores: Docker Compose
+- Autenticación: Clerk + JWT local (usuarios de prueba)
+- Contenedores: Docker Compose (PostgreSQL 16)
 
 ---
 
 ## Cómo correr el proyecto
 
-### 1) Levantar Keycloak
+### 1) Configurar variables de entorno
 
-Desde la raíz del proyecto:
+Copiá los archivos `.env.example` en la raíz, en `backend/` y en `frontend/`:
 
 ```bash
-docker compose up -d
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-Luego abrí:
-- http://localhost:8081
+Revisá que las credenciales de PostgreSQL (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` en `.env`) coincidan con `DATABASE_URL` y `DATABASE_URL_TEST` en `backend/.env`.
 
-### 2) Configurar Keycloak (muy importante)
+### 2) Levantar la base de datos PostgreSQL
 
-Ingresá con:
-- Usuario: admin
-- Contraseña: admin123
+Desde `backend/` (o desde la raíz del proyecto):
 
-Creá un realm llamado:
-- reservas-aulas
+```bash
+cd backend
+npm run db:up
+```
 
-Dentro de ese realm, crea estos roles:
-- admin
-- usuario
-
-Luego crea un cliente público con estas opciones:
-- Client ID: frontend
-- Client type: OpenID Connect
-- Standard flow: ON
-- Client authentication: OFF
-- Valid redirect URIs: http://localhost:5173/callback
-- Web origins: http://localhost:5173
-
-Después crea dos usuarios de prueba y asignales el rol correspondiente:
-
-| Usuario | Email | Rol | Contraseña |
-|---|---|---|---|
-| admin01 | admin@utnfrc.edu.ar | admin | admin123 |
-| usuario01 | david@utnfrc.edu.ar | usuario | user123 |
-
-> Si querés usar los valores por defecto del proyecto, el realm debe llamarse `reservas-aulas` y el cliente `frontend`.
+Comandos útiles para administrar el contenedor de PostgreSQL:
+- `npm run db:up`: levanta el servicio `postgres` en segundo plano (`docker compose up -d postgres`).
+- `npm run db:down`: detiene y elimina los contenedores de Docker Compose (`docker compose down`).
+- `npm run db:logs`: muestra los logs del contenedor `postgres` en tiempo real (`docker compose logs -f postgres`).
 
 ### 3) Ejecutar el backend
 
@@ -79,17 +64,15 @@ El frontend queda disponible en:
 
 ---
 
-## Usuarios de prueba
+## Usuarios de prueba (login local)
 
-Estos usuarios están pensados para probar el flujo real con Keycloak:
+| Email | Rol | Contraseña |
+|---|---|---|
+| admin@utnfrc.edu.ar | admin | admin123 |
+| david@utnfrc.edu.ar | usuario | user123 |
 
-- admin01 / admin123
-  - Tiene permisos de administrador
-  - Puede aprobar, rechazar, editar y ver todas las reservas
-
-- usuario01 / user123
-  - Puede crear reservas y gestionar sus propias solicitudes
-  - No puede acceder al panel admin
+- **admin**: Tiene permisos de administrador. Puede aprobar, rechazar, editar y ver todas las reservas y el resumen administrativo.
+- **usuario**: Puede crear reservas y consultar/cancelar sus propias solicitudes. No puede acceder al panel admin ni ver reservas ajenas.
 
 ---
 
@@ -98,21 +81,20 @@ Estos usuarios están pensados para probar el flujo real con Keycloak:
 ### Autenticación
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | /api/auth/login | Devuelve la URL de login de Keycloak |
-| POST | /api/auth/token | Intercambia el código OAuth por un access token |
+| POST | /api/auth/login | Login local con email y contraseña, devuelve un token JWT |
 
 ### Aulas
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | /api/aulas | Lista las aulas disponibles |
+| Método | Ruta | Descripción | Acceso |
+|---|---|---|---|
+| GET | /api/aulas | Lista las aulas disponibles | Público |
 
 ### Reservas
 | Método | Ruta | Descripción | Acceso |
 |---|---|---|---|
-| GET | /api/reservas | Listado de reservas con filtros | Usuario autenticado |
+| GET | /api/reservas | Listado de reservas con filtros | Usuario autenticado (propias o todas si es admin) |
 | GET | /api/reservas/resumen | Resumen administrativo | Solo admin |
-| GET | /api/reservas/:id | Detalle de una reserva | Usuario autenticado |
-| GET | /api/reservas/:id/historial | Historial de cambios | Usuario autenticado |
+| GET | /api/reservas/:id | Detalle de una reserva | Dueño o admin |
+| GET | /api/reservas/:id/historial | Historial de cambios | Dueño o admin |
 | POST | /api/reservas | Crear una nueva reserva | Usuario autenticado |
 | PUT | /api/reservas/:id | Editar una reserva | Solo admin |
 | PATCH | /api/reservas/:id/aprobar | Aprobar reserva | Solo admin |
@@ -135,7 +117,6 @@ Estos usuarios están pensados para probar el flujo real con Keycloak:
 | Ruta | Qué muestra | Acceso |
 |---|---|---|
 | /login | Pantalla de inicio de sesión | Pública |
-| /callback | Procesa el callback de Keycloak | Pública |
 | /reservas | Listado general de reservas | Protegida |
 | /reservas/nueva | Formulario para crear reserva | Protegida |
 | /reservas/:id | Detalle de una reserva | Protegida |
@@ -184,35 +165,6 @@ Si se intenta reservar fuera de ese rango, el backend responde con error 400.
 
 ---
 
-## JWT, roles y permisos
-
-La autenticación no se maneja con un login propio del backend. En cambio, el flujo es:
-
-1. El usuario hace clic en “Iniciar sesión”.
-2. El frontend lo redirige a Keycloak.
-3. Keycloak devuelve un código de autorización.
-4. El backend lo intercambia por un access token JWT.
-5. El frontend guarda ese token en localStorage.
-6. Cada request manda el token en el header Authorization: Bearer ...
-7. El backend valida la firma y el issuer usando las claves públicas de Keycloak.
-
-### Qué significa esto en la práctica
-
-- usuario
-  - puede crear reservas
-  - puede ver sus reservas
-  - puede cancelar sus propias solicitudes
-
-- admin
-  - puede ver todas las reservas
-  - puede aprobar o rechazar reservas
-  - puede editar reservas
-  - puede entrar al panel de resumen
-
-Los permisos se derivan del claim `realm_access.roles` del token JWT emitido por Keycloak.
-
----
-
 ## Cómo ejecutar las pruebas
 
 ### Backend
@@ -222,19 +174,8 @@ cd backend
 npm test
 ```
 
-### Frontend
-
-```bash
-cd frontend
-npm test
-```
-
 ---
 
-## Limitaciones conocidas
+## Nota de seguridad sobre el historial del repositorio
 
-- La configuración de Keycloak (realm, roles, usuarios y cliente) se hace manualmente en cada entorno.
-- El historial de ejemplo usa un placeholder como `usuarioId: 'sistema'` porque los usuarios reales viven en Keycloak.
-- Los tokens de Keycloak tienen expiración corta en desarrollo; si vencen, hay que volver a iniciar sesión.
-- El frontend no implementa refresh token automático.
-- El modelo local de usuario existe por compatibilidad técnica, pero la autenticación real está delegada a Keycloak.
+En versiones previas a las mejoras de seguridad (Fase 1), el archivo `backend/database.sqlite` estuvo versionado en git con datos de prueba y hashes de contraseñas. El archivo fue retirado del índice de git (`git rm --cached`) y agregado a `.gitignore`, pero permanece en commits antiguos del historial. Si el repositorio se publica o comparte fuera del entorno académico, se recomienda rotar las claves y evaluar limpiar el historial con `git filter-repo`.

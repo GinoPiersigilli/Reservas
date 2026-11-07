@@ -1,6 +1,6 @@
 // models/aula.model.js
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/database.js'; // Tu conexión a SQLite
+import sequelize from '../config/database.js';
 
 const Aula = sequelize.define('Aula', {
   id: {
@@ -18,7 +18,10 @@ const Aula = sequelize.define('Aula', {
   },
   capacidad: {
     type: DataTypes.INTEGER,
-    allowNull: false // Obligatorio
+    allowNull: false, // Obligatorio
+    validate: {
+      min: 1
+    }
   },
   recursos: {
     type: DataTypes.STRING, // Puedes guardarlo como string separado por comas
@@ -34,4 +37,4 @@ const Aula = sequelize.define('Aula', {
   timestamps: false // Si no necesitas createdAt/updatedAt automáticos en esta tabla
 });
 
-export default Aula;// models/aula.model.js
+export default Aula;

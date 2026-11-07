@@ -4,17 +4,28 @@ const TablaReservas = ({ reservas }) => {
   const navigate = useNavigate();
 
   const getEstadoBadge = (estado) => {
-    switch(estado) {
-      case 'pendiente':
-        return 'badge--pending';
-      case 'aprobada':
-        return 'badge--approved';
-      case 'rechazada':
-      case 'cancelada':
-        return 'badge--rejected';
-      default:
-        return '';
-    }
+    const map = {
+      'pendiente': 'badge-pending',
+      'aprobada': 'badge-approved',
+      'rechazada': 'badge-rejected',
+      'cancelada': 'badge-rejected'
+    };
+    return map[estado] || '';
+  };
+
+  const formatearFecha = (fecha) => {
+    return new Date(fecha).toLocaleDateString('es-AR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const estadoLabels = {
+    'pendiente': 'Pendiente',
+    'aprobada': 'Aprobada',
+    'rechazada': 'Rechazada',
+    'cancelada': 'Cancelada'
   };
 
   return (
@@ -34,24 +45,42 @@ const TablaReservas = ({ reservas }) => {
         <tbody>
           {reservas.map((r) => (
             <tr key={r.id}>
-              <td style={{ fontWeight: 500 }}>#{r.id}</td>
-              <td>{r.aulaId}</td>
-              <td>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
-              <td style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
+              <td style={{ fontWeight: 500, color: '#2563eb' }}>
+                #{r.id}
+              </td>
+              <td>
+                Aula {r.aulaId}
+              </td>
+              <td>
+                {formatearFecha(r.fecha)}
+              </td>
+              <td style={{ fontSize: '13px', color: '#6b7280' }}>
                 {r.horaInicio} - {r.horaFin}
               </td>
-              <td>{r.motivo}</td>
+              <td>
+                {r.motivo}
+              </td>
               <td>
                 <span className={`badge ${getEstadoBadge(r.estado)}`}>
-                  {r.estado}
+                  {estadoLabels[r.estado] || r.estado}
                 </span>
               </td>
               <td>
-                <button 
-                  onClick={() => navigate(`/reservas/${r.id}`)} 
+                <button
+                  onClick={() => navigate(`/reservas/${r.id}`)}
                   className="btn-ghost btn-small"
+                  style={{
+                    color: '#2563eb',
+                    borderColor: '#2563eb'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#eff6ff';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
                 >
-                  Ver detalle →
+                  Ver →
                 </button>
               </td>
             </tr>

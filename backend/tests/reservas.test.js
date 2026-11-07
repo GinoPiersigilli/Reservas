@@ -7,7 +7,9 @@ import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
 import Aula from '../src/models/aula.model.js';
 import Reserva from '../src/models/reserva.model.js';
+import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
+let passwordHash;
 let adminToken;
 let usuarioToken;
 let otroUsuarioToken;
@@ -18,9 +20,12 @@ let reservaPendiente;
 let reservaOtroUsuario;
 
 beforeAll(async () => {
-  await sequelize.sync({ force: true });
+  passwordHash = await bcrypt.hash('password123', 10);
+});
 
-  const passwordHash = await bcrypt.hash('password123', 10);
+beforeEach(async () => {
+  await limpiarBaseDeDatos();
+
   const admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });
   usuario = await Usuario.create({ nombre: 'User Test A', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
   otroUsuario = await Usuario.create({ nombre: 'User Test B', email: 'userb@test.com', passwordHash, rol: 'usuario', activo: true });
@@ -167,6 +172,8 @@ describe('Reservas API', () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('id', reservaPendiente.id);
     expect(response.body).toHaveProperty('aulaId', aula.id);
+    expect(response.body).toHaveProperty('horaInicio', '10:00');
+    expect(response.body).toHaveProperty('horaFin', '12:00');
   });
 
   it('should return 404 for non-existent reservation detail', async () => {
@@ -194,6 +201,8 @@ describe('Reservas API', () => {
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('id');
     expect(response.body).toHaveProperty('estado', 'pendiente');
+    expect(response.body).toHaveProperty('horaInicio', '12:30');
+    expect(response.body).toHaveProperty('horaFin', '13:30');
   });
 
   it('should reject reservation creation due capacity insufficient', async () => {
@@ -271,7 +280,7 @@ describe('Reservas API', () => {
   it('should reject approving a cancelled reservation', async () => {
     const reservaCancelada = await Reserva.create({
       aulaId: aula.id,
-      usuarioId: usuarioToken ? 999 : 999,
+      usuarioId: usuario.id,
       fecha: '2026-06-23',
       horaInicio: '08:00',
       horaFin: '09:00',

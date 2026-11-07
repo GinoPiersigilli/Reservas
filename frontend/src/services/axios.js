@@ -1,16 +1,20 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-
 const api = axios.create({
-  baseURL
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+let _tokenFn = null;
+
+export const registrarGetToken = (fn) => { _tokenFn = fn; };
+
+api.interceptors.request.use(async (config) => {
+  try {
+    if (_tokenFn) {
+      const token = await _tokenFn();
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {}
   return config;
 });
 

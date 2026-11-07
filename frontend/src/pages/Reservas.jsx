@@ -41,20 +41,30 @@ const Reservas = () => {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: '28px' }}>
+      {/* Page Header */}
+      <div className="page-header">
         <div>
           <h1>Mis reservas</h1>
-          <p className="page-sub">
-            Bienvenido, <strong>{usuario?.nombre}</strong> {usuario?.rol === 'admin' && '(Administrador)'}
+          <p className="text-secondary">
+            Bienvenido, <strong>{usuario?.nombre}</strong>
+            {usuario?.rol === 'admin' && ' • Administrador'}
           </p>
         </div>
         <div className="page-actions">
           {usuario?.rol === 'admin' && (
-            <Link to="/resumen" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-block', padding: '11px 18px' }}>
-              📊 Panel resumen
+            <Link 
+              to="/resumen" 
+              className="btn-secondary" 
+              style={{ textDecoration: 'none', display: 'inline-block' }}
+            >
+              Panel de resumen
             </Link>
           )}
-          <Link to="/reservas/nueva" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block', padding: '11px 18px' }}>
+          <Link 
+            to="/reservas/nueva" 
+            className="btn-primary" 
+            style={{ textDecoration: 'none', display: 'inline-block' }}
+          >
             + Nueva reserva
           </Link>
           <button onClick={cerrarSesion} className="btn-ghost">
@@ -63,35 +73,62 @@ const Reservas = () => {
         </div>
       </div>
 
+      {/* Filters */}
       <FiltrosReservas onFiltrar={handleFiltros} />
 
+      {/* Loading State */}
       {cargando && (
-        <div style={{ textAlign: 'center', padding: '40px', opacity: 0.6 }}>
-          <div className="loader" style={{ display: 'inline-block', width: '24px', height: '24px' }}></div>
-          <p style={{ marginTop: '12px' }}>Cargando reservas...</p>
+        <div className="loading-state">
+          <div className="spinner" style={{ marginBottom: '16px' }}></div>
+          <p className="text-secondary">Cargando reservas...</p>
         </div>
       )}
 
-      {error && <div className="alert alert--error">{error}</div>}
+      {/* Error State */}
+      {error && (
+        <div className="alert alert-error">
+          <span>{error}</span>
+        </div>
+      )}
 
+      {/* Empty State */}
       {!cargando && !error && reservas.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', opacity: 0.6 }}>
-          <p style={{ fontSize: '16px' }}>No hay reservas para mostrar</p>
-          <Link to="/reservas/nueva" className="btn-primary" style={{ marginTop: '16px', display: 'inline-block', textDecoration: 'none', padding: '11px 18px' }}>
-            Crear tu primera reserva
+        <div className="empty-state">
+          <div className="empty-state-icon">📋</div>
+          <h3 className="empty-state-title">No hay reservas</h3>
+          <p className="empty-state-description">
+            Todavía no tienes ninguna reserva. Crea una nueva para comenzar.
+          </p>
+          <Link 
+            to="/reservas/nueva" 
+            className="btn-primary" 
+            style={{ textDecoration: 'none', display: 'inline-block' }}
+          >
+            Crear mi primera reserva
           </Link>
         </div>
       )}
 
+      {/* Reservations List/Table */}
       {!cargando && !error && reservas.length > 0 && (
         <div className="fade-in">
           <TablaReservas reservas={reservas} onAccion={cargarReservas} />
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-soft)' }}>
-              Total: <strong>{total}</strong> reservas
+          {/* Pagination */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '24px',
+            padding: '16px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px'
+          }}>
+            <span className="text-secondary" style={{ fontSize: '13px' }}>
+              Mostrando <strong>{reservas.length}</strong> de <strong>{total}</strong> reservas
             </span>
-            <div className="row">
+            <div className="flex" style={{ gap: '8px' }}>
               <button 
                 disabled={pagina === 1} 
                 onClick={() => setPagina(p => p - 1)}
@@ -99,8 +136,8 @@ const Reservas = () => {
               >
                 ← Anterior
               </button>
-              <span style={{ fontSize: '14px', color: 'var(--text-soft)', padding: '0 12px' }}>
-                Página <strong>{pagina}</strong>
+              <span className="text-secondary" style={{ fontSize: '13px', padding: '0 12px', display: 'flex', alignItems: 'center' }}>
+                Página <strong style={{ marginLeft: '4px', marginRight: '4px' }}>{pagina}</strong>
               </span>
               <button 
                 disabled={pagina * 10 >= total} 

@@ -1,10 +1,13 @@
+import { useUser } from '@clerk/clerk-react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
 
 const RutaSoloAdmin = ({ children }) => {
-  const { usuario } = useAuth();
-  if (!usuario) return <Navigate to="/login" replace />;
-  if (usuario.rol !== 'admin') return <Navigate to="/reservas" replace />;
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  if (!isLoaded) return <p>Cargando...</p>;
+  if (!isSignedIn) return <Navigate to="/login" replace />;
+  if (user?.publicMetadata?.rol !== 'admin') return <Navigate to="/reservas" replace />;
+
   return children;
 };
 
