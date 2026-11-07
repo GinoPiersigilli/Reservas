@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { SignIn, SignUp } from '@clerk/clerk-react';
+import { SignUp } from '@clerk/clerk-react';
 import { AuthProvider } from './context/AuthContext.jsx';
 import RutaProtegida from './components/RutaProtegida.jsx';
 import RutaSoloAdmin from './components/RutaSoloAdmin.jsx';
