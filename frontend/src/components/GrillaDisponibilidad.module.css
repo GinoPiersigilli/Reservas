@@ -1,0 +1,266 @@
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
+  padding: var(--espacio-4);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+}
+
+.leyenda {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--espacio-4);
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.itemLeyenda {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.muestraLibre,
+.muestraSeleccionado,
+.muestraAprobada,
+.muestraPendiente {
+  display: inline-block;
+  width: var(--icono-sm);
+  height: var(--icono-sm);
+  border-radius: var(--radio-control);
+  border: var(--borde-ancho) solid var(--borde-control);
+}
+
+.muestraLibre {
+  background-color: var(--superficie);
+}
+
+.muestraSeleccionado {
+  background-color: var(--acento);
+  border-color: var(--acento);
+}
+
+.muestraAprobada {
+  background-color: var(--estado-aprobada-fondo);
+  border-color: var(--estado-aprobada-texto);
+}
+
+.muestraPendiente {
+  background: var(--patron-pendiente);
+  border-color: var(--estado-pendiente-texto);
+}
+
+.indicadorAhora {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  padding: var(--espacio-1) var(--espacio-2);
+  background-color: var(--fondo);
+  border: var(--borde-ancho) solid var(--acento);
+  border-radius: var(--radio-control);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  color: var(--acento);
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollWrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+}
+
+.tablaGrilla {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.thAula {
+  min-width: var(--grilla-aula-ancho);
+  padding: var(--espacio-2) var(--espacio-3);
+  text-align: left;
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta-2);
+  background-color: var(--fondo);
+  border-bottom: var(--borde-ancho) solid var(--borde);
+  border-right: var(--borde-ancho) solid var(--borde);
+}
+
+.thHora {
+  padding: var(--espacio-2) var(--espacio-1);
+  text-align: center;
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta-2);
+  background-color: var(--fondo);
+  border-bottom: var(--borde-ancho) solid var(--borde);
+  border-left: var(--borde-ancho) solid var(--borde);
+  font-variant-numeric: tabular-nums;
+}
+
+.thHoraAhora {
+  color: var(--acento);
+  border-bottom: var(--foco-ancho) solid var(--acento);
+}
+
+.tdAula {
+  padding: var(--espacio-2) var(--espacio-3);
+  border-top: var(--borde-ancho) solid var(--borde);
+  border-right: var(--borde-ancho) solid var(--borde);
+  background-color: var(--superficie);
+  vertical-align: middle;
+}
+
+.nombreAula {
+  display: block;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+
+.metaAula {
+  display: block;
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.tdCelda {
+  padding: var(--espacio-1);
+  border-top: var(--borde-ancho) solid var(--borde);
+  border-left: var(--borde-ancho) solid var(--borde);
+  vertical-align: middle;
+}
+
+.tdCeldaAhora {
+  border-left: var(--linea-ahora-ancho) solid var(--acento);
+}
+
+.celdaBoton {
+  width: 100%;
+  min-width: var(--grilla-celda-ancho);
+  min-height: var(--grilla-celda-altura);
+  padding: var(--espacio-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radio-control);
+  border: var(--borde-ancho) solid var(--borde);
+  background-color: var(--superficie);
+  color: var(--tinta-2);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.celdaLibre:hover:not(:disabled) {
+  background-color: var(--fondo);
+  border-color: var(--acento);
+  color: var(--tinta);
+}
+
+.celdaSeleccionada {
+  background-color: var(--acento);
+  border-color: var(--acento);
+  color: var(--tinta-inversa);
+  font-weight: var(--peso-semibold);
+}
+
+.celdaAprobada {
+  background-color: var(--estado-aprobada-fondo);
+  border-color: var(--estado-aprobada-texto);
+  color: var(--estado-aprobada-texto);
+  font-weight: var(--peso-semibold);
+  cursor: not-allowed;
+}
+
+.celdaPendiente {
+  background: var(--patron-pendiente);
+  border-color: var(--estado-pendiente-texto);
+  color: var(--estado-pendiente-texto);
+  font-weight: var(--peso-semibold);
+  cursor: not-allowed;
+}
+
+.celdaPasada {
+  background-color: var(--fondo);
+  border-color: var(--borde);
+  color: var(--tinta-2);
+  opacity: var(--opacidad-deshabilitado);
+  cursor: not-allowed;
+}
+
+.etiquetaRangoOcupado {
+  font-size: var(--texto-xs);
+  line-height: var(--linea-titulo);
+  white-space: nowrap;
+}
+
+.etiquetaHoraMovil {
+  display: none;
+}
+
+.avisoSinFecha {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  padding: var(--espacio-4);
+  background-color: var(--fondo);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+}
+
+@media (max-width: 768px) {
+  .theadEscritorio {
+    display: none;
+  }
+
+  .tablaGrilla,
+  .tablaGrilla tbody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-4);
+  }
+
+  .filaAula {
+    display: flex;
+    flex-direction: column;
+    border: var(--borde-ancho) solid var(--borde);
+    border-radius: var(--radio-control);
+    padding: var(--espacio-3);
+    gap: var(--espacio-2);
+  }
+
+  .tdAula {
+    border: none;
+    padding: 0 0 var(--espacio-2) 0;
+    border-bottom: var(--borde-ancho) solid var(--borde);
+  }
+
+  .tdCelda {
+    border: none;
+    padding: 0;
+  }
+
+  .etiquetaHoraMovil {
+    display: inline;
+  }
+}
