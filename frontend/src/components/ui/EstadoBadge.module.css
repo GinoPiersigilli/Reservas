@@ -1,0 +1,41 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  padding: var(--espacio-1) var(--espacio-2);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  line-height: var(--linea-titulo);
+  border-radius: var(--radio-estado);
+  border: var(--borde-ancho) solid transparent;
+  white-space: nowrap;
+}
+
+.icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pendiente {
+  color: var(--estado-pendiente-texto);
+  background-color: var(--estado-pendiente-fondo);
+}
+
+.aprobada {
+  color: var(--estado-aprobada-texto);
+  background-color: var(--estado-aprobada-fondo);
+}
+
+.rechazada {
+  color: var(--estado-rechazada-texto);
+  background-color: var(--estado-rechazada-fondo);
+}
+
+.cancelada {
+  color: var(--estado-cancelada-texto);
+  background-color: var(--estado-cancelada-fondo);
+}
+

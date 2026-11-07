@@ -1,0 +1,35 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta);
+  line-height: var(--linea-base);
+}
+
+.obligatorio {
+  color: var(--peligro);
+  font-weight: var(--peso-semibold);
+}
+
+.ayuda {
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+  line-height: var(--linea-base);
+}
+
+.error {
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  color: var(--peligro);
+  line-height: var(--linea-base);
+}
+

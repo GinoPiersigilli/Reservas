@@ -1,105 +1,60 @@
 /*
-  University Classroom Reservation System - Light Theme
-  Professional, clean, minimal aesthetic
-  - Light theme (white/gray)
-  - No gradients, no glassmorphism, no excessive shadows
-  - Professional color palette: blues, greens, yellows, reds
-  - Clear typography hierarchy
-  - Accessible focus states
-*/
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+ * ARCHIVO LEGADO — SE ELIMINA EN LA FASE 3b-3 CUANDO CADA PANTALLA MIGRE A CSS MODULES.
+ * No agregar reglas nuevas aquí. Usar src/styles/tokens.css, src/styles/base.css y *.module.css.
+ */
 
 :root {
-  /* Light Theme Palette */
-  --bg: #f9fafb;                    /* Very light gray background */
-  --surface: #ffffff;               /* White surfaces */
-  --border-color: #e5e7eb;          /* Light gray borders */
-  --border-light: #f3f4f6;          /* Even lighter borders */
-  
+  /* Light Theme Palette (legado) */
+  --bg: var(--fondo);
+  --surface: var(--superficie);
+  --border-color: var(--borde);
+  --border-light: #f3f4f6;
+
   /* Text Colors */
-  --text: #111827;                  /* Dark text (almost black) */
-  --text-secondary: #6b7280;        /* Medium gray text */
-  --text-muted: #9ca3af;            /* Light gray text */
-  --text-disabled: #d1d5db;         /* Disabled text */
-  
+  --text: var(--tinta);
+  --text-secondary: var(--tinta-2);
+  --text-muted: #9ca3af;
+  --text-disabled: #d1d5db;
+
   /* Primary Colors */
-  --primary: #2563eb;               /* Blue - main action */
-  --primary-hover: #1d4ed8;
-  --primary-light: #eff6ff;         /* Light blue for backgrounds */
-  --primary-border: #bfdbfe;        /* Light blue for borders */
-  
+  --primary: var(--acento);
+  --primary-hover: var(--acento-hover);
+  --primary-light: #eff6ff;
+  --primary-border: #bfdbfe;
+
   /* Semantic Colors */
-  --success: #16a34a;               /* Green - approved */
-  --success-light: #f0fdf4;
+  --success: var(--estado-aprobada-texto);
+  --success-light: var(--estado-aprobada-fondo);
   --success-border: #86efac;
-  
-  --warning: #ea580c;               /* Orange - pending */
-  --warning-light: #fff7ed;
+
+  --warning: var(--estado-pendiente-texto);
+  --warning-light: var(--estado-pendiente-fondo);
   --warning-border: #fdba74;
-  
-  --error: #dc2626;                 /* Red - rejected/cancelled */
-  --error-light: #fef2f2;
+
+  --error: var(--peligro);
+  --error-light: var(--estado-rechazada-fondo);
   --error-border: #fca5a5;
-  
-  --info: #0891b2;                  /* Cyan - information */
+
+  --info: #0891b2;
   --info-light: #ecf9fd;
   --info-border: #67e8f9;
-  
+
   /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-full: 9999px;
-  
+  --radius-sm: var(--radio-control);
+  --radius-md: var(--radio-panel);
+  --radius-lg: var(--radio-panel);
+  --radius-full: var(--radio-estado);
+
   /* Spacing */
-  --gap-xs: 4px;
-  --gap-sm: 8px;
-  --gap-md: 12px;
-  --gap-lg: 16px;
-  --gap-xl: 24px;
-  
-  /* Shadows - minimal and professional */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  
+  --gap-xs: var(--espacio-1);
+  --gap-sm: var(--espacio-2);
+  --gap-md: var(--espacio-3);
+  --gap-lg: var(--espacio-4);
+  --gap-xl: var(--espacio-6);
+
   /* Motion */
-  --transition-fast: 150ms ease-in-out;
-  --transition-base: 200ms ease-in-out;
-}
-
-/* ===================== BASE STYLES ===================== */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body, #root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-  line-height: 1.5;
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  color: var(--primary);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-a:hover {
-  color: var(--primary-hover);
-  text-decoration: underline;
+  --transition-fast: var(--transicion-rapida);
+  --transition-base: var(--transicion-base);
 }
 
 /* ===================== LAYOUT ===================== */
@@ -125,34 +80,7 @@ a:hover {
   padding: 0;
 }
 
-/* ===================== TYPOGRAPHY ===================== */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text);
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-h1 {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-h2 {
-  font-size: 24px;
-}
-
-h3 {
-  font-size: 20px;
-}
-
-h4 {
-  font-size: 16px;
-}
-
-p {
-  color: var(--text);
-}
-
+/* ===================== TYPOGRAPHY UTILIDADES LEGADO ===================== */
 .text-secondary {
   color: var(--text-secondary);
 }
@@ -162,19 +90,19 @@ p {
 }
 
 .text-sm {
-  font-size: 12px;
+  font-size: var(--texto-xs);
 }
 
 .text-md {
-  font-size: 14px;
+  font-size: var(--texto-sm);
 }
 
 .text-lg {
-  font-size: 16px;
+  font-size: var(--texto-md);
 }
 
 .text-xl {
-  font-size: 18px;
+  font-size: var(--texto-lg);
 }
 
 .font-medium {
@@ -224,7 +152,7 @@ p {
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 
 .page-actions a.btn-primary,
@@ -232,14 +160,12 @@ p {
   background-color: var(--primary);
   color: white;
   border: 1px solid var(--primary);
-  box-shadow: var(--shadow-sm);
 }
 
 .page-actions a.btn-primary:hover,
 .page-actions button.btn-primary:hover:not(:disabled) {
   background-color: var(--primary-hover);
   border-color: var(--primary-hover);
-  box-shadow: var(--shadow-md);
 }
 
 .page-actions a.btn-secondary,
@@ -247,14 +173,12 @@ p {
   background-color: #f3f4f6;
   color: var(--text);
   border: 1px solid #e5e7eb;
-  box-shadow: var(--shadow-sm);
 }
 
 .page-actions a.btn-secondary:hover,
 .page-actions button.btn-secondary:hover:not(:disabled) {
   background-color: #e5e7eb;
   border-color: #d1d5db;
-  box-shadow: var(--shadow-md);
 }
 
 .page-actions a.btn-ghost,
@@ -298,7 +222,7 @@ p {
   gap: var(--gap-lg);
 }
 
-label {
+:where(label) {
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -311,58 +235,64 @@ label.required::after {
   margin-left: 2px;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-input[type="time"],
-input[type="number"],
-select,
-textarea {
+:where(
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  input[type="number"],
+  select,
+  textarea
+) {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--borde-control);
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-family: inherit;
   color: var(--text);
   background-color: var(--surface);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast);
 }
 
-input[type="text"]::placeholder,
-input[type="email"]::placeholder,
-input[type="password"]::placeholder,
-input[type="date"]::placeholder,
-input[type="time"]::placeholder,
-input[type="number"]::placeholder,
-textarea::placeholder {
+:where(
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  input[type="number"],
+  textarea
+)::placeholder {
   color: var(--text-muted);
 }
 
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="date"]:focus,
-input[type="time"]:focus,
-input[type="number"]:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
+:where(
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  input[type="number"],
+  select,
+  textarea
+):focus {
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: var(--foco-offset);
+  border-color: var(--acento);
 }
 
-select {
+:where(select) {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23566273' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 16px;
   padding-right: 32px;
 }
 
-textarea {
+:where(textarea) {
   resize: vertical;
   min-height: 100px;
   font-family: inherit;
@@ -378,7 +308,8 @@ textarea {
 .form-error input:focus,
 .form-error select:focus,
 .form-error textarea:focus {
-  box-shadow: 0 0 0 3px var(--error-light);
+  outline: var(--foco-ancho) solid var(--error);
+  outline-offset: var(--foco-offset);
 }
 
 .error-message {
@@ -394,7 +325,7 @@ textarea {
 }
 
 /* ===================== BUTTONS ===================== */
-button {
+:where(button) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -403,9 +334,9 @@ button {
   font-size: 14px;
   font-weight: 500;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
   font-family: inherit;
 }
 
@@ -414,31 +345,26 @@ button {
   background-color: var(--primary);
   color: white;
   border: 1px solid var(--primary);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
   background-color: var(--primary-hover);
   border-color: var(--primary-hover);
-  box-shadow: var(--shadow-md);
 }
 
 .btn-primary:active:not(:disabled) {
-  background-color: #1e40af;
-  box-shadow: var(--shadow-sm);
+  background-color: var(--primary-hover);
 }
 
 .btn-secondary {
   background-color: #f3f4f6;
   color: var(--text);
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover:not(:disabled) {
   background-color: #e5e7eb;
   border-color: #d1d5db;
-  box-shadow: var(--shadow-md);
 }
 
 .btn-ghost {
@@ -456,26 +382,22 @@ button {
   background-color: var(--success);
   color: white;
   border: 1px solid var(--success);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn-success:hover:not(:disabled) {
   background-color: #15803d;
   border-color: #15803d;
-  box-shadow: var(--shadow-md);
 }
 
 .btn-danger {
   background-color: var(--error);
   color: white;
   border: 1px solid var(--error);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #b91c1c;
-  border-color: #b91c1c;
-  box-shadow: var(--shadow-md);
+  background-color: var(--peligro-hover);
+  border-color: var(--peligro-hover);
 }
 
 .btn-link {
@@ -515,10 +437,9 @@ button:disabled,
   justify-content: center;
 }
 
-/* Focus state for accessibility */
 button:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: var(--foco-offset);
 }
 
 /* ===================== BADGES & TAGS ===================== */
@@ -533,53 +454,33 @@ button:focus-visible {
   border: 1px solid transparent;
 }
 
-.badge-pending {
-  background-color: var(--warning-light);
-  color: var(--warning);
-  border-color: var(--warning-border);
+.badge-pending,
+.badge--pending {
+  background-color: var(--estado-pendiente-fondo);
+  color: var(--estado-pendiente-texto);
 }
 
-.badge-approved {
-  background-color: var(--success-light);
-  color: var(--success);
-  border-color: var(--success-border);
+.badge-approved,
+.badge--approved {
+  background-color: var(--estado-aprobada-fondo);
+  color: var(--estado-aprobada-texto);
 }
 
-.badge-rejected {
-  background-color: var(--error-light);
-  color: var(--error);
-  border-color: var(--error-border);
+.badge-rejected,
+.badge--rejected {
+  background-color: var(--estado-rechazada-fondo);
+  color: var(--estado-rechazada-texto);
 }
 
 .badge-cancelled {
-  background-color: var(--error-light);
-  color: var(--error);
-  border-color: var(--error-border);
+  background-color: var(--estado-cancelada-fondo);
+  color: var(--estado-cancelada-texto);
 }
 
 .badge-info {
   background-color: var(--info-light);
   color: var(--info);
   border-color: var(--info-border);
-}
-
-/* Backwards compatibility */
-.badge--pending {
-  background-color: var(--warning-light);
-  color: var(--warning);
-  border-color: var(--warning-border);
-}
-
-.badge--approved {
-  background-color: var(--success-light);
-  color: var(--success);
-  border-color: var(--success-border);
-}
-
-.badge--rejected {
-  background-color: var(--error-light);
-  color: var(--error);
-  border-color: var(--error-border);
 }
 
 /* ===================== ALERTS ===================== */
@@ -637,8 +538,7 @@ button:focus-visible {
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
   background-color: var(--surface);
 }
 
@@ -653,7 +553,7 @@ thead {
   border-bottom: 1px solid var(--border-color);
 }
 
-th {
+:where(th) {
   padding: 12px 16px;
   text-align: left;
   font-size: 12px;
@@ -663,7 +563,7 @@ th {
   letter-spacing: 0.5px;
 }
 
-td {
+:where(td) {
   padding: 14px 16px;
   border-top: 1px solid var(--border-light);
   font-size: 14px;
@@ -700,14 +600,8 @@ tbody tr:last-child td {
 .card {
   background-color: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: var(--gap-lg);
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-base);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-md);
 }
 
 .card-header {
@@ -736,22 +630,19 @@ tbody tr:last-child td {
   border-top: 1px solid var(--border-light);
 }
 
-/* Reservation card variant */
 .reservation-card {
   background-color: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: var(--gap-lg);
-  box-shadow: var(--shadow-sm);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: var(--gap-lg);
   align-items: start;
-  transition: all var(--transition-base);
+  transition: border-color var(--transition-base);
 }
 
 .reservation-card:hover {
-  box-shadow: var(--shadow-md);
   border-color: var(--primary);
 }
 
@@ -811,9 +702,8 @@ tbody tr:last-child td {
 .metric {
   background-color: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: var(--gap-lg);
-  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: var(--gap-md);
@@ -843,7 +733,6 @@ tbody tr:last-child td {
   color: var(--text-muted);
 }
 
-/* Colored metric variants */
 .metric-success .metric-value {
   color: var(--success);
 }
@@ -866,15 +755,15 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(0, 0, 0, 0.25);
+  background-color: var(--overlay);
   z-index: 1000;
   padding: var(--gap-lg);
 }
 
 .modal-content {
   background-color: var(--surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   max-width: 500px;
   width: 100%;
   padding: var(--gap-xl);
@@ -1124,47 +1013,6 @@ tbody tr:last-child td {
   display: none;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-/* ===================== TRANSITIONS & ANIMATIONS ===================== */
-.fade-in {
-  animation: fadeIn 200ms ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.slide-in-up {
-  animation: slideInUp 200ms ease-in-out;
-}
-
-@keyframes slideInUp {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 1024px) {
   #root {
@@ -1271,7 +1119,7 @@ tbody tr:last-child td {
     padding: var(--gap-lg);
   }
 
-  button {
+  :where(button) {
     padding: 10px 16px;
   }
 
@@ -1286,15 +1134,15 @@ tbody tr:last-child td {
     max-width: 100%;
   }
 
-  h1 {
+  :where(h1) {
     font-size: 20px;
   }
 
-  h2 {
+  :where(h2) {
     font-size: 16px;
   }
 
-  h3 {
+  :where(h3) {
     font-size: 14px;
   }
 
@@ -1317,24 +1165,26 @@ tbody tr:last-child td {
     font-size: 14px;
   }
 
-  button {
+  :where(button) {
     padding: 10px 14px;
     font-size: 13px;
   }
 
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="date"],
-  input[type="time"],
-  input[type="number"],
-  select,
-  textarea {
+  :where(
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="date"],
+    input[type="time"],
+    input[type="number"],
+    select,
+    textarea
+  ) {
     font-size: 16px;
     padding: 12px;
   }
 
-  label {
+  :where(label) {
     font-size: 12px;
   }
 
@@ -1428,27 +1278,6 @@ tbody tr:last-child td {
   }
 }
 
-/* ===================== ACCESSIBILITY ===================== */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  /* System dark mode support, but we keep light theme for this app */
-}
-
-/* Focus visible for keyboard navigation */
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
 /* High contrast mode support */
 @media (prefers-contrast: more) {
   input[type="text"],
@@ -1470,3 +1299,4 @@ tbody tr:last-child td {
     border-width: 2px;
   }
 }
+

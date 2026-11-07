@@ -1,0 +1,86 @@
+:root {
+  /* Colores base (Sección 3 — DISENO_PROPUESTA.md) */
+  --fondo: #F5F6F8;
+  --superficie: #FFFFFF;
+  --tinta: #1B2430;
+  --tinta-2: #566273;
+  --tinta-inversa: #FFFFFF;
+  --acento: #1F4E8C;
+  --acento-hover: #173C6B;
+  --borde: #D5DAE1;
+  --borde-control: #8A94A3;
+  --peligro: #A4262C;
+  --peligro-hover: #8F1F24;
+  --peligro-fondo: #F8E3E3;
+  --superficie-sutil: #E6E9ED;
+  --overlay: rgba(27, 36, 48, 0.45);
+
+  /* Estados (texto + ícono + color, contraste AA verificado) */
+  --estado-pendiente-texto: #7A4300;
+  --estado-pendiente-fondo: #FBF0D9;
+  --estado-aprobada-texto: #1D5E36;
+  --estado-aprobada-fondo: #E3F1E8;
+  --estado-rechazada-texto: #8F1F24;
+  --estado-rechazada-fondo: #F8E3E3;
+  --estado-cancelada-texto: #454F5E;
+  --estado-cancelada-fondo: #E6E9ED;
+
+  /* Tipografía */
+  --fuente-titulo: 'Source Serif 4', Georgia, serif;
+  --fuente-cuerpo: 'Public Sans', system-ui, -apple-system, sans-serif;
+
+  /* Escala tipográfica fija: 13 / 14 / 16 / 20 / 28 px */
+  --texto-xs: 13px;
+  --texto-sm: 14px;
+  --texto-md: 16px;
+  --texto-lg: 20px;
+  --texto-xl: 28px;
+
+  --peso-regular: 400;
+  --peso-medio: 500;
+  --peso-semibold: 600;
+
+  --linea-base: 1.5;
+  --linea-titulo: 1.25;
+  --medida-lectura: 70ch;
+
+  /* Espaciado en múltiplos de 4 px */
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 12px;
+  --espacio-4: 16px;
+  --espacio-5: 20px;
+  --espacio-6: 24px;
+  --espacio-8: 32px;
+  --espacio-10: 40px;
+  --espacio-12: 48px;
+
+  /* Forma y bordes */
+  --radio-control: 4px;
+  --radio-panel: 6px;
+  --radio-estado: 9999px;
+  --borde-ancho: 1px;
+  --foco-ancho: 2px;
+  --foco-offset: 2px;
+
+  /* Dimensiones de componentes e íconos */
+  --icono-sm: 16px;
+  --icono-md: 20px;
+  --icono-lg: 24px;
+  --control-altura-sm: 32px;
+  --control-altura: 40px;
+  --control-min-tactil: 44px;
+  --textarea-min-altura: 96px;
+  --esqueleto-altura: 16px;
+  --dialogo-max-ancho: 440px;
+  --toast-max-ancho: 400px;
+  --contenedor-max-ancho: 1200px;
+  --opacidad-deshabilitado: 0.55;
+  --z-modal: 1000;
+  --z-toast: 1100;
+
+  /* Movimiento (120–160 ms solo en respuesta a una acción) */
+  --transicion-rapida: 120ms ease-out;
+  --transicion-base: 150ms ease-out;
+}
+

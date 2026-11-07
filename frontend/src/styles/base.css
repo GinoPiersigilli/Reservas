@@ -1,0 +1,114 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-regular);
+  line-height: var(--linea-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2 {
+  font-family: var(--fuente-titulo);
+  font-weight: var(--peso-semibold);
+  line-height: var(--linea-titulo);
+  color: var(--tinta);
+}
+
+h1 {
+  font-size: var(--texto-xl);
+}
+
+h2 {
+  font-size: var(--texto-lg);
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--fuente-cuerpo);
+  font-weight: var(--peso-semibold);
+  font-size: var(--texto-md);
+  line-height: var(--linea-titulo);
+  color: var(--tinta);
+}
+
+p {
+  max-width: var(--medida-lectura);
+  color: var(--tinta);
+}
+
+a {
+  color: var(--acento);
+  text-decoration: none;
+  transition: color var(--transicion-rapida);
+}
+
+a:hover {
+  color: var(--acento-hover);
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Números y horarios tabulares */
+.tabular-nums,
+table td,
+input[type="time"],
+input[type="date"],
+input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foco visible de 2 px con --acento */
+:focus-visible {
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: var(--foco-offset);
+}
+
+/* Utilidad accesible para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: var(--borde-ancho);
+  height: var(--borde-ancho);
+  padding: 0;
+  margin: calc(var(--borde-ancho) * -1);
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

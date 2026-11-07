@@ -9,6 +9,7 @@ import FormularioReserva from './pages/FormularioReserva.jsx';
 import Resumen from './pages/Resumen.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Login from './pages/Login.jsx';
+import GuiaEstilos from './pages/GuiaEstilos.jsx';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/reservas/:id" element={<RutaProtegida><DetalleReserva /></RutaProtegida>} />
         <Route path="/reservas/:id/editar" element={<RutaSoloAdmin><FormularioReserva /></RutaSoloAdmin>} />
         <Route path="/resumen" element={<RutaSoloAdmin><Resumen /></RutaSoloAdmin>} />
+        {import.meta.env.DEV ? <Route path="/guia-estilos" element={<GuiaEstilos />} /> : null}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>
