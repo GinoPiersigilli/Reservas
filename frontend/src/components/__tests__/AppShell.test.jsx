@@ -55,3 +55,4 @@ describe('AppShell layout', () => {
     expect(screen.getByText('Administrador')).toBeInTheDocument();
   });
 });
+

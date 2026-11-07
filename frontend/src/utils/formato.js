@@ -43,3 +43,4 @@ export function calcularDuracionTexto(horaInicio, horaFin) {
   if (horas > 0) return `${horas} h`;
   return `${resto} min`;
 }
+

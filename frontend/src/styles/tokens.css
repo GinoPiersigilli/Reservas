@@ -18,6 +18,13 @@
   /* Estados (texto + ícono + color, contraste AA verificado) */
   --estado-pendiente-texto: #7A4300;
   --estado-pendiente-fondo: #FBF0D9;
+  --patron-pendiente: repeating-linear-gradient(
+    -45deg,
+    var(--estado-pendiente-fondo),
+    var(--estado-pendiente-fondo) 6px,
+    #EED8AE 6px,
+    #EED8AE 9px
+  );
   --estado-aprobada-texto: #1D5E36;
   --estado-aprobada-fondo: #E3F1E8;
   --estado-rechazada-texto: #8F1F24;

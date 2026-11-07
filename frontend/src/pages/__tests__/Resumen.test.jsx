@@ -103,3 +103,4 @@ describe('Resumen (Panel de administración)', () => {
     });
   });
 });
+

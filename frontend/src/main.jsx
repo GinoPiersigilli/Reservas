@@ -8,7 +8,6 @@ import '@fontsource/public-sans/latin-500.css';
 import '@fontsource/public-sans/latin-600.css';
 import './styles/tokens.css';
 import './styles/base.css';
-import './styles/legacy.css';
 import App from './App.jsx';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

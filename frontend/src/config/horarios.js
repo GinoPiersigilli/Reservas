@@ -92,3 +92,4 @@ export function obtenerMinutosAhoraArgentina() {
   const ahora = new Date();
   return ahora.getHours() * 60 + ahora.getMinutes();
 }
+
