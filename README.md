@@ -238,7 +238,3 @@ npm test
 - Los tokens de Keycloak tienen expiración corta en desarrollo; si vencen, hay que volver a iniciar sesión.
 - El frontend no implementa refresh token automático.
 - El modelo local de usuario existe por compatibilidad técnica, pero la autenticación real está delegada a Keycloak.
-
----
-
-Si querés, este README te sirve como guía rápida para levantar el proyecto, probar los roles y entender cómo se controla el acceso a las reservas.
