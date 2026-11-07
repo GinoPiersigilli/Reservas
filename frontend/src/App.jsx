@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import AppShell from './components/AppShell.jsx';
@@ -10,7 +11,10 @@ import Resumen from './pages/Resumen.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import GuiaEstilos from './pages/GuiaEstilos.jsx';
+
+const GuiaEstilos = import.meta.env.DEV
+  ? lazy(() => import('./pages/GuiaEstilos.jsx'))
+  : null;
 
 function App() {
   return (
@@ -46,8 +50,15 @@ function App() {
             }
           />
         </Route>
-        {import.meta.env.DEV ? (
-          <Route path="/guia-estilos" element={<GuiaEstilos />} />
+        {import.meta.env.DEV && GuiaEstilos ? (
+          <Route
+            path="/guia-estilos"
+            element={
+              <Suspense fallback={null}>
+                <GuiaEstilos />
+              </Suspense>
+            }
+          />
         ) : null}
         <Route path="*" element={<NotFound />} />
       </Routes>

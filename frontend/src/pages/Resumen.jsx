@@ -6,6 +6,7 @@ import {
   aprobarReserva,
   rechazarReserva
 } from '../services/reservas.service.js';
+import { getAulas } from '../services/aula.service.js';
 import { TEXTOS } from '../textos.js';
 import { formatearFecha } from '../utils/formato.js';
 import Button from '../components/ui/Button.jsx';
@@ -29,6 +30,7 @@ const ETIQUETAS_TOTAL_ESTADO = {
 const Resumen = () => {
   const [resumen, setResumen] = useState(null);
   const [colaPendientes, setColaPendientes] = useState([]);
+  const [mapaAulas, setMapaAulas] = useState({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [accionEnCurso, setAccionEnCurso] = useState(false);
@@ -51,18 +53,33 @@ const Resumen = () => {
             ).catch(() => ({ data: { data: [] } }))
           : Promise.resolve({ data: { data: [] } });
 
-      const [resResumen, resPendientes] = await Promise.all([
+      const promesaAulas =
+        typeof getAulas === 'function'
+          ? Promise.resolve(getAulas()).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] });
+
+      const [resResumen, resPendientes, resAulas] = await Promise.all([
         getResumen(),
-        promesaPendientes
+        promesaPendientes,
+        promesaAulas
       ]);
 
       setResumen(resResumen.data);
-      const listaPendientes = Array.isArray(resPendientes?.data?.data)
-        ? resPendientes.data.data
-        : Array.isArray(resPendientes?.data)
-          ? resPendientes.data
-          : [];
+      const listaPendientes = Array.isArray(resPendientes?.data?.datos)
+        ? resPendientes.data.datos
+        : Array.isArray(resPendientes?.data?.data)
+          ? resPendientes.data.data
+          : Array.isArray(resPendientes?.data)
+            ? resPendientes.data
+            : [];
       setColaPendientes(listaPendientes);
+      if (Array.isArray(resAulas?.data)) {
+        const mapa = {};
+        resAulas.data.forEach((a) => {
+          mapa[a.id] = a.nombre;
+        });
+        setMapaAulas(mapa);
+      }
     } catch (err) {
       setError(err.response?.data?.error || TEXTOS.panel.errorCarga);
     } finally {
@@ -146,6 +163,13 @@ const Resumen = () => {
       ? colaPendientes.length
       : mapaPorEstado.get('pendiente') || 0;
 
+  const obtenerNombreAula = (item) =>
+    item.aula?.nombre ||
+    item.nombre ||
+    item.aulaNombre ||
+    mapaAulas[item.aulaId] ||
+    `Aula ${item.aulaId}`;
+
   const columnasPendientes = [
     {
       key: 'id',
@@ -157,7 +181,7 @@ const Resumen = () => {
       titulo: 'Aula',
       render: (r) => (
         <span className={styles.nombreAula}>
-          {r.aula?.nombre || r.aulaNombre || `Aula ${r.aulaId}`}
+          {obtenerNombreAula(r)}
         </span>
       )
     },
@@ -217,7 +241,7 @@ const Resumen = () => {
       titulo: 'Aula',
       render: (a) => (
         <span className={styles.nombreAula}>
-          {a.nombre || a.aulaNombre || `Aula ${a.aulaId}`}
+          {obtenerNombreAula(a)}
         </span>
       )
     },
@@ -286,7 +310,7 @@ const Resumen = () => {
                     ·
                   </span>
                   <span className={styles.nombreAula}>
-                    {r.aula?.nombre || r.aulaNombre || `Aula ${r.aulaId}`}
+                    {obtenerNombreAula(r)}
                   </span>
                   {r.motivo ? (
                     <>

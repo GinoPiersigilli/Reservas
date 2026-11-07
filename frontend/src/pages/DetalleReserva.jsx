@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getReserva, getHistorial } from '../services/reservas.service.js';
+import { getAulas } from '../services/aula.service.js';
 import { TEXTOS } from '../textos.js';
 import {
   formatearFecha,
@@ -22,6 +23,7 @@ const DetalleReserva = () => {
 
   const [reserva, setReserva] = useState(null);
   const [historial, setHistorial] = useState([]);
+  const [mapaAulas, setMapaAulas] = useState({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [mensajeExito, setMensajeExito] = useState(null);
@@ -30,12 +32,25 @@ const DetalleReserva = () => {
     setCargando(true);
     setError(null);
     try {
-      const [resReserva, resHistorial] = await Promise.all([
+      const promesaAulas =
+        typeof getAulas === 'function'
+          ? Promise.resolve(getAulas()).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] });
+
+      const [resReserva, resHistorial, resAulas] = await Promise.all([
         getReserva(id),
-        getHistorial(id)
+        getHistorial(id),
+        promesaAulas
       ]);
       setReserva(resReserva.data);
       setHistorial(resHistorial.data || []);
+      if (Array.isArray(resAulas?.data)) {
+        const mapa = {};
+        resAulas.data.forEach((a) => {
+          mapa[a.id] = a.nombre;
+        });
+        setMapaAulas(mapa);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo cargar la reserva.');
     } finally {
@@ -86,6 +101,7 @@ const DetalleReserva = () => {
   const nombreAula =
     reserva.aula?.nombre ||
     reserva.aulaNombre ||
+    mapaAulas[reserva.aulaId] ||
     `Aula ${reserva.aulaId}`;
   const nombreSolicitante =
     reserva.usuario?.nombre ||

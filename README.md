@@ -5,10 +5,10 @@ Aplicación web para la gestión y reserva de aulas universitarias. Permite a do
 ## Stack tecnológico
 
 - **Backend:** Node.js (ESM) + Express + Sequelize 6 + PostgreSQL 16
-- **Frontend:** React 19 + Vite + React Router
+- **Frontend:** React 19 + Vite + React Router + CSS Modules + Tokens de diseño (`tokens.css`) + Tipografía autoalojada (`@fontsource/source-serif-4` y `@fontsource/public-sans`) + `lucide-react`
 - **Autenticación:** Clerk (SSO) + JWT local para usuarios de prueba
 - **Base de datos:** PostgreSQL 16 en Docker Compose (con *exclusion constraint* `btree_gist` anti-solapamiento)
-- **Calidad y CI:** ESLint, Jest + Supertest (backend), Vitest + Testing Library (frontend), GitHub Actions
+- **Calidad, Accesibilidad y CI:** ESLint, Jest + Supertest (backend), Vitest + Testing Library + `vitest-axe` (frontend), GitHub Actions
 
 ---
 
@@ -18,9 +18,16 @@ Aplicación web para la gestión y reserva de aulas universitarias. Permite a do
 reservas/
 ├── .github/workflows/ci.yml   # Pipeline de integración continua (Postgres + backend + frontend)
 ├── docker/postgres/           # Script de inicialización de la base reservas_test
-├── docker-compose.yml         # Contenedor PostgreSQL 16 con healthcheck
+├── docker-compose.yml         # Contenedor PostgreSQL 16 de desarrollo con healthcheck
+├── docker-compose.prod.yml    # Stack de producción (Postgres + Backend + Frontend Nginx con CSP)
 ├── .env.example               # Variables de entorno para Docker Compose
-├── docs/                      # Documentación de arquitectura, contexto y planes de mejora
+├── docs/                      # Documentación de arquitectura, diseño UX/UI, seguridad y capturas
+│   ├── CONTEXTO_PROYECTO.md
+│   ├── DEPLOY.md
+│   ├── DISENO_UX_UI.md
+│   ├── DISENO_PROPUESTA.md
+│   ├── SEGURIDAD.md
+│   └── img/                   # Capturas de pantalla en escritorio y móvil
 ├── backend/                   # API REST (Express + Sequelize + PostgreSQL)
 │   ├── db/
 │   │   ├── config.cjs         # Configuración de sequelize-cli
@@ -28,13 +35,40 @@ reservas/
 │   │   └── seeders/           # Datos iniciales de prueba con fechas relativas a hoy
 │   ├── src/                   # Configuración, modelos, rutas, controladores, servicios y middlewares
 │   └── tests/                 # Suite de pruebas de integración y concurrencia (Jest)
-└── frontend/                  # SPA en React + Vite
+└── frontend/                  # SPA en React + Vite + CSS Modules
+    ├── nginx.conf             # Configuración Nginx con cabeceras de seguridad y CSP
+    ├── scripts/
+    │   └── verificar-contraste.js # Verificación automática de contraste WCAG 2.1 AA sobre tokens.css
     └── src/
-        ├── components/        # Componentes reutilizables y rutas protegidas
+        ├── components/        # AppShell, GrillaDisponibilidad, tablas, filtros y componentes base (ui/)
+        ├── config/            # Franjas horarias (08:00–22:00) y apariencia de Clerk
         ├── context/           # AuthContext (Clerk + JWT local)
-        ├── pages/             # Pantallas y tests unitarios/integración (__tests__)
-        └── services/          # Clientes HTTP (Axios)
+        ├── pages/             # Pantallas y tests unitarios/accesibilidad (__tests__)
+        ├── services/          # Clientes HTTP (Axios)
+        ├── styles/            # Sistema de tokens (tokens.css) y estilos base (base.css)
+        ├── utils/             # Formateo de fechas (dd/mm/aaaa) y horarios (24 h)
+        └── textos.js          # Textos centralizados de la interfaz (español neutro formal)
 ```
+
+---
+
+## Capturas de pantalla
+
+### Escritorio (`1280 px`)
+
+| Pantalla | Vista |
+|---|---|
+| **Ingreso (`Login`)** | ![Login escritorio](docs/img/login-escritorio.png) |
+| **Listado de reservas (`Administrador`)** | ![Reservas admin escritorio](docs/img/reservas-admin-escritorio.png) |
+| **Nueva reserva y grilla de disponibilidad** | ![Nueva reserva grilla escritorio](docs/img/nueva-reserva-grilla-escritorio.png) |
+| **Detalle de reserva e historial** | ![Detalle de reserva escritorio](docs/img/detalle-reserva-escritorio.png) |
+| **Panel de administración** | ![Panel de administración escritorio](docs/img/panel-admin-escritorio.png) |
+
+### Móvil (`360 px`)
+
+| Login móvil | Mis reservas móvil | Grilla de disponibilidad móvil | Panel móvil |
+|---|---|---|---|
+| ![Login móvil](docs/img/login-movil.png) | ![Mis reservas móvil](docs/img/reservas-usuario-movil.png) | ![Grilla móvil](docs/img/nueva-reserva-grilla-movil.png) | ![Panel móvil](docs/img/panel-admin-movil.png) |
 
 ---
 
@@ -179,6 +213,7 @@ npm test -- --coverage
 cd frontend
 npm run lint
 npm test
+node scripts/verificar-contraste.js
 ```
 
 ---

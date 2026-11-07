@@ -54,3 +54,9 @@
   pointer-events: none;
 }
 
+@media (max-width: 768px) {
+  .select {
+    min-height: var(--control-min-tactil);
+  }
+}
+

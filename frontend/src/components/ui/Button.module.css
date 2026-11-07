@@ -92,3 +92,10 @@
   }
 }
 
+@media (max-width: 768px) {
+  .button,
+  .sm {
+    min-height: var(--control-min-tactil);
+  }
+}
+

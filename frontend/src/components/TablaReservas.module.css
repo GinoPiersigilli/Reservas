@@ -31,3 +31,9 @@
   text-align: right;
   white-space: nowrap;
 }
+
+@media (max-width: 768px) {
+  .botonOrden {
+    min-height: var(--control-min-tactil);
+  }
+}

@@ -2,6 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--espacio-8);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .cabecera {
@@ -14,7 +17,7 @@
 .titulo {
   margin: 0;
   font-family: var(--fuente-titulo);
-  font-size: var(--texto-2xl);
+  font-size: var(--texto-xl);
   font-weight: var(--peso-semibold);
   color: var(--tinta);
   line-height: var(--linea-titulo);
@@ -24,6 +27,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--espacio-3);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .cabeceraSeccion {
@@ -54,8 +60,8 @@
   margin: 0;
   padding: var(--espacio-4);
   background-color: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio-md);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
   font-size: var(--texto-sm);
   color: var(--tinta-2);
 }
@@ -85,10 +91,13 @@
 }
 
 .enlaceVer {
+  display: inline-flex;
+  align-items: center;
   font-size: var(--texto-sm);
   font-weight: var(--peso-medio);
   color: var(--acento);
   text-decoration: none;
+  padding: var(--espacio-1) var(--espacio-2);
 }
 
 .enlaceVer:hover {
@@ -100,8 +109,8 @@
   margin: 0;
   padding: 0;
   background-color: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio-md);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
 }
 
 .itemHoy {
@@ -110,7 +119,7 @@
   justify-content: space-between;
   gap: var(--espacio-4);
   padding: var(--espacio-3) var(--espacio-4);
-  border-bottom: 1px solid var(--borde);
+  border-bottom: var(--borde-ancho) solid var(--borde);
   flex-wrap: wrap;
 }
 
@@ -134,7 +143,7 @@
 }
 
 .separadorHoy {
-  color: var(--tinta-3);
+  color: var(--tinta-2);
 }
 
 .motivoHoy {
@@ -157,14 +166,17 @@
   display: flex;
   flex-direction: column;
   gap: var(--espacio-3);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .listaCompacta {
   margin: 0;
   padding: var(--espacio-2) var(--espacio-4);
   background-color: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio-md);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
 }
 
 .filaCompacta {
@@ -173,7 +185,7 @@
   justify-content: space-between;
   gap: var(--espacio-4);
   padding: var(--espacio-2) 0;
-  border-bottom: 1px solid var(--borde);
+  border-bottom: var(--borde-ancho) solid var(--borde);
   font-size: var(--texto-sm);
 }
 
@@ -199,9 +211,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .grillaSecundaria {
     grid-template-columns: 1fr;
   }
-}
 
+  .enlaceVer {
+    min-height: var(--control-min-tactil);
+  }
+}

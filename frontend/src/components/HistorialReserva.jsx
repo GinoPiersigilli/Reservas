@@ -3,6 +3,11 @@ import Table from './ui/Table.jsx';
 import styles from './HistorialReserva.module.css';
 
 const ETIQUETAS_ACCION = {
+  creacion: 'Creación',
+  edicion: 'Edición',
+  aprobacion: 'Aprobación',
+  rechazo: 'Rechazo',
+  cancelacion: 'Cancelación',
   creada: 'Creación',
   aprobada: 'Aprobación',
   rechazada: 'Rechazo',

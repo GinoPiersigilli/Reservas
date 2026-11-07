@@ -65,8 +65,15 @@ export default function Reservas() {
         sortBy,
         order
       });
-      setReservas(res.data.datos);
-      setTotal(res.data.total);
+      const lista = Array.isArray(res.data?.datos)
+        ? res.data.datos
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+      setReservas(lista);
+      setTotal(res.data?.total ?? res.data?.pagination?.total ?? lista.length);
     } catch {
       setError(TEXTOS.reservas.errorDescripcion);
     } finally {
