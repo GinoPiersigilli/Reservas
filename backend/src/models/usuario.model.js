@@ -15,25 +15,38 @@ const Usuario = sequelize.define('Usuario', {
   email: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true // Credencial de acceso y dato de contacto. Debe ser único 
+    unique: true // Credencial de acceso y dato de contacto. Debe ser único
   },
   passwordHash: {
     type: DataTypes.STRING,
-    allowNull: false // Contraseña almacenada de forma segura 
+    allowNull: true // Contraseña almacenada de forma segura (nullable para usuarios Clerk/Sistema)
+  },
+  clerkId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
   },
   rol: {
     type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: 'usuario' // Define permisos dentro del sistema (usuario, admin) 
+    defaultValue: 'usuario', // Define permisos dentro del sistema (usuario, admin)
+    validate: {
+      isIn: [['usuario', 'admin']]
+    }
   },
   activo: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
-    defaultValue: true // Permite bloquear accesos sin borrar el usuario 
+    defaultValue: true // Permite bloquear accesos sin borrar el usuario
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'usuarios',
-  timestamps: false // Podés cambiarlo a true si querés que Sequelize maneje createdAt/updatedAt automáticamente
+  timestamps: false
 });
 
 export default Usuario;

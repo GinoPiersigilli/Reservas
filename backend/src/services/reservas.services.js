@@ -1,12 +1,15 @@
 // services/reservas.service.js
 import Reserva from '../models/reserva.model.js';
+import HistorialReserva from '../models/historial.model.js';
 import sequelize from '../config/database.js';
 import Aula from '../models/aula.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
+import env from '../config/env.js';
 
-const WORK_HOUR_START = process.env.WORK_HOUR_START || '08:00';
-const WORK_HOUR_END = process.env.WORK_HOUR_END || '22:00';
+const WORK_HOUR_START = env.WORK_HOUR_START;
+const WORK_HOUR_END = env.WORK_HOUR_END;
+const SORT_BY_PERMITIDOS = ['createdAt', 'fecha', 'horaInicio', 'estado', 'aulaId', 'id'];
 
 // Función para crear una nueva reserva
 export const crearNuevaReserva = async (datosReserva) => {
@@ -144,14 +147,17 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
     throw error;
   }
 
-  // 2. Validación de permisos (La clave que pide el PDF)
-  // Si es un usuario común, verificamos que sea el dueño de la reserva
-  if (usuarioLogueado.rol === 'usuario') {
-    if (reservaActual.usuarioId !== usuarioLogueado.id) {
-      const error = new Error("No tienes permiso para cancelar esta reserva");
-      error.status = 403; // 403 Forbidden como exige el enunciado
-      throw error;
-    }
+  // 2. Validación de permisos por lista explícita (admin o dueño)
+  const esAdmin = usuarioLogueado?.rol === 'admin';
+  const esDuenio =
+    usuarioLogueado?.id !== undefined &&
+    usuarioLogueado?.id !== null &&
+    String(reservaActual.usuarioId) === String(usuarioLogueado.id);
+
+  if (!esAdmin && !esDuenio) {
+    const error = new Error("No tienes permiso para cancelar esta reserva");
+    error.status = 403;
+    throw error;
   }
 
   // 3. Validación de estado
@@ -184,18 +190,30 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
 // ==========================================
 // OBTENER RESERVAS (con filtros)
 // ==========================================
-export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, sortBy, order }) => {
+export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, sortBy, order, usuario } = {}, usuarioParam) => {
   const where = {};
+  const usuarioActual = usuarioParam || usuario;
+
+  if (usuarioActual && usuarioActual.rol !== 'admin') {
+    where.usuarioId = usuarioActual.id;
+  }
 
   if (fecha)   where.fecha   = fecha;
   if (estado)  where.estado  = estado;
   if (aulaId)  where.aulaId  = aulaId;
   if (q)       where.motivo  = { [Op.like]: `%${q}%` };
 
-  const pagina    = parseInt(page)  || 1;
-  const porPagina = parseInt(limit) || 10;
-  const columna   = sortBy  || 'createdAt';
-  const direccion = order   || 'DESC';
+  const parsedPage  = parseInt(page, 10);
+  const pagina      = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
+
+  const parsedLimit = parseInt(limit, 10);
+  const porPagina   = Number.isNaN(parsedLimit) || parsedLimit < 1
+    ? 10
+    : Math.min(parsedLimit, 100);
+
+  const columna     = SORT_BY_PERMITIDOS.includes(sortBy) ? sortBy : 'createdAt';
+  const orderUpper  = typeof order === 'string' ? order.toUpperCase() : '';
+  const direccion   = orderUpper === 'ASC' || orderUpper === 'DESC' ? orderUpper : 'DESC';
 
   const { count, rows } = await Reserva.findAndCountAll({
     where,
@@ -248,7 +266,7 @@ export const rechazarReserva = async (reservaId, usuarioIdAdmin) => {
 // ==========================================
 // OBTENER RESERVA POR ID
 // ==========================================
-export const obtenerReservaPorId = async (reservaId) => {
+export const obtenerReservaPorId = async (reservaId, usuario) => {
   const reserva = await Reserva.findByPk(reservaId);
 
   if (!reserva) {
@@ -257,7 +275,27 @@ export const obtenerReservaPorId = async (reservaId) => {
     throw error;
   }
 
+  if (usuario && usuario.rol !== 'admin' && String(reserva.usuarioId) !== String(usuario.id)) {
+    const error = new Error('La reserva no existe');
+    error.status = 404;
+    throw error;
+  }
+
   return reserva;
+};
+
+// ==========================================
+// OBTENER HISTORIAL DE UNA RESERVA
+// ==========================================
+export const obtenerHistorialDeReserva = async (reservaId, usuario) => {
+  await obtenerReservaPorId(reservaId, usuario);
+
+  const historial = await HistorialReserva.findAll({
+    where: { reservaId },
+    order: [['fechaHora', 'DESC']]
+  });
+
+  return historial;
 };
 
 // ==========================================

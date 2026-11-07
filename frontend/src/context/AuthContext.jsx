@@ -1,32 +1,46 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { registrarGetToken } from '../services/axios.js';
 
 const AuthContext = createContext(null);
 
-const KEYCLOAK_BASE_URL = import.meta.env.VITE_KEYCLOAK_BASE_URL || 'http://localhost:8081';
-const KEYCLOAK_REALM    = import.meta.env.VITE_KEYCLOAK_REALM    || 'reservas-aulas';
-const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'reservas-aulas-client';
-const REDIRECT_URI      = import.meta.env.VITE_KEYCLOAK_REDIRECT_URI || 'http://localhost:5173/callback';
-const API_BASE_URL      = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-
 export const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario] = useState(() => {
+  const { user, isLoaded } = useUser();
+  const { getToken, signOut } = useClerkAuth();
+
+  const [usuarioLocal, setUsuarioLocal] = useState(() => {
     const guardado = localStorage.getItem('usuario');
     return guardado ? JSON.parse(guardado) : null;
   });
 
+  useEffect(() => {
+    if (user) {
+      registrarGetToken(getToken);
+    } else if (usuarioLocal) {
+      registrarGetToken(() => Promise.resolve(localStorage.getItem('token')));
+    } else {
+      registrarGetToken(null);
+    }
+  }, [user, usuarioLocal, getToken]);
+
+  const usuario = user ? {
+    id:     user.id,
+    nombre: user.firstName || user.username || user.emailAddresses[0].emailAddress,
+    email:  user.emailAddresses[0].emailAddress,
+    rol:    user.publicMetadata?.rol || 'usuario'
+  } : usuarioLocal;
+
   const iniciarSesionLocal = async (email, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
 
-    const data = await response.json();
-
-    if (!response.ok) throw new Error(data.error || 'Credenciales inválidas');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
 
     const payload = JSON.parse(atob(data.token.split('.')[1]));
-
     const datosUsuario = {
       id:     payload.id,
       nombre: payload.nombre,
@@ -36,62 +50,20 @@ export const AuthProvider = ({ children }) => {
 
     localStorage.setItem('token', data.token);
     localStorage.setItem('usuario', JSON.stringify(datosUsuario));
-    setUsuario(datosUsuario);
-
-    window.location.href = '/reservas';
-  };
-
-  const iniciarLogin = () => {
-    const authUrl =
-      `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth` +
-      `?client_id=${KEYCLOAK_CLIENT_ID}` +
-      `&response_type=code` +
-      `&scope=openid profile email` +
-      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-
-    window.location.href = authUrl;
-  };
-
-  const procesarCallback = async (code) => {
-    const response = await fetch(`${API_BASE_URL}/auth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
-    });
-
-    if (!response.ok) throw new Error('Error al obtener token');
-
-    const data = await response.json();
-
-    const payload = JSON.parse(atob(data.access_token.split('.')[1]));
-
-    const datosUsuario = {
-      id:     payload.sub,
-      nombre: payload.given_name || payload.preferred_username,
-      email:  payload.email,
-      rol:    payload.realm_access?.roles?.includes('admin') ? 'admin' : 'usuario'
-    };
-
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('usuario', JSON.stringify(datosUsuario));
-    setUsuario(datosUsuario);
-
-    return datosUsuario;
+    setUsuarioLocal(datosUsuario);
   };
 
   const cerrarSesion = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('usuario');
-    setUsuario(null);
-
-    window.location.href =
-      `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout` +
-      `?post_logout_redirect_uri=${encodeURIComponent('http://localhost:5173/login')}` +
-      `&client_id=${KEYCLOAK_CLIENT_ID}`;
+    setUsuarioLocal(null);
+    registrarGetToken(null);
+    if (user) signOut();
+    else window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, iniciarLogin, iniciarSesionLocal, procesarCallback, cerrarSesion }}>
+    <AuthContext.Provider value={{ usuario, isLoaded, iniciarSesionLocal, cerrarSesion }}>
       {children}
     </AuthContext.Provider>
   );

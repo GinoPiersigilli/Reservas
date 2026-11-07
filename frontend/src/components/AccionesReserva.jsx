@@ -37,7 +37,7 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
     <div className="card" style={{ marginTop: '24px', borderColor: 'rgba(59,130,246,0.2)' }}>
       <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Acciones disponibles</h3>
       
-      {error && <div className="alert alert--error" style={{ marginBottom: '16px' }}>{error}</div>}
+      {error && <div className="alert alert-error" style={{ marginBottom: '16px' }}>{error}</div>}
       
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
         {puedeAprobar && (

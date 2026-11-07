@@ -2,8 +2,7 @@
 import Usuario from '../models/usuario.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura_dds_2026';
+import env from '../config/env.js';
 
 export const registrarUsuario = async (datos) => {
   const { nombre, email, password, rol } = datos;
@@ -53,7 +52,9 @@ export const loginUsuario = async (email, password) => {
   }
 
   // 3. Comparar la contraseña enviada con el hash guardado en la BD
-  const passwordValida = await bcrypt.compare(password, usuario.passwordHash);
+  const passwordValida = usuario.passwordHash
+    ? await bcrypt.compare(password, usuario.passwordHash)
+    : false;
   if (!passwordValida) {
     const error = new Error('Credenciales inválidas');
     error.status = 400;
@@ -69,7 +70,7 @@ export const loginUsuario = async (email, password) => {
   };
 
   // 5. Generar el token que expira en 2 horas
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+  const token = jwt.sign(payload, env.JWT_SECRET, { expiresIn: '2h' });
 
   // Devolvemos el token y los datos limpios para que el frontend los use
   return {
