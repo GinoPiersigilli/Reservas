@@ -7,7 +7,9 @@ import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
 import Aula from '../src/models/aula.model.js';
 import Reserva from '../src/models/reserva.model.js';
-import { hoyArgentina } from '../src/utils/fecha.js';
+import HistorialReserva from '../src/models/historial.model.js';
+import { hoyArgentina, horaActualArgentina } from '../src/utils/fecha.js';
+import { manejadorErrores } from '../src/middleware/error.middleware.js';
 import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
 const fechaFutura = (diasOffset) => {
@@ -309,5 +311,471 @@ describe('Reservas API', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error', 'Solo se pueden aprobar reservas pendientes');
+  });
+
+  // ==========================================
+  // TESTS FASE 3 — LÓGICA DE NEGOCIO Y CONCURRENCIA
+  // ==========================================
+
+  it('should allow exactly one 201 and nine 400 when 10 concurrent POST requests target the same slot', async () => {
+    const fechaConcurrente = fechaFutura(5);
+
+    const promesas = Array.from({ length: 10 }, (_, idx) =>
+      request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`)
+        .send({
+          aulaId: aula.id,
+          fecha: fechaConcurrente,
+          horaInicio: '10:00',
+          horaFin: '12:00',
+          cantidadPersonas: 10,
+          motivo: `Reserva concurrente #${idx + 1}`
+        })
+    );
+
+    const respuestas = await Promise.all(promesas);
+    const creadas = respuestas.filter((r) => r.status === 201);
+    const rechazadas = respuestas.filter((r) => r.status === 400);
+
+    expect(creadas).toHaveLength(1);
+    expect(rechazadas).toHaveLength(9);
+    rechazadas.forEach((r) => {
+      expect(r.body).toHaveProperty('error', 'El aula ya está reservada en ese horario');
+    });
+
+    const totalEnBd = await Reserva.count({
+      where: { aulaId: aula.id, fecha: fechaConcurrente }
+    });
+    expect(totalEnBd).toBe(1);
+  });
+
+  it('should return 400 when editing a reservation to overlap another even if pre-check is bypassed (23P01)', async () => {
+    const fechaConflicto = fechaFutura(6);
+
+    await Reserva.create({
+      aulaId: aula.id,
+      usuarioId: usuario.id,
+      fecha: fechaConflicto,
+      horaInicio: '10:00',
+      horaFin: '12:00',
+      cantidadPersonas: 10,
+      motivo: 'Reserva base',
+      estado: 'aprobada'
+    });
+
+    const reservaAEditar = await Reserva.create({
+      aulaId: aula.id,
+      usuarioId: usuario.id,
+      fecha: fechaConflicto,
+      horaInicio: '14:00',
+      horaFin: '16:00',
+      cantidadPersonas: 10,
+      motivo: 'Reserva a mover',
+      estado: 'pendiente'
+    });
+
+    const originalFindOne = Reserva.findOne.bind(Reserva);
+    const findOneSpy = jest.spyOn(Reserva, 'findOne').mockImplementation(async (options) => {
+      if (options?.where?.estado) {
+        return null; // Saltea el chequeo previo en memoria para que actúe la constraint 23P01 en Postgres
+      }
+      return originalFindOne(options);
+    });
+
+    try {
+      const response = await request(app)
+        .put(`/api/reservas/${reservaAEditar.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          horaInicio: '11:00',
+          horaFin: '13:00'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El aula ya está reservada en ese horario');
+    } finally {
+      findOneSpy.mockRestore();
+    }
+  });
+
+  it('should not block new reservation when existing reservation in same slot is cancelled', async () => {
+    const fechaSlot = fechaFutura(7);
+
+    const cancelarRes = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/cancelar`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(cancelarRes.status).toBe(200);
+    expect(cancelarRes.body.estado).toBe('cancelada');
+
+    // Crear en el mismo horario de reservaPendiente (fechaFutura(1), 10:00 - 12:00)
+    const nuevaEnMismoSlot = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${otroUsuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaFutura(1),
+        horaInicio: '10:00',
+        horaFin: '12:00',
+        cantidadPersonas: 12,
+        motivo: 'Reemplaza a la cancelada'
+      });
+
+    expect(nuevaEnMismoSlot.status).toBe(201);
+    expect(nuevaEnMismoSlot.body.estado).toBe('pendiente');
+
+    // Y también si se crea directamente cancelada en otra fecha
+    await Reserva.create({
+      aulaId: aula.id,
+      usuarioId: usuario.id,
+      fecha: fechaSlot,
+      horaInicio: '08:00',
+      horaFin: '10:00',
+      cantidadPersonas: 10,
+      motivo: 'Cancelada previa',
+      estado: 'cancelada'
+    });
+
+    const postSobreCancelada = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaSlot,
+        horaInicio: '08:00',
+        horaFin: '10:00',
+        cantidadPersonas: 10,
+        motivo: 'Nueva sobre cancelada'
+      });
+
+    expect(postSobreCancelada.status).toBe(201);
+  });
+
+  it('should allow consecutive reservations touching at exact boundary 10:00/10:00', async () => {
+    const fechaBorde = fechaFutura(8);
+
+    const primera = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaBorde,
+        horaInicio: '08:00',
+        horaFin: '10:00',
+        cantidadPersonas: 10,
+        motivo: 'Bloque 08 a 10'
+      });
+    expect(primera.status).toBe(201);
+
+    const segunda = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaBorde,
+        horaInicio: '10:00',
+        horaFin: '12:00',
+        cantidadPersonas: 10,
+        motivo: 'Bloque 10 a 12'
+      });
+    expect(segunda.status).toBe(201);
+  });
+
+  it('should compute "hoy" and obtenerResumen correctly at 22:00 Argentina time (01:00 UTC next day)', async () => {
+    // 2026-11-08T01:00:00.000Z corresponde a las 22:00 del 2026-11-07 en America/Argentina/Cordoba (UTC-3)
+    const instante22hsArg = new Date('2026-11-08T01:00:00.000Z');
+
+    expect(hoyArgentina(instante22hsArg)).toBe('2026-11-07');
+    expect(horaActualArgentina(instante22hsArg)).toBe('22:00');
+
+    jest.useFakeTimers({
+      doNotFake: [
+        'nextTick',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout'
+      ]
+    });
+    jest.setSystemTime(instante22hsArg);
+
+    try {
+      expect(hoyArgentina()).toBe('2026-11-07');
+      expect(horaActualArgentina()).toBe('22:00');
+
+      const tokenAdmin22hs = jwt.sign(
+        { id: 1, nombre: 'Admin Test', email: 'admin@test.com', rol: 'admin' },
+        env.JWT_SECRET,
+        { expiresIn: '2h' }
+      );
+
+      const reservaNocturnaHoy = await Reserva.create({
+        aulaId: aula.id,
+        usuarioId: usuario.id,
+        fecha: '2026-11-07',
+        horaInicio: '22:00',
+        horaFin: '23:00',
+        cantidadPersonas: 10,
+        motivo: 'Reserva nocturna de hoy a las 22:00',
+        estado: 'aprobada'
+      });
+
+      const response = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${tokenAdmin22hs}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.proximasHoy.some((r) => r.id === reservaNocturnaHoy.id)).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('should reject past dates and invalid field formats on POST and PUT /api/reservas', async () => {
+    const fechaPasada = fechaFutura(-1);
+
+    const resPasada = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaPasada,
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'Intento en fecha pasada'
+      });
+    expect(resPasada.status).toBe(400);
+    expect(resPasada.body.error).toMatch(/pasada/i);
+
+    const resPutPasada = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ fecha: fechaPasada });
+    expect(resPutPasada.status).toBe(400);
+    expect(resPutPasada.body.error).toMatch(/pasada/i);
+
+    const resFechaInvalida = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: '2026-02-30',
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'Fecha inexistente'
+      });
+    expect(resFechaInvalida.status).toBe(400);
+
+    const resHoraInvalida = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaFutura(2),
+        horaInicio: '9:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'Hora sin cero inicial'
+      });
+    expect(resHoraInvalida.status).toBe(400);
+
+    const resCantidadCero = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaFutura(2),
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        cantidadPersonas: 0,
+        motivo: 'Cero personas'
+      });
+    expect(resCantidadCero.status).toBe(400);
+
+    const resMotivoLargo = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: aula.id,
+        fecha: fechaFutura(2),
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'x'.repeat(256)
+      });
+    expect(resMotivoLargo.status).toBe(400);
+
+    const resAulaIdInvalido = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${usuarioToken}`)
+      .send({
+        aulaId: 'no-es-entero',
+        fecha: fechaFutura(2),
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'Aula inválida'
+      });
+    expect(resAulaIdInvalido.status).toBe(400);
+  });
+
+  it('should not ignore 0 in cantidadPersonas on PUT and should verify aula remains active (L4)', async () => {
+    const resPutCero = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ cantidadPersonas: 0 });
+    expect(resPutCero.status).toBe(400);
+
+    await aula.update({ activa: false });
+
+    const resAulaInactiva = await request(app)
+      .put(`/api/reservas/${reservaPendiente.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ motivo: 'Intento editar en aula desactivada' });
+
+    expect(resAulaInactiva.status).toBe(400);
+    expect(resAulaInactiva.body.error).toMatch(/activa/i);
+  });
+
+  it('should rollback state change if history creation fails in aprobar, rechazar and cancelar', async () => {
+    // 1. Aprobar con fallo en historial
+    const spyAprobar = jest
+      .spyOn(HistorialReserva, 'create')
+      .mockRejectedValueOnce(new Error('Fallo en BD al guardar historial'));
+
+    const resAprobar = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/aprobar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(resAprobar.status).toBe(500);
+    spyAprobar.mockRestore();
+
+    const trasFalloAprobar = await Reserva.findByPk(reservaPendiente.id);
+    expect(trasFalloAprobar.estado).toBe('pendiente');
+
+    // 2. Rechazar con fallo en historial
+    const spyRechazar = jest
+      .spyOn(HistorialReserva, 'create')
+      .mockRejectedValueOnce(new Error('Fallo en BD al guardar historial'));
+
+    const resRechazar = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/rechazar`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(resRechazar.status).toBe(500);
+    spyRechazar.mockRestore();
+
+    const trasFalloRechazar = await Reserva.findByPk(reservaPendiente.id);
+    expect(trasFalloRechazar.estado).toBe('pendiente');
+
+    // 3. Cancelar con fallo en historial
+    const spyCancelar = jest
+      .spyOn(HistorialReserva, 'create')
+      .mockRejectedValueOnce(new Error('Fallo en BD al guardar historial'));
+
+    const resCancelar = await request(app)
+      .patch(`/api/reservas/${reservaPendiente.id}/cancelar`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+
+    expect(resCancelar.status).toBe(500);
+    spyCancelar.mockRestore();
+
+    const trasFalloCancelar = await Reserva.findByPk(reservaPendiente.id);
+    expect(trasFalloCancelar.estado).toBe('pendiente');
+  });
+
+  it('should return occupied time slots on GET /api/aulas/:id/disponibilidad', async () => {
+    const fechaDisp = fechaFutura(1);
+
+    // Agregamos una cancelada y una aprobada ese mismo día
+    await Reserva.create({
+      aulaId: aula.id,
+      usuarioId: usuario.id,
+      fecha: fechaDisp,
+      horaInicio: '08:00',
+      horaFin: '09:00',
+      cantidadPersonas: 5,
+      motivo: 'Cancelada no debe figurar',
+      estado: 'cancelada'
+    });
+
+    await Reserva.create({
+      aulaId: aula.id,
+      usuarioId: usuario.id,
+      fecha: fechaDisp,
+      horaInicio: '18:00',
+      horaFin: '20:00',
+      cantidadPersonas: 10,
+      motivo: 'Aprobada sí debe figurar',
+      estado: 'aprobada'
+    });
+
+    // Sin token -> 401
+    const sinToken = await request(app).get(`/api/aulas/${aula.id}/disponibilidad?fecha=${fechaDisp}`);
+    expect(sinToken.status).toBe(401);
+
+    // Aula inexistente -> 404
+    const aulaInexistente = await request(app)
+      .get(`/api/aulas/99999/disponibilidad?fecha=${fechaDisp}`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(aulaInexistente.status).toBe(404);
+
+    // Fecha inválida -> 400
+    const fechaInvalida = await request(app)
+      .get(`/api/aulas/${aula.id}/disponibilidad?fecha=fecha-invalida`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(fechaInvalida.status).toBe(400);
+
+    // Consulta válida -> 200 con franjas pendientes y aprobadas ordenadas
+    const okRes = await request(app)
+      .get(`/api/aulas/${aula.id}/disponibilidad?fecha=${fechaDisp}`)
+      .set('Authorization', `Bearer ${usuarioToken}`);
+
+    expect(okRes.status).toBe(200);
+    expect(okRes.body).toEqual([
+      { horaInicio: '10:00', horaFin: '12:00', estado: 'pendiente' },
+      { horaInicio: '14:00', horaFin: '16:00', estado: 'pendiente' },
+      { horaInicio: '18:00', horaFin: '20:00', estado: 'aprobada' }
+    ]);
+  });
+
+  it('should map Sequelize FK and Unique constraint errors in manejadorErrores', () => {
+    const crearResMock = () => {
+      const res = {};
+      res.status = jest.fn().mockReturnValue(res);
+      res.json = jest.fn().mockReturnValue(res);
+      return res;
+    };
+
+    const resUnique = crearResMock();
+    manejadorErrores(
+      {
+        name: 'SequelizeUniqueConstraintError',
+        parent: { code: '23505', constraint: 'usuarios_email_key' },
+        fields: { email: 'duplicado@test.com' }
+      },
+      {},
+      resUnique,
+      () => {}
+    );
+    expect(resUnique.status).toHaveBeenCalledWith(400);
+    expect(resUnique.json).toHaveBeenCalledWith({ error: 'El email ya está registrado' });
+
+    const resFkAula = crearResMock();
+    manejadorErrores(
+      {
+        name: 'SequelizeForeignKeyConstraintError',
+        parent: { code: '23503', constraint: 'reservas_aulaId_fkey' }
+      },
+      {},
+      resFkAula,
+      () => {}
+    );
+    expect(resFkAula.status).toHaveBeenCalledWith(404);
+    expect(resFkAula.json).toHaveBeenCalledWith({ error: 'El aula solicitada no existe' });
   });
 });
