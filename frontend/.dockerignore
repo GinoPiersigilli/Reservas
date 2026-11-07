@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+npm-debug.log*
+.env
+.env.*
+!.env.example
+src/pages/__tests__
+src/test-utils.jsx
+.git
+.gitignore
+README.md
