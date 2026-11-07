@@ -1,0 +1,33 @@
+.botonOrden {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta-2);
+  cursor: pointer;
+}
+
+.botonOrden:hover {
+  color: var(--tinta);
+}
+
+.idCelda {
+  font-weight: var(--peso-medio);
+  color: var(--tinta-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.horarioCelda {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.accionesCelda {
+  text-align: right;
+  white-space: nowrap;
+}

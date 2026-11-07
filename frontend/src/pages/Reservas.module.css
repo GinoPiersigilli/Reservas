@@ -1,0 +1,73 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-6);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  padding-bottom: var(--espacio-4);
+  border-bottom: var(--borde-ancho) solid var(--borde);
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
+}
+
+.resumenPaginacion {
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.controlesPaginacion {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-1);
+}
+
+.botonPagina {
+  min-width: var(--control-altura-sm);
+  min-height: var(--control-altura-sm);
+  padding: var(--espacio-1) var(--espacio-2);
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde-control);
+  border-radius: var(--radio-control);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  color: var(--tinta);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida);
+}
+
+.botonPagina:hover:not(:disabled) {
+  background-color: var(--fondo);
+}
+
+.botonPaginaActivo {
+  background-color: var(--acento);
+  border-color: var(--acento);
+  color: var(--tinta-inversa);
+}
+
+@media (max-width: 768px) {
+  .cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -1,94 +1,106 @@
 import { useNavigate } from 'react-router-dom';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { Button, EstadoBadge, Table } from './ui/index.js';
+import { TEXTOS } from '../textos.js';
+import { formatearFecha } from '../utils/formato.js';
+import styles from './TablaReservas.module.css';
 
-const TablaReservas = ({ reservas }) => {
+export default function TablaReservas({
+  reservas = [],
+  esAdmin = false,
+  mapaAulas = {},
+  sortBy = 'createdAt',
+  order = 'DESC',
+  onOrdenar
+}) {
   const navigate = useNavigate();
 
-  const getEstadoBadge = (estado) => {
-    const map = {
-      'pendiente': 'badge-pending',
-      'aprobada': 'badge-approved',
-      'rechazada': 'badge-rejected',
-      'cancelada': 'badge-rejected'
-    };
-    return map[estado] || '';
+  const renderCabeceraOrdenable = (etiqueta, campo) => {
+    if (!onOrdenar) return etiqueta;
+    const activo = sortBy === campo;
+    const Icono = !activo ? ArrowUpDown : order === 'ASC' ? ArrowUp : ArrowDown;
+    return (
+      <button
+        type="button"
+        className={styles.botonOrden}
+        onClick={() => onOrdenar(campo)}
+      >
+        <span>{etiqueta}</span>
+        <Icono size={14} strokeWidth={1.75} aria-hidden="true" />
+      </button>
+    );
   };
 
-  const formatearFecha = (fecha) => {
-    return new Date(fecha).toLocaleDateString('es-AR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const obtenerAriaSort = (campo) => {
+    if (sortBy !== campo) return 'none';
+    return order === 'ASC' ? 'ascending' : 'descending';
   };
 
-  const estadoLabels = {
-    'pendiente': 'Pendiente',
-    'aprobada': 'Aprobada',
-    'rechazada': 'Rechazada',
-    'cancelada': 'Cancelada'
+  const obtenerNombreAula = (r) => {
+    if (r.aula?.nombre) return r.aula.nombre;
+    if (mapaAulas[r.aulaId]) return mapaAulas[r.aulaId];
+    return `Aula ${r.aulaId}`;
+  };
+
+  const obtenerSolicitante = (r) => {
+    if (r.usuario?.nombre) return r.usuario.nombre;
+    if (r.usuarioNombre) return r.usuarioNombre;
+    if (r.usuarioId) return `Usuario #${r.usuarioId}`;
+    return '—';
   };
 
   return (
-    <div className="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Aula</th>
-            <th>Fecha</th>
-            <th>Horario</th>
-            <th>Motivo</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reservas.map((r) => (
-            <tr key={r.id}>
-              <td style={{ fontWeight: 500, color: '#2563eb' }}>
-                #{r.id}
-              </td>
-              <td>
-                Aula {r.aulaId}
-              </td>
-              <td>
-                {formatearFecha(r.fecha)}
-              </td>
-              <td style={{ fontSize: '13px', color: '#6b7280' }}>
-                {r.horaInicio} - {r.horaFin}
-              </td>
-              <td>
-                {r.motivo}
-              </td>
-              <td>
-                <span className={`badge ${getEstadoBadge(r.estado)}`}>
-                  {estadoLabels[r.estado] || r.estado}
-                </span>
-              </td>
-              <td>
-                <button
-                  onClick={() => navigate(`/reservas/${r.id}`)}
-                  className="btn-ghost btn-small"
-                  style={{
-                    color: '#2563eb',
-                    borderColor: '#2563eb'
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.backgroundColor = '#eff6ff';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  Ver →
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table ariaLabel="Listado de reservas">
+      <Table.Head>
+        <Table.Row>
+          <Table.HeaderCell aria-sort={obtenerAriaSort('id')}>
+            {renderCabeceraOrdenable('#', 'id')}
+          </Table.HeaderCell>
+          <Table.HeaderCell aria-sort={obtenerAriaSort('aulaId')}>
+            {renderCabeceraOrdenable('Aula', 'aulaId')}
+          </Table.HeaderCell>
+          <Table.HeaderCell aria-sort={obtenerAriaSort('fecha')}>
+            {renderCabeceraOrdenable('Fecha', 'fecha')}
+          </Table.HeaderCell>
+          <Table.HeaderCell aria-sort={obtenerAriaSort('horaInicio')}>
+            {renderCabeceraOrdenable('Horario', 'horaInicio')}
+          </Table.HeaderCell>
+          {esAdmin ? <Table.HeaderCell>Solicitante</Table.HeaderCell> : null}
+          <Table.HeaderCell>Motivo</Table.HeaderCell>
+          <Table.HeaderCell aria-sort={obtenerAriaSort('estado')}>
+            {renderCabeceraOrdenable('Estado', 'estado')}
+          </Table.HeaderCell>
+          <Table.HeaderCell className={styles.accionesCelda}>
+            <span className="sr-only">Acciones</span>
+          </Table.HeaderCell>
+        </Table.Row>
+      </Table.Head>
+      <Table.Body>
+        {reservas.map((r) => (
+          <Table.Row key={r.id}>
+            <Table.Cell className={styles.idCelda}>#{r.id}</Table.Cell>
+            <Table.Cell>{obtenerNombreAula(r)}</Table.Cell>
+            <Table.Cell>{formatearFecha(r.fecha)}</Table.Cell>
+            <Table.Cell className={styles.horarioCelda}>
+              {r.horaInicio}–{r.horaFin}
+            </Table.Cell>
+            {esAdmin ? <Table.Cell>{obtenerSolicitante(r)}</Table.Cell> : null}
+            <Table.Cell>{r.motivo}</Table.Cell>
+            <Table.Cell>
+              <EstadoBadge estado={r.estado} />
+            </Table.Cell>
+            <Table.Cell className={styles.accionesCelda}>
+              <Button
+                variante="secundario"
+                tamano="sm"
+                onClick={() => navigate(`/reservas/${r.id}`)}
+              >
+                {TEXTOS.acciones.ver}
+              </Button>
+            </Table.Cell>
+          </Table.Row>
+        ))}
+      </Table.Body>
+    </Table>
   );
-};
-
-export default TablaReservas;
+}
