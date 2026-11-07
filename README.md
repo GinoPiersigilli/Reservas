@@ -131,6 +131,11 @@ El frontend queda disponible en `http://localhost:5173`.
 
 ## Endpoints de la API
 
+### Salud y monitoreo
+| Método | Ruta | Descripción | Acceso |
+|---|---|---|---|
+| `GET` | `/api/health` | Verifica el estado del servidor y la conexión activa con PostgreSQL | Público |
+
 ### Autenticación
 | Método | Ruta | Descripción | Acceso |
 |---|---|---|---|

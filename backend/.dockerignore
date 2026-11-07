@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+coverage
+backups
+*.sqlite
+*.dump
+tests
+db/seeders
+scripts/legacy
+.git
+.gitignore
+README.md

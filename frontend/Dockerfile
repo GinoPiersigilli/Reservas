@@ -1,0 +1,29 @@
+# Etapa 1: Build estático con Vite
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_API_BASE_URL=/api
+ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+RUN npm run build
+
+# Etapa 2: Servidor web Nginx para archivos estáticos y proxy /api
+FROM nginx:1.27-alpine AS production
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:80/ > /dev/null || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -30,6 +30,7 @@ reservas/
 ├── README.md
 ├── docs/
 │   ├── CONTEXTO_PROYECTO.md              ← Este documento
+│   ├── DEPLOY.md                         ← Guía de despliegue, backups y rollback
 │   ├── PLAN_MEJORAS_ANTIGRAVITY.md
 │   └── PLAN_POSTGRESQL.md
 ├── backend/
@@ -281,6 +282,11 @@ Todas las transiciones de estado y su registro en `historial_reservas` (`'aproba
 ---
 
 ## Endpoints del backend
+
+### Salud
+| Método | Ruta | Descripción | Auth |
+|---|---|---|---|
+| GET | `/api/health` | Verifica que el backend esté activo y conectado a PostgreSQL (`200` ok / `503` error) | No (Público) |
 
 ### Auth
 | Método | Ruta | Descripción | Auth |
