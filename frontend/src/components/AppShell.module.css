@@ -1,0 +1,213 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background-color: var(--fondo);
+  color: var(--tinta);
+}
+
+.barraMovil {
+  display: none;
+}
+
+.sidebar {
+  width: var(--sidebar-ancho);
+  flex-shrink: 0;
+  background-color: var(--superficie);
+  border-right: var(--borde-ancho) solid var(--borde);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--espacio-6) var(--espacio-4);
+}
+
+.bloqueSuperior {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-6);
+}
+
+.marca {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semibold);
+  line-height: var(--linea-titulo);
+  color: var(--tinta);
+  padding: 0 var(--espacio-2);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+}
+
+.enlace {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-height: var(--control-altura);
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio-control);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta-2);
+  text-decoration: none;
+  border: var(--borde-ancho) solid transparent;
+  transition:
+    background-color var(--transicion-rapida),
+    color var(--transicion-rapida),
+    border-color var(--transicion-rapida);
+}
+
+.enlace:hover {
+  background-color: var(--fondo);
+  color: var(--tinta);
+  text-decoration: none;
+}
+
+.enlaceActivo {
+  background-color: var(--fondo);
+  color: var(--acento);
+  font-weight: var(--peso-semibold);
+  border-color: var(--borde);
+}
+
+.sesion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  padding-top: var(--espacio-4);
+  border-top: var(--borde-ancho) solid var(--borde);
+}
+
+.datosUsuario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  padding: 0 var(--espacio-2);
+}
+
+.nombreUsuario {
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+  word-break: break-word;
+}
+
+.rolUsuario {
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.botonCerrar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--espacio-2);
+  width: 100%;
+  min-height: var(--control-altura);
+  padding: var(--espacio-2) var(--espacio-3);
+  background-color: transparent;
+  border: var(--borde-ancho) solid var(--borde-control);
+  border-radius: var(--radio-control);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta);
+  cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida);
+}
+
+.botonCerrar:hover {
+  background-color: var(--fondo);
+  border-color: var(--tinta-2);
+}
+
+.contenido {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: var(--espacio-8) var(--espacio-6);
+}
+
+.contenedorInterior {
+  width: 100%;
+  max-width: var(--contenedor-max-ancho);
+  min-width: 0;
+}
+
+.botonMenuMovil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-min-tactil);
+  min-height: var(--control-min-tactil);
+  padding: var(--espacio-2);
+  background-color: transparent;
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+.telonMovil {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .barraMovil {
+    display: flex;
+    align-items: center;
+    gap: var(--espacio-3);
+    min-height: var(--topbar-altura);
+    padding: var(--espacio-2) var(--espacio-4);
+    background-color: var(--superficie);
+    border-bottom: var(--borde-ancho) solid var(--borde);
+  }
+
+  .tituloMovil {
+    font-family: var(--fuente-titulo);
+    font-size: var(--texto-lg);
+    font-weight: var(--peso-semibold);
+    color: var(--tinta);
+  }
+
+  .sidebar {
+    display: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: var(--borde-ancho) solid var(--borde);
+    padding: var(--espacio-4);
+    gap: var(--espacio-4);
+    z-index: var(--z-menu-movil);
+  }
+
+  .sidebarAbierto {
+    display: flex;
+  }
+
+  .marca {
+    display: none;
+  }
+
+  .enlace,
+  .botonCerrar {
+    min-height: var(--control-min-tactil);
+  }
+
+  .contenido {
+    padding: var(--espacio-5) var(--espacio-4);
+  }
+}
+

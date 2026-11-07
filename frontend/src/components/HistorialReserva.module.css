@@ -1,0 +1,31 @@
+.fechaCelda {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.accionTexto {
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta);
+}
+
+.usuarioTexto {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+}
+
+.detalleContenedor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.etiquetaDetalle {
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+

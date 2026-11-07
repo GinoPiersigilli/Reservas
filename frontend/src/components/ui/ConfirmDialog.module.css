@@ -1,0 +1,51 @@
+.telon {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espacio-4);
+  background-color: var(--overlay);
+}
+
+.dialogo {
+  width: 100%;
+  max-width: var(--dialogo-max-ancho);
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
+  padding: var(--espacio-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+}
+
+.titulo {
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+
+.descripcion {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  line-height: var(--linea-base);
+}
+
+.pie {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--espacio-3);
+  margin-top: var(--espacio-2);
+}
+

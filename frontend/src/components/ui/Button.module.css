@@ -1,0 +1,101 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-2);
+  min-height: var(--control-altura);
+  padding: var(--espacio-2) var(--espacio-4);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  line-height: var(--linea-base);
+  border-radius: var(--radio-control);
+  border: var(--borde-ancho) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.button:focus-visible {
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: var(--foco-offset);
+}
+
+.sm {
+  min-height: var(--control-altura-sm);
+  padding: var(--espacio-1) var(--espacio-3);
+  font-size: var(--texto-xs);
+}
+
+.bloque {
+  width: 100%;
+}
+
+.primario {
+  background-color: var(--acento);
+  border-color: var(--acento);
+  color: var(--tinta-inversa);
+}
+
+.primario:hover:not(:disabled) {
+  background-color: var(--acento-hover);
+  border-color: var(--acento-hover);
+}
+
+.secundario {
+  background-color: var(--superficie);
+  border-color: var(--borde-control);
+  color: var(--tinta);
+}
+
+.secundario:hover:not(:disabled) {
+  background-color: var(--fondo);
+  border-color: var(--tinta-2);
+}
+
+.peligro {
+  background-color: var(--peligro);
+  border-color: var(--peligro);
+  color: var(--tinta-inversa);
+}
+
+.peligro:hover:not(:disabled) {
+  background-color: var(--peligro-hover);
+  border-color: var(--peligro-hover);
+}
+
+.button:disabled {
+  opacity: var(--opacidad-deshabilitado);
+  cursor: not-allowed;
+}
+
+.icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--icono-sm);
+  height: var(--icono-sm);
+}
+
+.giro {
+  animation: giro 0.8s linear infinite;
+}
+
+@keyframes giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .button,
+  .sm {
+    min-height: var(--control-min-tactil);
+  }
+}
+

@@ -1,0 +1,142 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-6);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.migas {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+}
+
+.enlaceMiga {
+  color: var(--acento);
+  font-weight: var(--peso-medio);
+  text-decoration: none;
+}
+
+.enlaceMiga:hover {
+  text-decoration: underline;
+}
+
+.separadorMiga {
+  color: var(--tinta-2);
+}
+
+.actualMiga {
+  color: var(--tinta-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  flex-wrap: wrap;
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+  line-height: var(--linea-titulo);
+}
+
+.ficha {
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
+  padding: var(--espacio-6);
+}
+
+.subtituloFicha {
+  margin: 0 0 var(--espacio-5) 0;
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+
+.listaDatos {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.filaDato {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: var(--espacio-4);
+  padding: var(--espacio-3) 0;
+  border-bottom: var(--borde-ancho) solid var(--borde);
+}
+
+.filaDato:first-child {
+  padding-top: 0;
+}
+
+.filaDato:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.etiquetaDato {
+  margin: 0;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta-2);
+}
+
+.valorDato {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--tinta);
+  line-height: var(--linea-base);
+}
+
+.valorDestacado {
+  font-weight: var(--peso-semibold);
+}
+
+.valorSecundario {
+  margin-left: var(--espacio-2);
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.seccionHistorial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tituloHistorial {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+
+@media (max-width: 768px) {
+  .ficha {
+    padding: var(--espacio-4);
+  }
+
+  .filaDato {
+    grid-template-columns: 1fr;
+    gap: var(--espacio-1);
+  }
+}

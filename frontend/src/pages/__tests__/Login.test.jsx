@@ -15,7 +15,7 @@ describe('Login page', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders login form fields', () => {
+  it('renders login form fields without emoji or inline test credentials', () => {
     render(
       <AuthProvider>
         <MemoryRouter>
@@ -24,9 +24,10 @@ describe('Login page', () => {
       </AuthProvider>
     );
 
-    expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Reservas de aulas' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Correo electrónico/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Contraseña/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /^Ingresar$/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: /^Ingresar$/i })).toBeInTheDocument();
   });
 
   it('authenticates local user and stores JWT token and user in localStorage', async () => {
@@ -51,16 +52,14 @@ describe('Login page', () => {
       </AuthProvider>
     );
 
-    fireEvent.change(screen.getByLabelText(/Email/i), {
+    fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
       target: { name: 'email', value: 'david@utnfrc.edu.ar' }
     });
     fireEvent.change(screen.getByLabelText(/Contraseña/i), {
       target: { name: 'password', value: 'user123' }
     });
 
-    const submitButtons = screen.getAllByRole('button', { name: /Ingresar/i });
-    const submitBtn = submitButtons.find((btn) => btn.getAttribute('type') === 'submit');
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -93,16 +92,14 @@ describe('Login page', () => {
       </AuthProvider>
     );
 
-    fireEvent.change(screen.getByLabelText(/Email/i), {
+    fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
       target: { name: 'email', value: 'david@utnfrc.edu.ar' }
     });
     fireEvent.change(screen.getByLabelText(/Contraseña/i), {
       target: { name: 'password', value: 'clave_incorrecta' }
     });
 
-    const submitButtons = screen.getAllByRole('button', { name: /Ingresar/i });
-    const submitBtn = submitButtons.find((btn) => btn.getAttribute('type') === 'submit');
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^Ingresar$/i }));
 
     expect(await screen.findByText(/Credenciales inválidas/i)).toBeInTheDocument();
   });

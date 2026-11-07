@@ -4,13 +4,13 @@
 
 ## Stack tecnológico
 
-- **Frontend:** React 19 + Vite + React Router (`react-router-dom`)
+- **Frontend:** React 19 + Vite + React Router (`react-router-dom`) + CSS Modules (`*.module.css`) + sistema de tokens (`src/styles/tokens.css` y `src/styles/base.css`) + fuentes autoalojadas (`@fontsource/source-serif-4` y `@fontsource/public-sans`) + íconos `lucide-react`
 - **Backend:** Node.js (ESM) + Express + Sequelize 6 + PostgreSQL 16 (`pg` + `pg-hstore`)
 - **Migraciones y Seed:** `sequelize-cli` (`backend/db/migrations/` y `backend/db/seeders/`)
 - **Autenticación:** Clerk (`@clerk/backend` / `@clerk/clerk-react`) con aprovisionamiento local (JIT) + JWT local para usuarios de prueba
-- **Seguridad:** `helmet`, `express-rate-limit` en `/api/auth/login`, CORS configurable por `CORS_ORIGINS`, validación de entorno en arranque (`src/config/env.js`)
-- **Contenedores:** Docker Compose (PostgreSQL 16 con creación automática de `reservas` y `reservas_test`)
-- **Testing:** Jest + Supertest en backend (`backend/tests/`); Vitest + Testing Library en frontend (`frontend/src/pages/__tests__/`)
+- **Seguridad:** `helmet`, `express-rate-limit` en `/api/auth/login`, CORS configurable por `CORS_ORIGINS`, validación de entorno en arranque (`src/config/env.js`), `Content-Security-Policy` en `frontend/nginx.conf` (documentada en `docs/SEGURIDAD.md`), 0 estilos o scripts en línea propios
+- **Contenedores:** Docker Compose (`docker-compose.yml` para PostgreSQL 16 en desarrollo y `docker-compose.prod.yml` para el stack productivo completo)
+- **Testing y Accesibilidad:** Jest + Supertest en backend (`backend/tests/`); Vitest + Testing Library + `vitest-axe` en frontend (`frontend/src/pages/__tests__/`, `frontend/src/components/__tests__/`, `frontend/src/components/ui/__tests__/`) y script de contraste WCAG 2.1 AA (`frontend/scripts/verificar-contraste.js`)
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`)
 
 ---
@@ -31,8 +31,12 @@ reservas/
 ├── docs/
 │   ├── CONTEXTO_PROYECTO.md              ← Este documento
 │   ├── DEPLOY.md                         ← Guía de despliegue, backups y rollback
+│   ├── DISENO_UX_UI.md                   ← Principios de diseño institucional y accesibilidad
+│   ├── DISENO_PROPUESTA.md               ← Auditoría y especificación del rediseño UX/UI (Fase 3b)
+│   ├── SEGURIDAD.md                      ← Política Content-Security-Policy (CSP) y análisis de riesgos
 │   ├── PLAN_MEJORAS_ANTIGRAVITY.md
-│   └── PLAN_POSTGRESQL.md
+│   ├── PLAN_POSTGRESQL.md
+│   └── img/                              ← Capturas finales (escritorio 1280px y móvil 360px)
 ├── backend/
 │   ├── index.js                          ← Entry point (authenticate BD + listen)
 │   ├── package.json
@@ -87,43 +91,62 @@ reservas/
 │       ├── reservas.test.js
 │       └── esquema-constraint.test.js
 └── frontend/
+    ├── Dockerfile                        ← Build multi-etapa (Node 20 Alpine → Nginx 1.27 Alpine)
+    ├── nginx.conf                        ← Servidor estático, proxy /api y cabecera Content-Security-Policy
     ├── package.json
     ├── vite.config.js
     ├── eslint.config.js
     ├── .env.example
+    ├── scripts/
+    │   └── verificar-contraste.js        ← Verifica contrastes WCAG 2.1 AA de tokens.css contra DISENO_PROPUESTA.md
     └── src/
-        ├── main.jsx                      ← ClerkProvider + BrowserRouter
-        ├── App.jsx                       ← AuthProvider + Routes
-        ├── index.css
+        ├── main.jsx                      ← Fuentes @fontsource, tokens.css, base.css, ClerkProvider + BrowserRouter
+        ├── App.jsx                       ← AuthProvider + Routes con layout compartido AppShell
+        ├── textos.js                     ← Textos centralizados en español neutro formal
         ├── test-utils.jsx                ← Setup de Vitest + Testing Library
+        ├── styles/
+        │   ├── tokens.css                ← Variables CSS (colores, estados, escala tipográfica, espaciado, radios)
+        │   └── base.css                  ← Reset, tipografía, foco visible de 2 px y prefers-reduced-motion
+        ├── config/
+        │   ├── horarios.js               ← Configuración única de franjas horarias (08:00 a 22:00 cada 30 min)
+        │   └── clerkAppearance.js        ← Variables de apariencia de Clerk alineadas con tokens.css
+        ├── utils/
+        │   └── formato.js                ← Formato de fechas (dd/mm/aaaa), fecha-hora (24 h) y duración
         ├── context/
         │   └── AuthContext.jsx           ← usuario, iniciarSesionLocal, cerrarSesion
         ├── components/
+        │   ├── AppShell.jsx              ← Barra lateral en escritorio y menú desplegable accesible en móvil
+        │   ├── GrillaDisponibilidad.jsx  ← Grilla horaria interactiva por aula (teclado, 2 clics, móvil vertical)
         │   ├── RutaProtegida.jsx
         │   ├── RutaSoloAdmin.jsx
         │   ├── FiltrosReservas.jsx
         │   ├── TablaReservas.jsx
-        │   ├── AccionesReserva.jsx
-        │   └── HistorialReserva.jsx
+        │   ├── AccionesReserva.jsx       ← Barra de acciones con ConfirmDialog para cancelar/rechazar
+        │   ├── HistorialReserva.jsx      ← Tabla cronológica de cambios de estado y edición
+        │   ├── __tests__/
+        │   │   └── AppShell.test.jsx
+        │   └── ui/                       ← Button, Field, Input, Select, Textarea, Table, EstadoBadge, ConfirmDialog, Toast, TablaSkeleton, EmptyState, ErrorState
         ├── pages/
-        │   ├── Login.jsx                 ← Login local + SignIn de Clerk
-        │   ├── Register.jsx
-        │   ├── Reservas.jsx
-        │   ├── DetalleReserva.jsx
-        │   ├── FormularioReserva.jsx
-        │   ├── Resumen.jsx
-        │   ├── NotFound.jsx
+        │   ├── Login.jsx                 ← Panel centrado de 400 px (login local + SignIn de Clerk)
+        │   ├── Register.jsx              ← Panel centrado de 400 px (registro local + SignUp de Clerk)
+        │   ├── Reservas.jsx              ← Listado con filtros visibles, orden por columna y paginación
+        │   ├── DetalleReserva.jsx        ← Ruta de migas, lista de definiciones (<dl>), acciones e historial
+        │   ├── FormularioReserva.jsx     ← Flujo en 3 pasos con GrillaDisponibilidad y resumen previo
+        │   ├── Resumen.jsx               ← Panel admin: cola de pendientes con confirmación, Hoy y datos compactos
+        │   ├── NotFound.jsx              ← Página 404 integrada en AppShell
+        │   ├── GuiaEstilos.jsx           ← Catálogo de componentes base (excluido del build de producción)
         │   └── __tests__/
         │       ├── Login.test.jsx
         │       ├── Register.test.jsx
         │       ├── Reservas.test.jsx
-        │       └── FormularioReserva.test.jsx
+        │       ├── FormularioReserva.test.jsx
+        │       ├── Resumen.test.jsx
+        │       └── Accesibilidad.test.jsx
         └── services/
             ├── axios.js                  ← Instancia Axios + interceptor Bearer token
             ├── auth.service.js
             ├── reservas.service.js
-            ├── aula.service.js
-            └── aulas.service.js
+            └── aula.service.js
 ```
 
 ---
@@ -334,8 +357,12 @@ Se ejecuta con `npm run seed` desde `backend/` (idempotente):
   - `auth.test.js`: login local, credenciales inválidas, rechazo de tokens con firma inválida (401), validación de variables de entorno en arranque, aprovisionamiento y vinculación de usuarios Clerk (`sincronizarUsuarioClerk`), registro de usuarios.
   - `reservas.test.js`: permisos por rol y propiedad, validaciones de creación y edición, flujo completo de estados e historial, rollback transaccional ante fallos, concurrencia (10 `POST` simultáneos al mismo horario → exactamente un `201`), zona horaria `America/Argentina/Cordoba`, filtros, paginación, resumen y endpoint de disponibilidad.
   - `esquema-constraint.test.js`: verificación directa de la exclusion constraint `reservas_sin_solapamiento` en PostgreSQL.
-- **Frontend (`frontend/src/pages/__tests__/`):**
-  - `Login.test.jsx`: renderizado y login local guardando token y usuario.
-  - `Reservas.test.jsx`: listado de reservas, estado vacío y manejo de error de carga.
-  - `FormularioReserva.test.jsx`: creación exitosa de reserva y mensaje de error ante solapamiento horario.
-  - `Register.test.jsx`: renderizado, envío del formulario y error por email duplicado.
+- **Frontend (`frontend/src/pages/__tests__/`, `frontend/src/components/__tests__/`, `frontend/src/components/ui/__tests__/`):**
+  - `ui.test.jsx`: renderizado, estados, foco atrapado y accesibilidad de los 12 componentes base de `src/components/ui/`.
+  - `AppShell.test.jsx`: navegación por rol (ocultamiento del destino `Panel` para usuarios comunes y visibilidad para administradores).
+  - `Login.test.jsx`: renderizado, validación de campos y login local guardando token y usuario.
+  - `Register.test.jsx`: renderizado, envío del formulario y error por correo electrónico duplicado.
+  - `Reservas.test.jsx`: título diferenciado por rol (`Reservas` vs `Mis reservas`), columna `Solicitante` solo para admin, estado vacío y manejo de error de carga.
+  - `FormularioReserva.test.jsx`: creación exitosa de reserva, deshabilitación de franjas ocupadas en `GrillaDisponibilidad`, selección sincronizada con dos clics y mensaje de error del servidor ante solapamiento horario.
+  - `Resumen.test.jsx`: cola de solicitudes pendientes de aprobación en el panel administrativo y confirmación con `ConfirmDialog`.
+  - `Accesibilidad.test.jsx`: auditoría automática `vitest-axe` sin violaciones en todas las pantallas, navegación por teclado con flechas en `GrillaDisponibilidad`, cierre con `Escape` y devolución de foco en `ConfirmDialog`, estados de error con reintento y verificación de contraste WCAG 2.1 AA sobre `tokens.css`.

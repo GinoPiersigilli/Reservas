@@ -1,13 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Reservas from '../Reservas.jsx';
+import * as AuthContextModule from '../../context/AuthContext.jsx';
 import * as reservasService from '../../services/reservas.service.js';
 
 vi.mock('../../context/AuthContext.jsx', () => ({
-  useAuth: () => ({
-    usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar', rol: 'usuario' },
-    cerrarSesion: vi.fn()
-  })
+  useAuth: vi.fn()
 }));
 
 vi.mock('../../services/reservas.service.js', () => ({
@@ -17,9 +15,13 @@ vi.mock('../../services/reservas.service.js', () => ({
 describe('Reservas page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    AuthContextModule.useAuth.mockReturnValue({
+      usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar', rol: 'usuario' },
+      cerrarSesion: vi.fn()
+    });
   });
 
-  it('renders the list of reservations returned by the API', async () => {
+  it('renders the list of reservations returned by the API for a regular user', async () => {
     reservasService.getReservas.mockResolvedValueOnce({
       data: {
         total: 2,
@@ -56,18 +58,60 @@ describe('Reservas page', () => {
       </MemoryRouter>
     );
 
+    expect(screen.getByRole('heading', { name: 'Mis reservas' })).toBeInTheDocument();
     expect(await screen.findByText('Clase de consulta - Análisis Matemático')).toBeInTheDocument();
-    expect(screen.getByText('Simulacro de parcial')).toBeInTheDocument();
-    expect(screen.getByText('#10')).toBeInTheDocument();
-    expect(screen.getByText('#11')).toBeInTheDocument();
-    expect(screen.getByText('Aprobada')).toBeInTheDocument();
-    expect(screen.getByText('Pendiente')).toBeInTheDocument();
+    const tabla = screen.getByRole('table', { name: /Listado de reservas/i });
+    expect(within(tabla).getByText('Simulacro de parcial')).toBeInTheDocument();
+    expect(within(tabla).getByText('#10')).toBeInTheDocument();
+    expect(within(tabla).getByText('#11')).toBeInTheDocument();
+    expect(within(tabla).getByText('10/11/2026')).toBeInTheDocument();
+    expect(within(tabla).getByText('Aprobada')).toBeInTheDocument();
+    expect(within(tabla).getByText('Pendiente')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Solicitante' })).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(reservasService.getReservas).toHaveBeenCalledWith(
         expect.objectContaining({ page: 1, limit: 10 })
       );
     });
+  });
+
+  it('shows title "Reservas" and column "Solicitante" for admin users', async () => {
+    AuthContextModule.useAuth.mockReturnValue({
+      usuario: { id: 1, nombre: 'Admin UTN', email: 'admin@utnfrc.edu.ar', rol: 'admin' },
+      cerrarSesion: vi.fn()
+    });
+
+    reservasService.getReservas.mockResolvedValueOnce({
+      data: {
+        total: 1,
+        pagina: 1,
+        porPagina: 10,
+        datos: [
+          {
+            id: 25,
+            aulaId: 1,
+            usuarioId: 2,
+            fecha: '2026-11-12',
+            horaInicio: '10:00',
+            horaFin: '12:00',
+            cantidadPersonas: 30,
+            motivo: 'Parcial Física',
+            estado: 'pendiente'
+          }
+        ]
+      }
+    });
+
+    render(
+      <MemoryRouter>
+        <Reservas />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Reservas' })).toBeInTheDocument();
+    expect(await screen.findByRole('columnheader', { name: 'Solicitante' })).toBeInTheDocument();
+    expect(screen.getByText('Usuario #2')).toBeInTheDocument();
   });
 
   it('shows empty state when there are no reservations', async () => {
@@ -84,7 +128,7 @@ describe('Reservas page', () => {
     expect(await screen.findByText(/No hay reservas/i)).toBeInTheDocument();
   });
 
-  it('shows error alert when loading reservations fails', async () => {
+  it('shows error state with Reintentar button when loading reservations fails', async () => {
     reservasService.getReservas.mockRejectedValueOnce(new Error('Network error'));
 
     render(
@@ -94,5 +138,6 @@ describe('Reservas page', () => {
     );
 
     expect(await screen.findByText(/Error al cargar las reservas/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
 });

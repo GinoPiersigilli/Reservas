@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Button, Field, Input, Select, Toast } from '../components/ui/index.js';
+import GrillaDisponibilidad from '../components/GrillaDisponibilidad.jsx';
+import {
+  HORA_FIN_JORNADA,
+  HORA_INICIO_JORNADA,
+  obtenerHoyArgentina
+} from '../config/horarios.js';
+import * as aulaService from '../services/aula.service.js';
 import { getReserva, crearReserva, editarReserva } from '../services/reservas.service.js';
-import { getAulas } from '../services/aula.service.js';
+import { TEXTOS } from '../textos.js';
+import { calcularDuracionTexto, formatearFecha } from '../utils/formato.js';
+import styles from './FormularioReserva.module.css';
 
-const FormularioReserva = () => {
+export default function FormularioReserva() {
   const { id } = useParams();
   const navigate = useNavigate();
   const esEdicion = Boolean(id);
@@ -17,19 +27,29 @@ const FormularioReserva = () => {
     motivo: ''
   });
   const [aulas, setAulas] = useState([]);
+  const [disponibilidadPorAula, setDisponibilidadPorAula] = useState({});
+  const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(false);
+  const [erroresCampo, setErroresCampo] = useState({});
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [aulaCargando, setAulaCargando] = useState(true);
 
   useEffect(() => {
+    let cancelado = false;
     const cargarAulas = async () => {
       try {
-        const res = await getAulas();
-        setAulas(res.data.filter(a => a.activa));
+        const res = await aulaService.getAulas();
+        if (!cancelado) {
+          setAulas(res.data.filter((a) => a.activa));
+        }
       } catch {
-        setError('Error al cargar las aulas');
+        if (!cancelado) {
+          setError(TEXTOS.aulas.errorCarga);
+        }
       } finally {
-        setAulaCargando(false);
+        if (!cancelado) {
+          setAulaCargando(false);
+        }
       }
     };
     cargarAulas();
@@ -39,60 +59,155 @@ const FormularioReserva = () => {
         try {
           const res = await getReserva(id);
           const r = res.data;
-          setForm({
-            aulaId: r.aulaId,
-            fecha: r.fecha,
-            horaInicio: r.horaInicio,
-            horaFin: r.horaFin,
-            cantidadPersonas: r.cantidadPersonas,
-            motivo: r.motivo
-          });
+          if (!cancelado) {
+            setForm({
+              aulaId: String(r.aulaId),
+              fecha: r.fecha,
+              horaInicio: r.horaInicio,
+              horaFin: r.horaFin,
+              cantidadPersonas: String(r.cantidadPersonas),
+              motivo: r.motivo
+            });
+          }
         } catch {
-          setError('Error al cargar la reserva');
+          if (!cancelado) {
+            setError('No se pudo cargar la reserva. Intente de nuevo.');
+          }
         }
       };
       cargarReserva();
     }
+
+    return () => {
+      cancelado = true;
+    };
   }, [id, esEdicion]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  useEffect(() => {
+    let cancelado = false;
+    if (
+      !form.fecha ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(form.fecha) ||
+      aulas.length === 0 ||
+      typeof aulaService.getDisponibilidadAula !== 'function'
+    ) {
+      return undefined;
+    }
+
+    const cargarDisponibilidadDia = async () => {
+      setCargandoDisponibilidad(true);
+      try {
+        const resultados = await Promise.all(
+          aulas.map((aula) =>
+            Promise.resolve(aulaService.getDisponibilidadAula(aula.id, form.fecha))
+              .then((res) => ({
+                aulaId: aula.id,
+                franjas: Array.isArray(res?.data) ? res.data : []
+              }))
+              .catch(() => ({ aulaId: aula.id, franjas: [] }))
+          )
+        );
+        if (!cancelado) {
+          const mapa = {};
+          resultados.forEach(({ aulaId, franjas }) => {
+            mapa[aulaId] = franjas;
+          });
+          setDisponibilidadPorAula(mapa);
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoDisponibilidad(false);
+        }
+      }
+    };
+
+    cargarDisponibilidadDia();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [form.fecha, aulas]);
+
+  const handleChange = (evento) => {
+    const { name, value } = evento.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (erroresCampo[name]) {
+      setErroresCampo((prev) => ({ ...prev, [name]: undefined }));
+    }
+    if (error) {
+      setError(null);
+    }
   };
 
+  const handleSeleccionarFranja = ({ aulaId, horaInicio, horaFin }) => {
+    setForm((prev) => ({
+      ...prev,
+      aulaId: String(aulaId),
+      horaInicio,
+      horaFin
+    }));
+    setErroresCampo((prev) => ({
+      ...prev,
+      aulaId: undefined,
+      horaInicio: undefined,
+      horaFin: undefined
+    }));
+    setError(null);
+  };
+
+  const aulaSeleccionada = aulas.find((a) => String(a.id) === String(form.aulaId));
+
   const validar = () => {
+    const nuevosErrores = {};
+    const hoy = obtenerHoyArgentina();
+
     if (!form.aulaId) {
-      setError('Debes seleccionar un aula');
-      return false;
+      nuevosErrores.aulaId = 'Elija un aula.';
     }
-    if (!form.fecha) {
-      setError('Debes seleccionar una fecha');
-      return false;
+    if (!form.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(form.fecha)) {
+      nuevosErrores.fecha = 'Ingrese una fecha válida.';
+    } else if (form.fecha < hoy) {
+      nuevosErrores.fecha = 'No se permiten reservas en una fecha pasada.';
     }
-    if (!form.horaInicio || !form.horaFin) {
-      setError('Debes especificar horario de inicio y fin');
-      return false;
+    if (!form.horaInicio) {
+      nuevosErrores.horaInicio = 'Indique la hora de inicio.';
     }
-    if (form.horaInicio >= form.horaFin) {
-      setError('La hora de inicio debe ser menor que la hora de fin');
-      return false;
+    if (!form.horaFin) {
+      nuevosErrores.horaFin = 'Indique la hora de fin.';
     }
-    if (form.horaInicio < '08:00' || form.horaFin > '22:00') {
-      setError('Las reservas solo se permiten entre las 08:00 y las 22:00');
-      return false;
+    if (form.horaInicio && form.horaFin) {
+      if (form.horaInicio >= form.horaFin) {
+        nuevosErrores.horaFin = 'La hora de inicio debe ser menor a la hora de fin.';
+      } else if (
+        form.horaInicio < HORA_INICIO_JORNADA ||
+        form.horaFin > HORA_FIN_JORNADA
+      ) {
+        nuevosErrores.horaFin = `Las reservas solo se permiten entre las ${HORA_INICIO_JORNADA} y las ${HORA_FIN_JORNADA}.`;
+      }
     }
-    if (!form.cantidadPersonas || form.cantidadPersonas < 1) {
-      setError('Debes indicar al menos una persona');
-      return false;
+
+    const numPersonas = Number(form.cantidadPersonas);
+    if (!form.cantidadPersonas || !Number.isInteger(numPersonas) || numPersonas < 1) {
+      nuevosErrores.cantidadPersonas = 'Indique una cantidad entera mayor a 0.';
+    } else if (aulaSeleccionada && numPersonas > aulaSeleccionada.capacidad) {
+      nuevosErrores.cantidadPersonas = `La cantidad de personas supera la capacidad del aula (máx. ${aulaSeleccionada.capacidad}).`;
     }
-    if (!form.motivo.trim()) {
-      setError('Debes especificar un motivo para la reserva');
+
+    if (!form.motivo || !form.motivo.trim()) {
+      nuevosErrores.motivo = 'Ingrese el motivo de la reserva.';
+    }
+
+    setErroresCampo(nuevosErrores);
+    if (Object.keys(nuevosErrores).length > 0) {
+      const primerMensaje = Object.values(nuevosErrores)[0];
+      setError(primerMensaje);
       return false;
     }
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (evento) => {
+    evento.preventDefault();
     setError(null);
 
     if (!validar()) return;
@@ -107,324 +222,235 @@ const FormularioReserva = () => {
         navigate(`/reservas/${res.data.id}`);
       }
     } catch (err) {
-      // Manejo de errores específicos del backend
-      const errorMsg = err.response?.data?.error || '';
-      if (errorMsg.includes('capacidad')) {
-        setError('La cantidad de personas excede la capacidad del aula');
-      } else if (errorMsg.includes('superposición') || errorMsg.includes('ocupada') || errorMsg.includes('reservada')) {
-        setError('El horario solicitado no está disponible. El aula ya tiene una reserva en ese período');
-      } else if (errorMsg.includes('pasada')) {
-        setError('No puedes reservar para una fecha pasada');
-      } else {
-        setError('Ocurrió un error al guardar la reserva. Intenta nuevamente');
-      }
+      const mensajeServidor = err.response?.data?.error;
+      setError(
+        mensajeServidor ||
+          'Ocurrió un error al guardar la reserva. Intente de nuevo.'
+      );
     } finally {
       setCargando(false);
     }
   };
 
-  const aulaSeleccionada = aulas.find(a => a.id == form.aulaId);
+  const pasoActual = !form.fecha || !form.aulaId
+    ? 1
+    : !form.horaInicio || !form.horaFin
+      ? 2
+      : 3;
+
+  const duracionTexto = calcularDuracionTexto(form.horaInicio, form.horaFin);
 
   return (
-    <div>
-      <button onClick={() => navigate(-1)} className="back-button">← Volver</button>
-      
-      <div className="page-header">
-        <div>
-          <h1>{esEdicion ? 'Editar reserva' : 'Nueva reserva'}</h1>
-          <p className="text-secondary">
-            {esEdicion 
-              ? 'Modifica los detalles de tu reserva' 
-              : 'Completa el formulario para reservar un aula'}
-          </p>
-        </div>
-      </div>
+    <div className={styles.pagina}>
+      <header className={styles.cabecera}>
+        <h1>
+          {esEdicion ? TEXTOS.formulario.tituloEditar : TEXTOS.formulario.tituloNueva}
+        </h1>
+        <ol className={styles.pasos} aria-label="Pasos para reservar">
+          <li
+            className={[
+              styles.pasoItem,
+              pasoActual === 1 ? styles.pasoActivo : ''
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <span className={styles.numeroPaso}>1</span>
+            <span>{TEXTOS.formulario.paso1}</span>
+          </li>
+          <li
+            className={[
+              styles.pasoItem,
+              pasoActual === 2 ? styles.pasoActivo : ''
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <span className={styles.numeroPaso}>2</span>
+            <span>{TEXTOS.formulario.paso2}</span>
+          </li>
+          <li
+            className={[
+              styles.pasoItem,
+              pasoActual === 3 ? styles.pasoActivo : ''
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <span className={styles.numeroPaso}>3</span>
+            <span>{TEXTOS.formulario.paso3}</span>
+          </li>
+        </ol>
+      </header>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: '24px'
-      }}>
-        {/* Formulario */}
-        <div className="card fade-in">
-          <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '16px' }}>
-            {esEdicion ? 'Editar detalles' : 'Información de la reserva'}
-          </h3>
+      {error ? <Toast tipo="error" mensaje={error} /> : null}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Aula */}
-            <div>
-              <label htmlFor="aulaId" style={{
-                display: 'block',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#111827',
-                marginBottom: '6px'
-              }}>
-                Aula<span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <select 
-                id="aulaId"
-                name="aulaId" 
-                value={form.aulaId} 
+      <form onSubmit={handleSubmit} className={styles.formulario} noValidate>
+        <section className={styles.panelSeccion}>
+          <div className={styles.grillaCampos}>
+            <Field
+              id="fecha"
+              etiqueta={TEXTOS.formulario.fecha}
+              error={erroresCampo.fecha}
+              obligatorio
+            >
+              <Input
+                type="date"
+                name="fecha"
+                value={form.fecha}
+                onChange={handleChange}
+              />
+            </Field>
+
+            <Field
+              id="aulaId"
+              etiqueta={TEXTOS.formulario.aula}
+              error={erroresCampo.aulaId}
+              obligatorio
+            >
+              <Select
+                name="aulaId"
+                value={form.aulaId}
                 onChange={handleChange}
                 disabled={aulaCargando}
-                required
               >
                 <option value="">
-                  {aulaCargando ? 'Cargando aulas...' : 'Selecciona un aula'}
+                  {aulaCargando ? 'Cargando aulas…' : 'Elija un aula'}
                 </option>
-                {aulas.map(a => (
+                {aulas.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.nombre} – {a.ubicacion} (cap. {a.capacidad})
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </Field>
 
-            {/* Fecha */}
-            <div>
-              <label htmlFor="fecha" style={{
-                display: 'block',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#111827',
-                marginBottom: '6px'
-              }}>
-                Fecha<span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <input 
-                id="fecha"
-                type="date" 
-                name="fecha" 
-                value={form.fecha} 
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            {/* Horarios */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label htmlFor="horaInicio" style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#111827',
-                  marginBottom: '6px'
-                }}>
-                  Hora de inicio<span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                <input 
-                  id="horaInicio"
-                  type="time" 
-                  name="horaInicio" 
-                  value={form.horaInicio} 
-                  onChange={handleChange}
-                  min="08:00"
-                  max="22:00"
-                  required
-                />
-                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
-                  Desde las 08:00
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="horaFin" style={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#111827',
-                  marginBottom: '6px'
-                }}>
-                  Hora de fin<span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                <input 
-                  id="horaFin"
-                  type="time" 
-                  name="horaFin" 
-                  value={form.horaFin} 
-                  onChange={handleChange}
-                  min="08:00"
-                  max="22:00"
-                  required
-                />
-                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
-                  Hasta las 22:00
-                </p>
-              </div>
-            </div>
-
-            {/* Cantidad de personas */}
-            <div>
-              <label htmlFor="cantidadPersonas" style={{
-                display: 'block',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#111827',
-                marginBottom: '6px'
-              }}>
-                Cantidad de personas<span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <input 
-                id="cantidadPersonas"
-                type="number" 
-                name="cantidadPersonas" 
-                value={form.cantidadPersonas} 
-                onChange={handleChange}
+            <Field
+              id="cantidadPersonas"
+              etiqueta={TEXTOS.formulario.cantidadPersonas}
+              ayuda={
+                aulaSeleccionada
+                  ? `Capacidad máxima: ${aulaSeleccionada.capacidad} personas.`
+                  : undefined
+              }
+              error={erroresCampo.cantidadPersonas}
+              obligatorio
+            >
+              <Input
+                type="number"
+                name="cantidadPersonas"
                 min="1"
-                required
-              />
-              {aulaSeleccionada && (
-                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
-                  Capacidad: hasta {aulaSeleccionada.capacidad} personas
-                </p>
-              )}
-            </div>
-
-            {/* Motivo */}
-            <div>
-              <label htmlFor="motivo" style={{
-                display: 'block',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#111827',
-                marginBottom: '6px'
-              }}>
-                Motivo<span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <input 
-                id="motivo"
-                type="text" 
-                name="motivo" 
-                placeholder="Ej: Reunión de proyecto, Clase"
-                value={form.motivo} 
+                value={form.cantidadPersonas}
                 onChange={handleChange}
-                required
               />
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="alert alert-error">
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Botones */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-              <button 
-                type="submit" 
-                className="btn-primary" 
-                disabled={cargando}
-                style={{ flex: 1 }}
-              >
-                {cargando ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear reserva'}
-              </button>
-              <button 
-                type="button" 
-                onClick={() => navigate(-1)} 
-                className="btn-ghost"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Resumen (lado derecho) */}
-        {(form.aulaId || form.fecha || form.horaInicio) && (
-          <div className="card" style={{ height: 'fit-content' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>
-              Resumen
-            </h3>
-
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              padding: '12px',
-              backgroundColor: '#f9fafb',
-              borderRadius: '6px'
-            }}>
-              {aulaSeleccionada && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
-                    Aula
-                  </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
-                    {aulaSeleccionada.nombre}
-                  </p>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
-                    {aulaSeleccionada.ubicacion}
-                  </p>
-                </div>
-              )}
-
-              {form.fecha && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
-                    Fecha
-                  </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
-                    {new Date(form.fecha).toLocaleDateString('es-AR', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                </div>
-              )}
-
-              {form.horaInicio && form.horaFin && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
-                    Horario
-                  </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
-                    {form.horaInicio} – {form.horaFin}
-                  </p>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6b7280' }}>
-                    {(() => {
-                      const start = form.horaInicio.split(':');
-                      const end = form.horaFin.split(':');
-                      const duracion = (parseInt(end[0]) - parseInt(start[0])) * 60 + 
-                                     (parseInt(end[1]) - parseInt(start[1]));
-                      return `Duración: ${duracion} minutos`;
-                    })()}
-                  </p>
-                </div>
-              )}
-
-              {form.cantidadPersonas && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
-                    Personas
-                  </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
-                    {form.cantidadPersonas}
-                  </p>
-                </div>
-              )}
-
-              {form.motivo && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', margin: '0 0 4px' }}>
-                    Motivo
-                  </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, color: '#111827' }}>
-                    {form.motivo}
-                  </p>
-                </div>
-              )}
-            </div>
+            </Field>
           </div>
-        )}
-      </div>
+        </section>
+
+        <GrillaDisponibilidad
+          aulas={aulas}
+          fecha={form.fecha}
+          disponibilidadPorAula={disponibilidadPorAula}
+          cargando={cargandoDisponibilidad}
+          aulaIdSeleccionada={form.aulaId}
+          horaInicioSeleccionada={form.horaInicio}
+          horaFinSeleccionada={form.horaFin}
+          onSeleccionarFranja={handleSeleccionarFranja}
+        />
+
+        <section className={styles.panelSeccion}>
+          <div className={styles.grillaHoras}>
+            <Field
+              id="horaInicio"
+              etiqueta={TEXTOS.formulario.horaInicio}
+              ayuda={`Desde las ${HORA_INICIO_JORNADA}.`}
+              error={erroresCampo.horaInicio}
+              obligatorio
+            >
+              <Input
+                type="time"
+                name="horaInicio"
+                min={HORA_INICIO_JORNADA}
+                max={HORA_FIN_JORNADA}
+                value={form.horaInicio}
+                onChange={handleChange}
+              />
+            </Field>
+
+            <Field
+              id="horaFin"
+              etiqueta={TEXTOS.formulario.horaFin}
+              ayuda={`Hasta las ${HORA_FIN_JORNADA}.`}
+              error={erroresCampo.horaFin}
+              obligatorio
+            >
+              <Input
+                type="time"
+                name="horaFin"
+                min={HORA_INICIO_JORNADA}
+                max={HORA_FIN_JORNADA}
+                value={form.horaFin}
+                onChange={handleChange}
+              />
+            </Field>
+          </div>
+
+          <Field
+            id="motivo"
+            etiqueta={TEXTOS.formulario.motivo}
+            ayuda="Indique cátedra, examen o reunión académica (máximo 255 caracteres)."
+            error={erroresCampo.motivo}
+            obligatorio
+          >
+            <Input
+              type="text"
+              name="motivo"
+              maxLength={255}
+              placeholder="Ej: Parcial de Física II"
+              value={form.motivo}
+              onChange={handleChange}
+            />
+          </Field>
+
+          <div className={styles.resumenSeleccion} aria-live="polite">
+            <span className={styles.tituloResumen}>Resumen de la solicitud</span>
+            <p className={styles.lineaResumen}>
+              Seleccionado:{' '}
+              {aulaSeleccionada ? aulaSeleccionada.nombre : 'Sin aula elegida'} ·{' '}
+              {form.fecha ? formatearFecha(form.fecha) : 'Sin fecha'} ·{' '}
+              {form.horaInicio && form.horaFin
+                ? `${form.horaInicio} a ${form.horaFin}${
+                    duracionTexto ? ` (${duracionTexto})` : ''
+                  }`
+                : 'Sin franja horaria'}
+            </p>
+            {form.cantidadPersonas || form.motivo ? (
+              <p className={styles.detalleResumen}>
+                {form.cantidadPersonas
+                  ? `${form.cantidadPersonas} personas`
+                  : ''}
+                {form.cantidadPersonas && form.motivo ? ' · ' : ''}
+                {form.motivo ? form.motivo : ''}
+              </p>
+            ) : null}
+          </div>
+
+          <div className={styles.acciones}>
+            <Button type="submit" variante="primario" cargando={cargando}>
+              {esEdicion
+                ? TEXTOS.acciones.guardarCambios
+                : TEXTOS.acciones.reservarAula}
+            </Button>
+            <Button
+              type="button"
+              variante="secundario"
+              onClick={() => navigate('/reservas')}
+            >
+              {TEXTOS.acciones.cancelar}
+            </Button>
+          </div>
+        </section>
+      </form>
     </div>
   );
-};
-
-export default FormularioReserva;
+}

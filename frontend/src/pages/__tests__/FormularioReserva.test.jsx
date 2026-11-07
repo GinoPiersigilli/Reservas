@@ -5,7 +5,8 @@ import * as aulaService from '../../services/aula.service.js';
 import * as reservasService from '../../services/reservas.service.js';
 
 vi.mock('../../services/aula.service.js', () => ({
-  getAulas: vi.fn()
+  getAulas: vi.fn(),
+  getDisponibilidadAula: vi.fn()
 }));
 
 vi.mock('../../services/reservas.service.js', () => ({
@@ -19,10 +20,11 @@ const aulasMock = [
   { id: 2, nombre: 'Laboratorio A6', ubicacion: 'Ed. Possetto - PB', capacidad: 30, activa: true }
 ];
 
-describe('FormularioReserva page', () => {
+describe('FormularioReserva page y GrillaDisponibilidad', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     aulaService.getAulas.mockResolvedValue({ data: aulasMock });
+    aulaService.getDisponibilidadAula.mockResolvedValue({ data: [] });
   });
 
   it('loads active classrooms and submits a new reservation successfully', async () => {
@@ -36,31 +38,31 @@ describe('FormularioReserva page', () => {
 
     expect(await screen.findByRole('option', { name: /Aula 910/i })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/Aula/i), {
+    fireEvent.change(screen.getByLabelText(/^Aula/i, { selector: 'select' }), {
       target: { name: 'aulaId', value: '1' }
     });
-    fireEvent.change(screen.getByLabelText(/Fecha/i), {
-      target: { name: 'fecha', value: '2026-11-20' }
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), {
+      target: { name: 'fecha', value: '2027-11-20' }
     });
-    fireEvent.change(screen.getByLabelText(/Hora de inicio/i), {
+    fireEvent.change(screen.getByLabelText(/^Hora de inicio/i), {
       target: { name: 'horaInicio', value: '10:00' }
     });
-    fireEvent.change(screen.getByLabelText(/Hora de fin/i), {
+    fireEvent.change(screen.getByLabelText(/^Hora de fin/i), {
       target: { name: 'horaFin', value: '12:00' }
     });
-    fireEvent.change(screen.getByLabelText(/Cantidad de personas/i), {
+    fireEvent.change(screen.getByLabelText(/^Cantidad de personas/i), {
       target: { name: 'cantidadPersonas', value: '20' }
     });
-    fireEvent.change(screen.getByLabelText(/Motivo/i), {
+    fireEvent.change(screen.getByLabelText(/^Motivo/i), {
       target: { name: 'motivo', value: 'Parcial de Desarrollo de Software' }
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Crear reserva/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Reservar aula/i }));
 
     await waitFor(() => {
       expect(reservasService.crearReserva).toHaveBeenCalledWith({
         aulaId: '1',
-        fecha: '2026-11-20',
+        fecha: '2027-11-20',
         horaInicio: '10:00',
         horaFin: '12:00',
         cantidadPersonas: '20',
@@ -69,7 +71,7 @@ describe('FormularioReserva page', () => {
     });
   });
 
-  it('displays an overlap error message when creating a reservation in an occupied slot', async () => {
+  it('displays server overlap error message in the form when creating a reservation in an occupied slot', async () => {
     reservasService.crearReserva.mockRejectedValueOnce({
       response: {
         status: 400,
@@ -85,29 +87,74 @@ describe('FormularioReserva page', () => {
 
     await screen.findByRole('option', { name: /Aula 910/i });
 
-    fireEvent.change(screen.getByLabelText(/Aula/i), {
+    fireEvent.change(screen.getByLabelText(/^Aula/i, { selector: 'select' }), {
       target: { name: 'aulaId', value: '1' }
     });
-    fireEvent.change(screen.getByLabelText(/Fecha/i), {
-      target: { name: 'fecha', value: '2026-11-20' }
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), {
+      target: { name: 'fecha', value: '2027-11-20' }
     });
-    fireEvent.change(screen.getByLabelText(/Hora de inicio/i), {
+    fireEvent.change(screen.getByLabelText(/^Hora de inicio/i), {
       target: { name: 'horaInicio', value: '10:00' }
     });
-    fireEvent.change(screen.getByLabelText(/Hora de fin/i), {
+    fireEvent.change(screen.getByLabelText(/^Hora de fin/i), {
       target: { name: 'horaFin', value: '12:00' }
     });
-    fireEvent.change(screen.getByLabelText(/Cantidad de personas/i), {
+    fireEvent.change(screen.getByLabelText(/^Cantidad de personas/i), {
       target: { name: 'cantidadPersonas', value: '25' }
     });
-    fireEvent.change(screen.getByLabelText(/Motivo/i), {
+    fireEvent.change(screen.getByLabelText(/^Motivo/i), {
       target: { name: 'motivo', value: 'Intento solapado' }
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Crear reserva/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Reservar aula/i }));
 
     expect(
-      await screen.findByText(/El horario solicitado no está disponible\. El aula ya tiene una reserva en ese período/i)
+      await screen.findByText(/El aula ya está reservada en ese horario/i)
     ).toBeInTheDocument();
+  });
+
+  it('disables occupied slots in the availability grid and synchronizes two-click selection on free slots', async () => {
+    aulaService.getDisponibilidadAula.mockImplementation((aulaId) => {
+      if (Number(aulaId) === 1) {
+        return Promise.resolve({
+          data: [{ horaInicio: '10:00', horaFin: '11:00', estado: 'aprobada' }]
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <MemoryRouter>
+        <FormularioReserva />
+      </MemoryRouter>
+    );
+
+    await screen.findByRole('option', { name: /Aula 910/i });
+
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), {
+      target: { name: 'fecha', value: '2027-11-20' }
+    });
+
+    const celdaOcupada = await screen.findByRole('button', {
+      name: /Aula 910, 10:00 a 10:30, ocupada/i
+    });
+    expect(celdaOcupada).toBeDisabled();
+
+    // Selección con dos clics en franja libre (14:00 a 15:00 en Aula 910)
+    const celdaInicioLibre = screen.getByRole('button', {
+      name: /Aula 910, 14:00 a 14:30, libre/i
+    });
+    const celdaFinLibre = screen.getByRole('button', {
+      name: /Aula 910, 14:30 a 15:00, libre/i
+    });
+
+    fireEvent.click(celdaInicioLibre);
+    fireEvent.click(celdaFinLibre);
+
+    expect(screen.getByLabelText(/^Hora de inicio/i)).toHaveValue('14:00');
+    expect(screen.getByLabelText(/^Hora de fin/i)).toHaveValue('15:00');
+    expect(screen.getByText(/Seleccionado: Aula 910/i)).toHaveTextContent(
+      '14:00 a 15:00'
+    );
   });
 });
