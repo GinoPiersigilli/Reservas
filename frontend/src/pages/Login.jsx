@@ -238,7 +238,7 @@ const Login = () => {
               {/* Form */}
               <form onSubmit={handleSubmitLocal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{
+                  <label htmlFor="email" style={{
                     display: 'block',
                     fontSize: '13px',
                     fontWeight: 500,
@@ -248,6 +248,7 @@ const Login = () => {
                     Email
                   </label>
                   <input
+                    id="email"
                     type="email"
                     name="email"
                     value={form.email}
@@ -276,7 +277,7 @@ const Login = () => {
                 </div>
 
                 <div>
-                  <label style={{
+                  <label htmlFor="password" style={{
                     display: 'block',
                     fontSize: '13px',
                     fontWeight: 500,
@@ -286,6 +287,7 @@ const Login = () => {
                     Contraseña
                   </label>
                   <input
+                    id="password"
                     type="password"
                     name="password"
                     value={form.password}

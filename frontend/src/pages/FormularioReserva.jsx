@@ -53,7 +53,7 @@ const FormularioReserva = () => {
       };
       cargarReserva();
     }
-  }, [id]);
+  }, [id, esEdicion]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -111,7 +111,7 @@ const FormularioReserva = () => {
       const errorMsg = err.response?.data?.error || '';
       if (errorMsg.includes('capacidad')) {
         setError('La cantidad de personas excede la capacidad del aula');
-      } else if (errorMsg.includes('superposición') || errorMsg.includes('ocupada')) {
+      } else if (errorMsg.includes('superposición') || errorMsg.includes('ocupada') || errorMsg.includes('reservada')) {
         setError('El horario solicitado no está disponible. El aula ya tiene una reserva en ese período');
       } else if (errorMsg.includes('pasada')) {
         setError('No puedes reservar para una fecha pasada');
@@ -154,7 +154,7 @@ const FormularioReserva = () => {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Aula */}
             <div>
-              <label style={{
+              <label htmlFor="aulaId" style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -164,6 +164,7 @@ const FormularioReserva = () => {
                 Aula<span style={{ color: '#dc2626' }}>*</span>
               </label>
               <select 
+                id="aulaId"
                 name="aulaId" 
                 value={form.aulaId} 
                 onChange={handleChange}
@@ -183,7 +184,7 @@ const FormularioReserva = () => {
 
             {/* Fecha */}
             <div>
-              <label style={{
+              <label htmlFor="fecha" style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -193,6 +194,7 @@ const FormularioReserva = () => {
                 Fecha<span style={{ color: '#dc2626' }}>*</span>
               </label>
               <input 
+                id="fecha"
                 type="date" 
                 name="fecha" 
                 value={form.fecha} 
@@ -204,7 +206,7 @@ const FormularioReserva = () => {
             {/* Horarios */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{
+                <label htmlFor="horaInicio" style={{
                   display: 'block',
                   fontSize: '13px',
                   fontWeight: 500,
@@ -214,6 +216,7 @@ const FormularioReserva = () => {
                   Hora de inicio<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input 
+                  id="horaInicio"
                   type="time" 
                   name="horaInicio" 
                   value={form.horaInicio} 
@@ -228,7 +231,7 @@ const FormularioReserva = () => {
               </div>
 
               <div>
-                <label style={{
+                <label htmlFor="horaFin" style={{
                   display: 'block',
                   fontSize: '13px',
                   fontWeight: 500,
@@ -238,6 +241,7 @@ const FormularioReserva = () => {
                   Hora de fin<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input 
+                  id="horaFin"
                   type="time" 
                   name="horaFin" 
                   value={form.horaFin} 
@@ -254,7 +258,7 @@ const FormularioReserva = () => {
 
             {/* Cantidad de personas */}
             <div>
-              <label style={{
+              <label htmlFor="cantidadPersonas" style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -264,6 +268,7 @@ const FormularioReserva = () => {
                 Cantidad de personas<span style={{ color: '#dc2626' }}>*</span>
               </label>
               <input 
+                id="cantidadPersonas"
                 type="number" 
                 name="cantidadPersonas" 
                 value={form.cantidadPersonas} 
@@ -280,7 +285,7 @@ const FormularioReserva = () => {
 
             {/* Motivo */}
             <div>
-              <label style={{
+              <label htmlFor="motivo" style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -290,6 +295,7 @@ const FormularioReserva = () => {
                 Motivo<span style={{ color: '#dc2626' }}>*</span>
               </label>
               <input 
+                id="motivo"
                 type="text" 
                 name="motivo" 
                 placeholder="Ej: Reunión de proyecto, Clase"
