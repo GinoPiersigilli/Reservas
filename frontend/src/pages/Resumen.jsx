@@ -1,392 +1,382 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getResumen } from '../services/reservas.service.js';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  getResumen,
+  getReservas,
+  aprobarReserva,
+  rechazarReserva
+} from '../services/reservas.service.js';
+import { TEXTOS } from '../textos.js';
+import { formatearFecha } from '../utils/formato.js';
+import Button from '../components/ui/Button.jsx';
+import ConfirmDialog from '../components/ui/ConfirmDialog.jsx';
+import ErrorState from '../components/ui/ErrorState.jsx';
+import EstadoBadge from '../components/ui/EstadoBadge.jsx';
+import Table from '../components/ui/Table.jsx';
+import TablaSkeleton from '../components/ui/TablaSkeleton.jsx';
+import Toast from '../components/ui/Toast.jsx';
+import styles from './Resumen.module.css';
+
+const ORDEN_ESTADOS = ['aprobada', 'pendiente', 'rechazada', 'cancelada'];
+
+const ETIQUETAS_TOTAL_ESTADO = {
+  aprobada: 'Aprobadas',
+  pendiente: 'Pendientes',
+  rechazada: 'Rechazadas',
+  cancelada: 'Canceladas'
+};
 
 const Resumen = () => {
-  const navigate = useNavigate();
   const [resumen, setResumen] = useState(null);
+  const [colaPendientes, setColaPendientes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  const [accionEnCurso, setAccionEnCurso] = useState(false);
+  const [confirmacion, setConfirmacion] = useState(null); // { tipo: 'aprobar' | 'rechazar', reserva }
+  const [mensajeToast, setMensajeToast] = useState(null);
+
+  const cargarPanel = useCallback(async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const promesaPendientes =
+        typeof getReservas === 'function'
+          ? Promise.resolve(
+              getReservas({
+                estado: 'pendiente',
+                limit: 50,
+                sortBy: 'fecha',
+                order: 'ASC'
+              })
+            ).catch(() => ({ data: { data: [] } }))
+          : Promise.resolve({ data: { data: [] } });
+
+      const [resResumen, resPendientes] = await Promise.all([
+        getResumen(),
+        promesaPendientes
+      ]);
+
+      setResumen(resResumen.data);
+      const listaPendientes = Array.isArray(resPendientes?.data?.data)
+        ? resPendientes.data.data
+        : Array.isArray(resPendientes?.data)
+          ? resPendientes.data
+          : [];
+      setColaPendientes(listaPendientes);
+    } catch (err) {
+      setError(err.response?.data?.error || TEXTOS.panel.errorCarga);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const cargar = async () => {
-      try {
-        const res = await getResumen();
-        setResumen(res.data);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Error al cargar el resumen');
-      } finally {
-        setCargando(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargarPanel();
+  }, [cargarPanel]);
+
+  const confirmarAccion = async () => {
+    if (!confirmacion?.reserva) return;
+    const { tipo, reserva } = confirmacion;
+    setAccionEnCurso(true);
+    try {
+      if (tipo === 'aprobar') {
+        await aprobarReserva(reserva.id);
+        setMensajeToast({
+          variante: 'exito',
+          texto: TEXTOS.reservas.aprobadaExito
+        });
+      } else {
+        await rechazarReserva(reserva.id);
+        setMensajeToast({
+          variante: 'exito',
+          texto: TEXTOS.reservas.rechazadaExito
+        });
       }
-    };
-    cargar();
-  }, []);
+      setConfirmacion(null);
+      await cargarPanel();
+    } catch (err) {
+      setMensajeToast({
+        variante: 'error',
+        texto: err.response?.data?.error || 'No se pudo procesar la solicitud.'
+      });
+      setConfirmacion(null);
+    } finally {
+      setAccionEnCurso(false);
+    }
+  };
 
   if (cargando) {
     return (
-      <div className="loading-state">
-        <div className="spinner" style={{ marginBottom: '16px' }}></div>
-        <p className="text-secondary">Cargando panel de administración...</p>
+      <div className={styles.pagina}>
+        <header className={styles.cabecera}>
+          <h1 className={styles.titulo}>{TEXTOS.panel.titulo}</h1>
+        </header>
+        <TablaSkeleton filas={4} columnas={6} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div>
-        <button onClick={() => navigate('/reservas')} className="back-button">← Volver</button>
-        <div className="alert alert-error">{error}</div>
+      <div className={styles.pagina}>
+        <header className={styles.cabecera}>
+          <h1 className={styles.titulo}>{TEXTOS.panel.titulo}</h1>
+        </header>
+        <ErrorState
+          titulo="Error al cargar el panel"
+          descripcion={error}
+          onReintentar={cargarPanel}
+        />
       </div>
     );
   }
 
   if (!resumen) return null;
 
-  const estadoColors = {
-    'pendiente': 'badge-pending',
-    'aprobada': 'badge-approved',
-    'cancelada': 'badge-rejected',
-    'rechazada': 'badge-rejected'
-  };
+  const mapaPorEstado = new Map(
+    (resumen.porEstado || []).map((item) => [item.estado, Number(item.total) || 0])
+  );
+  const totalReservas = Array.from(mapaPorEstado.values()).reduce(
+    (acc, actual) => acc + actual,
+    0
+  );
+  const cantidadPendientes =
+    colaPendientes.length > 0
+      ? colaPendientes.length
+      : mapaPorEstado.get('pendiente') || 0;
 
-  const getEstadoIcon = (estado) => {
-    switch(estado) {
-      case 'pendiente': return '⏳';
-      case 'aprobada': return '✓';
-      case 'rechazada':
-      case 'cancelada': return '✕';
-      default: return '•';
+  const columnasPendientes = [
+    {
+      key: 'id',
+      titulo: '#',
+      render: (r) => <span className={styles.idReserva}>#{r.id}</span>
+    },
+    {
+      key: 'aula',
+      titulo: 'Aula',
+      render: (r) => (
+        <span className={styles.nombreAula}>
+          {r.aula?.nombre || r.aulaNombre || `Aula ${r.aulaId}`}
+        </span>
+      )
+    },
+    {
+      key: 'fecha',
+      titulo: 'Fecha',
+      render: (r) => (
+        <span className={styles.textoTabular}>{formatearFecha(r.fecha)}</span>
+      )
+    },
+    {
+      key: 'horario',
+      titulo: 'Horario',
+      render: (r) => (
+        <span className={styles.textoTabular}>
+          {String(r.horaInicio).slice(0, 5)}–{String(r.horaFin).slice(0, 5)}
+        </span>
+      )
+    },
+    {
+      key: 'solicitante',
+      titulo: 'Solicitante',
+      render: (r) =>
+        r.usuario?.nombre || r.usuarioNombre || `Usuario #${r.usuarioId}`
+    },
+    {
+      key: 'acciones',
+      titulo: 'Acción',
+      align: 'right',
+      render: (r) => (
+        <div className={styles.accionesFila}>
+          <Button
+            tamano="sm"
+            variante="primario"
+            onClick={() => setConfirmacion({ tipo: 'aprobar', reserva: r })}
+          >
+            {TEXTOS.acciones.aprobar}
+          </Button>
+          <Button
+            tamano="sm"
+            variante="peligro"
+            onClick={() => setConfirmacion({ tipo: 'rechazar', reserva: r })}
+          >
+            {TEXTOS.acciones.rechazar}
+          </Button>
+          <Link to={`/reservas/${r.id}`} className={styles.enlaceVer}>
+            {TEXTOS.acciones.ver}
+          </Link>
+        </div>
+      )
     }
-  };
+  ];
 
-  const totalReservas = resumen.porEstado.reduce((sum, e) => sum + e.total, 0);
-  const pendientes = resumen.porEstado.find(e => e.estado === 'pendiente')?.total || 0;
-  const aprobadas = resumen.porEstado.find(e => e.estado === 'aprobada')?.total || 0;
+  const columnasPorAula = [
+    {
+      key: 'aula',
+      titulo: 'Aula',
+      render: (a) => (
+        <span className={styles.nombreAula}>
+          {a.nombre || a.aulaNombre || `Aula ${a.aulaId}`}
+        </span>
+      )
+    },
+    {
+      key: 'total',
+      titulo: 'Reservas',
+      align: 'right',
+      render: (a) => (
+        <span className={styles.valorCompacto}>{a.total}</span>
+      )
+    }
+  ];
 
   return (
-    <div>
-      <button onClick={() => navigate('/reservas')} className="back-button">← Volver a mis reservas</button>
+    <div className={styles.pagina}>
+      <header className={styles.cabecera}>
+        <h1 className={styles.titulo}>{TEXTOS.panel.titulo}</h1>
+      </header>
 
-      <div className="page-header">
-        <div>
-          <h1>🛠️ Panel de administración</h1>
-          <p className="text-secondary">
-            Resumen de reservas, aulas y estadísticas del sistema
-          </p>
-        </div>
-      </div>
+      {mensajeToast ? (
+        <Toast
+          variante={mensajeToast.variante}
+          mensaje={mensajeToast.texto}
+          onCerrar={() => setMensajeToast(null)}
+        />
+      ) : null}
 
-      {/* KPI Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '32px'
-      }}>
-        <div className="card" style={{
-          borderLeft: '4px solid #2563eb'
-        }}>
-          <p style={{
-            fontSize: '12px',
-            color: '#9ca3af',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-            margin: '0 0 12px'
-          }}>
-            Total de reservas
-          </p>
-          <p style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            color: '#2563eb',
-            margin: 0
-          }}>
-            {totalReservas}
-          </p>
-          <p style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            margin: '8px 0 0'
-          }}>
-            en el sistema
-          </p>
+      {/* 1. Cola de solicitudes pendientes de aprobación */}
+      <section className={styles.seccion} aria-labelledby="titulo-pendientes">
+        <div className={styles.cabeceraSeccion}>
+          <h2 id="titulo-pendientes" className={styles.tituloSeccion}>
+            {TEXTOS.panel.pendientesTitulo} ({cantidadPendientes})
+          </h2>
         </div>
 
-        <div className="card" style={{
-          borderLeft: '4px solid #ea580c'
-        }}>
-          <p style={{
-            fontSize: '12px',
-            color: '#9ca3af',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-            margin: '0 0 12px'
-          }}>
-            Pendientes de aprobación
-          </p>
-          <p style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            color: '#ea580c',
-            margin: 0
-          }}>
-            {pendientes}
-          </p>
-          <p style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            margin: '8px 0 0'
-          }}>
-            requieren atención
-          </p>
-        </div>
-
-        <div className="card" style={{
-          borderLeft: '4px solid #16a34a'
-        }}>
-          <p style={{
-            fontSize: '12px',
-            color: '#9ca3af',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-            margin: '0 0 12px'
-          }}>
-            Aprobadas
-          </p>
-          <p style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            color: '#16a34a',
-            margin: 0
-          }}>
-            {aprobadas}
-          </p>
-          <p style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            margin: '8px 0 0'
-          }}>
-            confirmadas
-          </p>
-        </div>
-
-        <div className="card" style={{
-          borderLeft: '4px solid #0284c7'
-        }}>
-          <p style={{
-            fontSize: '12px',
-            color: '#9ca3af',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-            margin: '0 0 12px'
-          }}>
-            Próximas hoy
-          </p>
-          <p style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            color: '#0284c7',
-            margin: 0
-          }}>
-            {resumen.proximasHoy.length}
-          </p>
-          <p style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            margin: '8px 0 0'
-          }}>
-            en las próximas horas
-          </p>
-        </div>
-      </div>
-
-      {/* Distribución por estado */}
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{
-          fontSize: '18px',
-          fontWeight: 600,
-          color: '#111827',
-          marginBottom: '16px'
-        }}>
-          Distribución de reservas
-        </h2>
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Estado</th>
-                <th style={{ textAlign: 'right' }}>Cantidad</th>
-                <th style={{ textAlign: 'right' }}>Porcentaje</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resumen.porEstado.map((e) => {
-                const porcentaje = totalReservas > 0 ? ((e.total / totalReservas) * 100).toFixed(1) : 0;
-                return (
-                  <tr key={e.estado}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>{getEstadoIcon(e.estado)}</span>
-                        <span className={`badge ${estadoColors[e.estado] || ''}`}>
-                          {e.estado.charAt(0).toUpperCase() + e.estado.slice(1)}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                      {e.total}
-                    </td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>
-                      {porcentaje}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Aulas más utilizadas */}
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{
-          fontSize: '18px',
-          fontWeight: 600,
-          color: '#111827',
-          marginBottom: '16px'
-        }}>
-          Aulas más utilizadas
-        </h2>
-        {resumen.porAula.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📊</div>
-            <p className="empty-state-description">
-              No hay datos de uso de aulas disponibles
-            </p>
-          </div>
+        {colaPendientes.length === 0 ? (
+          <p className={styles.lineaVacia}>{TEXTOS.panel.sinPendientes}</p>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '16px'
-          }}>
-            {resumen.porAula.map((a, idx) => (
-              <div key={a.aulaId} className="card">
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '12px'
-                }}>
-                  <div>
-                    <p style={{
-                      fontSize: '12px',
-                      color: '#9ca3af',
-                      textTransform: 'uppercase',
-                      fontWeight: 600,
-                      margin: 0
-                    }}>
-                      Aula {a.aulaId}
-                    </p>
-                    <p style={{
-                      fontSize: '14px',
-                      color: '#111827',
-                      margin: '8px 0 0'
-                    }}>
-                      <strong>{a.total}</strong> reserva{a.total !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <div style={{
-                    backgroundColor: '#eff6ff',
-                    color: '#2563eb',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 600
-                  }}>
-                    #{idx + 1}
-                  </div>
+          <Table
+            ariaLabel="Cola de reservas pendientes de aprobación"
+            columnas={columnasPendientes}
+            datos={colaPendientes}
+          />
+        )}
+      </section>
+
+      {/* 2. Reservas de hoy */}
+      <section className={styles.seccion} aria-labelledby="titulo-hoy">
+        <div className={styles.cabeceraSeccion}>
+          <h2 id="titulo-hoy" className={styles.tituloSeccion}>
+            {TEXTOS.panel.hoyTitulo}
+          </h2>
+        </div>
+
+        {!resumen.proximasHoy || resumen.proximasHoy.length === 0 ? (
+          <p className={styles.lineaVacia}>{TEXTOS.panel.sinReservasHoy}</p>
+        ) : (
+          <ul className={styles.listaHoy}>
+            {resumen.proximasHoy.map((r) => (
+              <li key={r.id} className={styles.itemHoy}>
+                <div className={styles.infoHoy}>
+                  <span className={styles.horarioHoy}>
+                    {String(r.horaInicio).slice(0, 5)}–{String(r.horaFin).slice(0, 5)}
+                  </span>
+                  <span className={styles.separadorHoy} aria-hidden="true">
+                    ·
+                  </span>
+                  <span className={styles.nombreAula}>
+                    {r.aula?.nombre || r.aulaNombre || `Aula ${r.aulaId}`}
+                  </span>
+                  {r.motivo ? (
+                    <>
+                      <span className={styles.separadorHoy} aria-hidden="true">
+                        ·
+                      </span>
+                      <span className={styles.motivoHoy}>{r.motivo}</span>
+                    </>
+                  ) : null}
                 </div>
+                <div className={styles.metaHoy}>
+                  <EstadoBadge estado={r.estado} />
+                  <Link to={`/reservas/${r.id}`} className={styles.enlaceVer}>
+                    {TEXTOS.acciones.ver}
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* 3. Datos compactos: Totales por estado y Aulas más reservadas */}
+      <div className={styles.grillaSecundaria}>
+        <section className={styles.bloqueCompacto} aria-labelledby="titulo-totales-estado">
+          <h2 id="titulo-totales-estado" className={styles.tituloSeccion}>
+            {TEXTOS.panel.totalesEstado}
+          </h2>
+          <dl className={styles.listaCompacta}>
+            {ORDEN_ESTADOS.map((estadoKey) => (
+              <div key={estadoKey} className={styles.filaCompacta}>
+                <dt className={styles.etiquetaCompacta}>
+                  {ETIQUETAS_TOTAL_ESTADO[estadoKey]}
+                </dt>
+                <dd className={styles.valorCompacto}>
+                  {mapaPorEstado.get(estadoKey) || 0}
+                </dd>
               </div>
             ))}
-          </div>
-        )}
+            <div className={styles.filaCompacta}>
+              <dt className={[styles.etiquetaCompacta, styles.etiquetaTotal].join(' ')}>
+                Total
+              </dt>
+              <dd className={styles.valorCompacto}>{totalReservas}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className={styles.bloqueCompacto} aria-labelledby="titulo-aulas-frecuentes">
+          <h2 id="titulo-aulas-frecuentes" className={styles.tituloSeccion}>
+            {TEXTOS.panel.aulasMasReservadas}
+          </h2>
+          {!resumen.porAula || resumen.porAula.length === 0 ? (
+            <p className={styles.lineaVacia}>
+              No hay registros de uso de aulas disponibles.
+            </p>
+          ) : (
+            <Table
+              ariaLabel="Aulas más reservadas"
+              columnas={columnasPorAula}
+              datos={resumen.porAula}
+              claveFila="aulaId"
+            />
+          )}
+        </section>
       </div>
 
-      {/* Próximas reservas */}
-      <div>
-        <h2 style={{
-          fontSize: '18px',
-          fontWeight: 600,
-          color: '#111827',
-          marginBottom: '16px'
-        }}>
-          Próximas reservas
-        </h2>
-        {resumen.proximasHoy.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">✓</div>
-            <p className="empty-state-description">
-              No hay próximas reservas programadas
-            </p>
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Aula</th>
-                  <th>Fecha</th>
-                  <th>Horario</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resumen.proximasHoy.map((r) => (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 500, color: '#2563eb' }}>
-                      #{r.id}
-                    </td>
-                    <td>
-                      Aula {r.aulaId}
-                    </td>
-                    <td>
-                      {new Date(r.fecha).toLocaleDateString('es-AR')}
-                    </td>
-                    <td style={{ fontSize: '13px', color: '#6b7280' }}>
-                      {r.horaInicio} – {r.horaFin}
-                    </td>
-                    <td>
-                      <span className={`badge ${estadoColors[r.estado] || ''}`}>
-                        {r.estado.charAt(0).toUpperCase() + r.estado.slice(1)}
-                      </span>
-                    </td>
-                    <td>
-                      <button 
-                        onClick={() => navigate(`/reservas/${r.id}`)}
-                        className="btn-ghost btn-small"
-                        style={{
-                          color: '#2563eb',
-                          borderColor: '#2563eb'
-                        }}
-                        onMouseOver={(e) => {
-                          e.target.style.backgroundColor = '#eff6ff';
-                        }}
-                        onMouseOut={(e) => {
-                          e.target.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        Ver →
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <ConfirmDialog
+        abierto={Boolean(confirmacion)}
+        titulo={
+          confirmacion?.tipo === 'aprobar'
+            ? TEXTOS.dialogos.aprobarTitulo
+            : TEXTOS.dialogos.rechazarTitulo
+        }
+        descripcion={
+          confirmacion?.tipo === 'aprobar'
+            ? TEXTOS.dialogos.aprobarDescripcion
+            : TEXTOS.dialogos.rechazarDescripcion
+        }
+        textoConfirmar={
+          confirmacion?.tipo === 'aprobar'
+            ? TEXTOS.acciones.aprobar
+            : TEXTOS.acciones.rechazar
+        }
+        textoCancelar={TEXTOS.acciones.cancelar}
+        variante={confirmacion?.tipo === 'aprobar' ? 'primario' : 'peligro'}
+        cargando={accionEnCurso}
+        onCancelar={() => setConfirmacion(null)}
+        onConfirmar={confirmarAccion}
+      />
     </div>
   );
 };
