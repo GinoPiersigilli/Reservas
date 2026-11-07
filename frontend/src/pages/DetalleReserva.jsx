@@ -1,19 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getReserva, getHistorial } from '../services/reservas.service.js';
+import { TEXTOS } from '../textos.js';
+import {
+  formatearFecha,
+  formatearFechaHora,
+  calcularDuracionTexto
+} from '../utils/formato.js';
 import AccionesReserva from '../components/AccionesReserva.jsx';
 import HistorialReserva from '../components/HistorialReserva.jsx';
+import EstadoBadge from '../components/ui/EstadoBadge.jsx';
+import ErrorState from '../components/ui/ErrorState.jsx';
+import TablaSkeleton from '../components/ui/TablaSkeleton.jsx';
+import Toast from '../components/ui/Toast.jsx';
+import styles from './DetalleReserva.module.css';
 
 const DetalleReserva = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { usuario } = useAuth();
 
   const [reserva, setReserva] = useState(null);
   const [historial, setHistorial] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  const [mensajeExito, setMensajeExito] = useState(null);
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -24,9 +35,9 @@ const DetalleReserva = () => {
         getHistorial(id)
       ]);
       setReserva(resReserva.data);
-      setHistorial(resHistorial.data);
+      setHistorial(resHistorial.data || []);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al cargar la reserva');
+      setError(err.response?.data?.error || 'No se pudo cargar la reserva.');
     } finally {
       setCargando(false);
     }
@@ -37,264 +48,150 @@ const DetalleReserva = () => {
     cargarDatos();
   }, [cargarDatos]);
 
+  const manejarAccionExito = async (mensaje) => {
+    if (mensaje) {
+      setMensajeExito(mensaje);
+    }
+    await cargarDatos();
+  };
+
   if (cargando) {
     return (
-      <div className="loading-state">
-        <div className="spinner" style={{ marginBottom: '16px' }}></div>
-        <p className="text-secondary">Cargando reserva...</p>
+      <div className={styles.pagina}>
+        <TablaSkeleton filas={6} columnas={2} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div>
-        <button onClick={() => navigate('/reservas')} className="back-button">← Volver</button>
-        <div className="alert alert-error">{error}</div>
+      <div className={styles.pagina}>
+        <nav aria-label="Ruta de navegación" className={styles.migas}>
+          <Link to="/reservas" className={styles.enlaceMiga}>
+            {TEXTOS.reservas.migasRaiz}
+          </Link>
+        </nav>
+        <ErrorState
+          titulo="Error al cargar la reserva"
+          descripcion={error}
+          onReintentar={cargarDatos}
+        />
       </div>
     );
   }
 
   if (!reserva) return null;
 
-  const getEstadoBadge = (estado) => {
-    const map = {
-      'pendiente': 'badge-pending',
-      'aprobada': 'badge-approved',
-      'rechazada': 'badge-rejected',
-      'cancelada': 'badge-rejected'
-    };
-    return map[estado] || '';
-  };
-
-  const estadoLabels = {
-    'pendiente': 'Pendiente',
-    'aprobada': 'Aprobada',
-    'rechazada': 'Rechazada',
-    'cancelada': 'Cancelada'
-  };
-
-  const formatearFecha = (fecha) => {
-    return new Date(fecha).toLocaleDateString('es-AR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const duracion = calcularDuracionTexto(reserva.horaInicio, reserva.horaFin);
+  const nombreAula =
+    reserva.aula?.nombre ||
+    reserva.aulaNombre ||
+    `Aula ${reserva.aulaId}`;
+  const nombreSolicitante =
+    reserva.usuario?.nombre ||
+    reserva.usuarioNombre ||
+    `Usuario #${reserva.usuarioId}`;
 
   return (
-    <div>
-      <button onClick={() => navigate('/reservas')} className="back-button">← Volver a mis reservas</button>
+    <div className={styles.pagina}>
+      <nav aria-label="Ruta de navegación" className={styles.migas}>
+        <Link to="/reservas" className={styles.enlaceMiga}>
+          {TEXTOS.reservas.migasRaiz}
+        </Link>
+        <span className={styles.separadorMiga} aria-hidden="true">
+          /
+        </span>
+        <span className={styles.actualMiga} aria-current="page">
+          #{reserva.id}
+        </span>
+      </nav>
 
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1>Reserva #{reserva.id}</h1>
-          <p className="text-secondary">
-            Detalles y historial de cambios
-          </p>
-        </div>
-        <div>
-          <span className={`badge ${getEstadoBadge(reserva.estado)}`} style={{ fontSize: '13px', padding: '6px 12px' }}>
-            {estadoLabels[reserva.estado] || reserva.estado}
-          </span>
-        </div>
-      </div>
+      <header className={styles.cabecera}>
+        <h1 className={styles.titulo}>Reserva #{reserva.id}</h1>
+        <EstadoBadge estado={reserva.estado} />
+      </header>
 
-      {/* Información Principal */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-        gap: '24px'
-      }}>
-        {/* Card Izquierda - Detalles */}
-        <div className="card fade-in">
-          <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '16px' }}>
-            Información de la reserva
-          </h3>
+      {mensajeExito ? (
+        <Toast
+          variante="exito"
+          mensaje={mensajeExito}
+          onCerrar={() => setMensajeExito(null)}
+        />
+      ) : null}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Aula */}
-            <div>
-              <p style={{
-                fontSize: '11px',
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                margin: '0 0 8px'
-              }}>
-                Aula
-              </p>
-              <p style={{
-                fontSize: '18px',
-                fontWeight: 600,
-                color: '#111827',
-                margin: 0
-              }}>
-                Aula {reserva.aulaId}
-              </p>
-            </div>
+      <section className={styles.ficha} aria-labelledby="titulo-ficha-reserva">
+        <h2 id="titulo-ficha-reserva" className={styles.subtituloFicha}>
+          Datos de la reserva
+        </h2>
 
-            {/* Fecha */}
-            <div>
-              <p style={{
-                fontSize: '11px',
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                margin: '0 0 8px'
-              }}>
-                Fecha
-              </p>
-              <p style={{
-                fontSize: '15px',
-                fontWeight: 500,
-                color: '#111827',
-                margin: 0
-              }}>
-                {formatearFecha(reserva.fecha)}
-              </p>
-            </div>
-
-            {/* Horario */}
-            <div>
-              <p style={{
-                fontSize: '11px',
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                margin: '0 0 8px'
-              }}>
-                Horario
-              </p>
-              <p style={{
-                fontSize: '15px',
-                fontWeight: 500,
-                color: '#111827',
-                margin: 0
-              }}>
-                {reserva.horaInicio} – {reserva.horaFin}
-              </p>
-              <p style={{
-                fontSize: '12px',
-                color: '#6b7280',
-                margin: '4px 0 0'
-              }}>
-                Duración: {(() => {
-                  const [h1, m1] = reserva.horaInicio.split(':').map(Number);
-                  const [h2, m2] = reserva.horaFin.split(':').map(Number);
-                  const mins = (h2 - h1) * 60 + (m2 - m1);
-                  return `${mins} minutos`;
-                })()}
-              </p>
-            </div>
-
-            {/* Personas */}
-            <div>
-              <p style={{
-                fontSize: '11px',
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                margin: '0 0 8px'
-              }}>
-                Cantidad de personas
-              </p>
-              <p style={{
-                fontSize: '15px',
-                fontWeight: 500,
-                color: '#111827',
-                margin: 0
-              }}>
-                {reserva.cantidadPersonas} personas
-              </p>
-            </div>
-
-            {/* Motivo */}
-            <div>
-              <p style={{
-                fontSize: '11px',
-                color: '#9ca3af',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                margin: '0 0 8px'
-              }}>
-                Motivo
-              </p>
-              <p style={{
-                fontSize: '14px',
-                color: '#111827',
-                margin: 0,
-                lineHeight: '1.5'
-              }}>
-                {reserva.motivo}
-              </p>
-            </div>
+        <dl className={styles.listaDatos}>
+          <div className={styles.filaDato}>
+            <dt className={styles.etiquetaDato}>Aula</dt>
+            <dd className={[styles.valorDato, styles.valorDestacado].join(' ')}>
+              {nombreAula}
+            </dd>
           </div>
 
-          {/* Divider */}
-          <div style={{
-            margin: '24px 0',
-            paddingTop: '24px',
-            borderTop: '1px solid #e5e7eb'
-          }}>
-            {/* Fechas de auditoría */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '16px',
-              fontSize: '12px',
-              color: '#6b7280'
-            }}>
-              <div>
-                <p style={{ fontWeight: 600, color: '#111827', marginBottom: '4px' }}>
-                  Creada
-                </p>
-                <p style={{ margin: 0 }}>
-                  {new Date(reserva.createdAt).toLocaleString('es-AR')}
-                </p>
-              </div>
-              {reserva.updatedAt && reserva.updatedAt !== reserva.createdAt && (
-                <div>
-                  <p style={{ fontWeight: 600, color: '#111827', marginBottom: '4px' }}>
-                    Última actualización
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    {new Date(reserva.updatedAt).toLocaleString('es-AR')}
-                  </p>
-                </div>
-              )}
+          <div className={styles.filaDato}>
+            <dt className={styles.etiquetaDato}>Fecha</dt>
+            <dd className={styles.valorDato}>{formatearFecha(reserva.fecha)}</dd>
+          </div>
+
+          <div className={styles.filaDato}>
+            <dt className={styles.etiquetaDato}>Horario</dt>
+            <dd className={styles.valorDato}>
+              <span>
+                {String(reserva.horaInicio).slice(0, 5)}–{String(reserva.horaFin).slice(0, 5)}
+              </span>
+              {duracion ? (
+                <span className={styles.valorSecundario}>({duracion})</span>
+              ) : null}
+            </dd>
+          </div>
+
+          <div className={styles.filaDato}>
+            <dt className={styles.etiquetaDato}>Cantidad de personas</dt>
+            <dd className={styles.valorDato}>{reserva.cantidadPersonas} personas</dd>
+          </div>
+
+          <div className={styles.filaDato}>
+            <dt className={styles.etiquetaDato}>Motivo</dt>
+            <dd className={styles.valorDato}>{reserva.motivo}</dd>
+          </div>
+
+          {usuario?.rol === 'admin' || reserva.usuario ? (
+            <div className={styles.filaDato}>
+              <dt className={styles.etiquetaDato}>Solicitante</dt>
+              <dd className={styles.valorDato}>{nombreSolicitante}</dd>
             </div>
-          </div>
-        </div>
+          ) : null}
 
-        {/* Card Derecha - Acciones */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px'
-        }}>
-          <div>
-            <AccionesReserva reserva={reserva} usuario={usuario} onAccion={cargarDatos} />
+          <div className={styles.filaDato}>
+            <dt className={styles.etiquetaDato}>Fecha de solicitud</dt>
+            <dd className={styles.valorDato}>{formatearFechaHora(reserva.createdAt)}</dd>
           </div>
-        </div>
-      </div>
 
-      {/* Historial de cambios */}
-      {historial.length > 0 && (
-        <div style={{ marginTop: '32px' }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 600,
-            color: '#111827',
-            marginBottom: '16px'
-          }}>
-            Historial de cambios
-          </h2>
-          <HistorialReserva historial={historial} />
-        </div>
-      )}
+          {reserva.updatedAt && reserva.updatedAt !== reserva.createdAt ? (
+            <div className={styles.filaDato}>
+              <dt className={styles.etiquetaDato}>Última actualización</dt>
+              <dd className={styles.valorDato}>{formatearFechaHora(reserva.updatedAt)}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        <AccionesReserva
+          reserva={reserva}
+          usuario={usuario}
+          onAccion={manejarAccionExito}
+        />
+      </section>
+
+      <section className={styles.seccionHistorial} aria-labelledby="titulo-historial-reserva">
+        <h2 id="titulo-historial-reserva" className={styles.tituloHistorial}>
+          Historial de cambios
+        </h2>
+        <HistorialReserva historial={historial} />
+      </section>
     </div>
   );
 };
