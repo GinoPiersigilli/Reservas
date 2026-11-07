@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Register from '../Register.jsx';
@@ -9,6 +8,10 @@ vi.mock('../../services/auth.service.js', () => ({
 }));
 
 describe('Register page', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders the registration form', () => {
     render(
       <MemoryRouter>
@@ -18,7 +21,8 @@ describe('Register page', () => {
 
     expect(screen.getByLabelText(/Nombre completo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Contraseña/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Contraseña$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Confirmar contraseña/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Registrarse/i })).toBeInTheDocument();
   });
 
@@ -32,13 +36,16 @@ describe('Register page', () => {
     );
 
     fireEvent.input(screen.getByLabelText(/Nombre completo/i), {
-      target: { value: 'Usuario de prueba' }
+      target: { name: 'nombre', value: 'Usuario de prueba' }
     });
     fireEvent.input(screen.getByLabelText(/Email/i), {
-      target: { value: 'test@example.com' }
+      target: { name: 'email', value: 'test@example.com' }
     });
-    fireEvent.input(screen.getByLabelText(/Contraseña/i), {
-      target: { value: '123456' }
+    fireEvent.input(screen.getByLabelText(/^Contraseña$/i), {
+      target: { name: 'password', value: '123456' }
+    });
+    fireEvent.input(screen.getByLabelText(/Confirmar contraseña/i), {
+      target: { name: 'confirmPassword', value: '123456' }
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));
@@ -58,13 +65,16 @@ describe('Register page', () => {
     );
 
     fireEvent.input(screen.getByLabelText(/Nombre completo/i), {
-      target: { value: 'Usuario de prueba' }
+      target: { name: 'nombre', value: 'Usuario de prueba' }
     });
     fireEvent.input(screen.getByLabelText(/Email/i), {
-      target: { value: 'existing@example.com' }
+      target: { name: 'email', value: 'existing@example.com' }
     });
-    fireEvent.input(screen.getByLabelText(/Contraseña/i), {
-      target: { value: '123456' }
+    fireEvent.input(screen.getByLabelText(/^Contraseña$/i), {
+      target: { name: 'password', value: '123456' }
+    });
+    fireEvent.input(screen.getByLabelText(/Confirmar contraseña/i), {
+      target: { name: 'confirmPassword', value: '123456' }
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));

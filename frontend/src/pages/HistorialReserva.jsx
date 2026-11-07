@@ -1,1 +1,1 @@
-const HistorialReserva = ({ historial }) => {}
+export { default } from '../components/HistorialReserva.jsx';

@@ -13,3 +13,14 @@ export const listarAulas = async (req, res, next) => {
     next(error); 
   }
 };
+
+export const obtenerDisponibilidadAula = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { fecha } = req.query;
+    const disponibilidad = await aulasService.obtenerDisponibilidadAula(id, fecha);
+    res.status(200).json(disponibilidad);
+  } catch (error) {
+    next(error);
+  }
+};

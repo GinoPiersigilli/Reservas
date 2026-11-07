@@ -1,16 +1,48 @@
 # Sistema de Reservas de Aulas
 
-Esta aplicación permite reservar aulas de forma simple y segura: un usuario puede crear y gestionar sus propias solicitudes, y un administrador puede aprobar, rechazar o cancelar reservas desde una interfaz clara.
+Aplicación web para la gestión y reserva de aulas universitarias. Permite a docentes y estudiantes solicitar reservas de aulas verificando disponibilidad y capacidad en tiempo real, y a los administradores aprobar, rechazar, editar y auditar el historial de cada solicitud.
 
-Está construida con:
-- Backend: Node.js + Express + Sequelize + PostgreSQL
-- Frontend: React + Vite + React Router
-- Autenticación: Clerk + JWT local (usuarios de prueba)
-- Contenedores: Docker Compose (PostgreSQL 16)
+## Stack tecnológico
+
+- **Backend:** Node.js (ESM) + Express + Sequelize 6 + PostgreSQL 16
+- **Frontend:** React 19 + Vite + React Router
+- **Autenticación:** Clerk (SSO) + JWT local para usuarios de prueba
+- **Base de datos:** PostgreSQL 16 en Docker Compose (con *exclusion constraint* `btree_gist` anti-solapamiento)
+- **Calidad y CI:** ESLint, Jest + Supertest (backend), Vitest + Testing Library (frontend), GitHub Actions
 
 ---
 
-## Cómo correr el proyecto
+## Estructura del proyecto
+
+```
+reservas/
+├── .github/workflows/ci.yml   # Pipeline de integración continua (Postgres + backend + frontend)
+├── docker/postgres/           # Script de inicialización de la base reservas_test
+├── docker-compose.yml         # Contenedor PostgreSQL 16 con healthcheck
+├── .env.example               # Variables de entorno para Docker Compose
+├── docs/                      # Documentación de arquitectura, contexto y planes de mejora
+├── backend/                   # API REST (Express + Sequelize + PostgreSQL)
+│   ├── db/
+│   │   ├── config.cjs         # Configuración de sequelize-cli
+│   │   ├── migrations/        # Migraciones del esquema y constraints PostgreSQL
+│   │   └── seeders/           # Datos iniciales de prueba con fechas relativas a hoy
+│   ├── src/                   # Configuración, modelos, rutas, controladores, servicios y middlewares
+│   └── tests/                 # Suite de pruebas de integración y concurrencia (Jest)
+└── frontend/                  # SPA en React + Vite
+    └── src/
+        ├── components/        # Componentes reutilizables y rutas protegidas
+        ├── context/           # AuthContext (Clerk + JWT local)
+        ├── pages/             # Pantallas y tests unitarios/integración (__tests__)
+        └── services/          # Clientes HTTP (Axios)
+```
+
+---
+
+## Instalación y puesta en marcha desde cero
+
+### Requisitos previos
+- **Node.js** 20 o superior
+- **Docker** y **Docker Compose**
 
 ### 1) Configurar variables de entorno
 
@@ -22,34 +54,58 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Revisá que las credenciales de PostgreSQL (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` en `.env`) coincidan con `DATABASE_URL` y `DATABASE_URL_TEST` en `backend/.env`.
+#### Variables principales
+- **Raíz (`.env`):**
+  - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`: credenciales e instancia del contenedor PostgreSQL.
+- **Backend (`backend/.env`):**
+  - `PORT`: puerto del servidor HTTP (por defecto `3001`).
+  - `NODE_ENV`: entorno (`development`, `test`, `production`).
+  - `JWT_SECRET`: clave secreta obligatoria para firmar tokens JWT locales.
+  - `CLERK_SECRET_KEY`: clave secreta de Clerk (obligatoria en producción).
+  - `DATABASE_URL`: URL de conexión a la base de desarrollo (`postgres://reservas:...@localhost:5432/reservas`).
+  - `DATABASE_URL_TEST`: URL de conexión a la base de pruebas (`postgres://reservas:...@localhost:5432/reservas_test`).
+  - `CORS_ORIGINS`: orígenes permitidos separados por coma (ej. `http://localhost:5173`).
+  - `WORK_HOUR_START` / `WORK_HOUR_END`: franja horaria permitida (`08:00` a `22:00`).
+- **Frontend (`frontend/.env`):**
+  - `VITE_CLERK_PUBLISHABLE_KEY`: clave pública de Clerk.
+  - `VITE_API_BASE_URL`: URL base del backend (`http://localhost:3001/api`).
 
-### 2) Levantar la base de datos PostgreSQL
-
-Desde `backend/` (o desde la raíz del proyecto):
+### 2) Levantar PostgreSQL con Docker Compose
 
 ```bash
 cd backend
 npm run db:up
 ```
 
-Comandos útiles para administrar el contenedor de PostgreSQL:
-- `npm run db:up`: levanta el servicio `postgres` en segundo plano (`docker compose up -d postgres`).
-- `npm run db:down`: detiene y elimina los contenedores de Docker Compose (`docker compose down`).
-- `npm run db:logs`: muestra los logs del contenedor `postgres` en tiempo real (`docker compose logs -f postgres`).
+Esto inicia el contenedor `postgres:16-alpine` y crea automáticamente las bases `reservas` (desarrollo) y `reservas_test` (testing).
 
-### 3) Ejecutar el backend
+Otros comandos útiles en `backend/`:
+- `npm run db:down`: detiene y elimina el contenedor.
+- `npm run db:logs`: muestra los logs de PostgreSQL en tiempo real.
+
+### 3) Instalar dependencias, correr migraciones y cargar el seed
 
 ```bash
 cd backend
 npm install
-npm run dev
+npm run migrate
+npm run seed
 ```
 
-El backend queda disponible en:
-- http://localhost:3001
+- `npm run migrate`: aplica todas las migraciones pendientes (`001-baseline.cjs` y `002-esquema-definitivo.cjs`).
+- `npm run migrate:undo` / `npm run migrate:undo:all`: revierte la última o todas las migraciones.
+- `npm run seed`: carga de forma idempotente 5 aulas, usuarios de prueba y 10 reservas con fechas relativas al día de hoy.
+- `npm run seed:undo:all`: limpia los datos cargados por el seed.
 
-### 4) Ejecutar el frontend
+### 4) Iniciar el servidor backend
+
+```bash
+cd backend
+npm run dev
+```
+El backend queda escuchando en `http://localhost:3001`.
+
+### 5) Instalar dependencias e iniciar el frontend
 
 En otra terminal:
 
@@ -58,119 +114,65 @@ cd frontend
 npm install
 npm run dev
 ```
-
-El frontend queda disponible en:
-- http://localhost:5173
+El frontend queda disponible en `http://localhost:5173`.
 
 ---
 
 ## Usuarios de prueba (login local)
 
-| Email | Rol | Contraseña |
-|---|---|---|
-| admin@utnfrc.edu.ar | admin | admin123 |
-| david@utnfrc.edu.ar | usuario | user123 |
-
-- **admin**: Tiene permisos de administrador. Puede aprobar, rechazar, editar y ver todas las reservas y el resumen administrativo.
-- **usuario**: Puede crear reservas y consultar/cancelar sus propias solicitudes. No puede acceder al panel admin ni ver reservas ajenas.
+| Email | Contraseña | Rol | Permisos |
+|---|---|---|---|
+| `admin@utnfrc.edu.ar` | `admin123` | `admin` | Ver todas las reservas, aprobar, rechazar, cancelar, editar y acceder al resumen administrativo |
+| `david@utnfrc.edu.ar` | `user123` | `usuario` | Crear reservas y consultar o cancelar únicamente sus propias solicitudes |
+| `laura.perez@dds.edu.ar` | `usuario123` | `usuario` | Usuario adicional cargado en el seed |
+| `pedro.gomez@dds.edu.ar` | `usuario456` | `usuario` | Usuario adicional cargado en el seed |
 
 ---
 
-## Endpoints principales del backend
+## Endpoints de la API
 
 ### Autenticación
-| Método | Ruta | Descripción |
-|---|---|---|
-| POST | /api/auth/login | Login local con email y contraseña, devuelve un token JWT |
+| Método | Ruta | Descripción | Acceso |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Login local con email y contraseña (devuelve JWT) | Público |
 
 ### Aulas
 | Método | Ruta | Descripción | Acceso |
 |---|---|---|---|
-| GET | /api/aulas | Lista las aulas disponibles | Público |
+| `GET` | `/api/aulas` | Lista las aulas activas | Público |
+| `GET` | `/api/aulas/:id/disponibilidad?fecha=YYYY-MM-DD` | Lista las franjas horarias ocupadas (`pendiente` o `aprobada`) de un aula en una fecha | Token |
 
 ### Reservas
 | Método | Ruta | Descripción | Acceso |
 |---|---|---|---|
-| GET | /api/reservas | Listado de reservas con filtros | Usuario autenticado (propias o todas si es admin) |
-| GET | /api/reservas/resumen | Resumen administrativo | Solo admin |
-| GET | /api/reservas/:id | Detalle de una reserva | Dueño o admin |
-| GET | /api/reservas/:id/historial | Historial de cambios | Dueño o admin |
-| POST | /api/reservas | Crear una nueva reserva | Usuario autenticado |
-| PUT | /api/reservas/:id | Editar una reserva | Solo admin |
-| PATCH | /api/reservas/:id/aprobar | Aprobar reserva | Solo admin |
-| PATCH | /api/reservas/:id/rechazar | Rechazar reserva | Solo admin |
-| PATCH | /api/reservas/:id/cancelar | Cancelar reserva | Dueño o admin |
-
-### Códigos de respuesta comunes
-- 200: OK
-- 201: Creado
-- 400: Datos inválidos o regla de negocio violada
-- 401: Token ausente o inválido
-- 403: Sin permisos suficientes
-- 404: Recurso no encontrado
-- 500: Error interno del servidor
+| `GET` | `/api/reservas` | Listado con filtros (`fecha`, `estado`, `aulaId`, `q`, `page`, `limit`, `sortBy`, `order`) | Token (propias o todas si es admin) |
+| `GET` | `/api/reservas/resumen` | Métricas por estado, top aulas y próximas reservas de hoy | Solo admin |
+| `GET` | `/api/reservas/:id` | Detalle de una reserva | Dueño o admin |
+| `GET` | `/api/reservas/:id/historial` | Historial de auditoría de una reserva | Dueño o admin |
+| `POST` | `/api/reservas` | Crear una nueva reserva | Token |
+| `PUT` | `/api/reservas/:id` | Editar una reserva existente | Solo admin |
+| `PATCH` | `/api/reservas/:id/aprobar` | Aprobar una reserva pendiente | Solo admin |
+| `PATCH` | `/api/reservas/:id/rechazar` | Rechazar una reserva pendiente | Solo admin |
+| `PATCH` | `/api/reservas/:id/cancelar` | Cancelar una reserva pendiente o aprobada | Dueño o admin |
 
 ---
 
-## Rutas principales del frontend
-
-| Ruta | Qué muestra | Acceso |
-|---|---|---|
-| /login | Pantalla de inicio de sesión | Pública |
-| /reservas | Listado general de reservas | Protegida |
-| /reservas/nueva | Formulario para crear reserva | Protegida |
-| /reservas/:id | Detalle de una reserva | Protegida |
-| /reservas/:id/editar | Edición de reserva | Solo admin |
-| /resumen | Panel administrativo | Solo admin |
-| * | Página 404 | Pública |
-
----
-
-## Cómo se valida capacidad y superposición
-
-La validación real está en el backend, dentro del servicio de reservas. El frontend solo envía los datos.
-
-### 1) Capacidad del aula
-
-Antes de crear o editar una reserva, el backend verifica que:
-- cantidadPersonas <= capacidad del aula
-
-Si no se cumple, devuelve un error 400 con el mensaje:
-- La cantidad de personas supera la capacidad del aula
-
-### 2) Superposición de horarios
-
-También se revisa si el aula ya tiene una reserva activa en ese mismo día y rango horario.
-
-Se consideran conflictos cuando:
-- la reserva nueva empieza antes de que termine otra
-- y termina después de que empiece otra
-
-La regla aplica sobre reservas con estado:
-- pendiente
-- aprobada
-
-No bloquean disponibilidad:
-- canceladas
-- rechazadas
-
-Además, al editar una reserva, la propia reserva no se compara consigo misma.
-
-### 3) Horario laboral
-
-Las reservas están permitidas entre:
-- 08:00 y 22:00
-
-Si se intenta reservar fuera de ese rango, el backend responde con error 400.
-
----
-
-## Cómo ejecutar las pruebas
+## Tests y Linter
 
 ### Backend
+Requiere que el contenedor de PostgreSQL esté corriendo (`npm run db:up`):
 
 ```bash
 cd backend
+npm run lint
+npm test
+npm test -- --coverage
+```
+
+### Frontend
+```bash
+cd frontend
+npm run lint
 npm test
 ```
 
@@ -178,4 +180,4 @@ npm test
 
 ## Nota de seguridad sobre el historial del repositorio
 
-En versiones previas a las mejoras de seguridad (Fase 1), el archivo `backend/database.sqlite` estuvo versionado en git con datos de prueba y hashes de contraseñas. El archivo fue retirado del índice de git (`git rm --cached`) y agregado a `.gitignore`, pero permanece en commits antiguos del historial. Si el repositorio se publica o comparte fuera del entorno académico, se recomienda rotar las claves y evaluar limpiar el historial con `git filter-repo`.
+En versiones previas a la Fase 1 de mejoras, el archivo `backend/database.sqlite` estuvo versionado en git. Fue eliminado del seguimiento y reemplazado por PostgreSQL, pero permanece en commits antiguos del historial. Si el repositorio se comparte públicamente, se recomienda rotar las claves de Clerk y limpiar el historial con `git filter-repo`.

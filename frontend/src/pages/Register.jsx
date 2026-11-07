@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../services/auth.service.js';
 
@@ -85,7 +85,7 @@ const Register = () => {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{
+            <label htmlFor="nombre" style={{
               display: 'block',
               fontSize: '13px',
               fontWeight: 500,
@@ -95,6 +95,7 @@ const Register = () => {
               Nombre completo
             </label>
             <input
+              id="nombre"
               type="text"
               name="nombre"
               placeholder="Tu nombre"
@@ -106,7 +107,7 @@ const Register = () => {
           </div>
 
           <div>
-            <label style={{
+            <label htmlFor="email" style={{
               display: 'block',
               fontSize: '13px',
               fontWeight: 500,
@@ -116,6 +117,7 @@ const Register = () => {
               Email
             </label>
             <input
+              id="email"
               type="email"
               name="email"
               placeholder="tu@email.com"
@@ -126,7 +128,7 @@ const Register = () => {
           </div>
 
           <div>
-            <label style={{
+            <label htmlFor="password" style={{
               display: 'block',
               fontSize: '13px',
               fontWeight: 500,
@@ -136,6 +138,7 @@ const Register = () => {
               Contraseña
             </label>
             <input
+              id="password"
               type="password"
               name="password"
               placeholder="••••••••"
@@ -153,7 +156,7 @@ const Register = () => {
           </div>
 
           <div>
-            <label style={{
+            <label htmlFor="confirmPassword" style={{
               display: 'block',
               fontSize: '13px',
               fontWeight: 500,
@@ -163,6 +166,7 @@ const Register = () => {
               Confirmar contraseña
             </label>
             <input
+              id="confirmPassword"
               type="password"
               name="confirmPassword"
               placeholder="••••••••"

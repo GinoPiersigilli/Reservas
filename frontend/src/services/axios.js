@@ -14,7 +14,9 @@ api.interceptors.request.use(async (config) => {
       const token = await _tokenFn();
       if (token) config.headers.Authorization = `Bearer ${token}`;
     }
-  } catch {}
+  } catch {
+    // Si falla la obtención del token, continuar sin Authorization
+  }
   return config;
 });
 

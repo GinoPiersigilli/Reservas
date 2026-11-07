@@ -3,11 +3,18 @@
 const bcrypt = require('bcrypt');
 
 function fechaRelativa(diasOffset) {
-  const fecha = new Date();
-  fecha.setDate(fecha.getDate() + diasOffset);
-  const yyyy = fecha.getFullYear();
-  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
-  const dd = String(fecha.getDate()).padStart(2, '0');
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Cordoba',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const mapa = Object.fromEntries(partes.map((p) => [p.type, p.value]));
+  const fecha = new Date(Date.UTC(Number(mapa.year), Number(mapa.month) - 1, Number(mapa.day)));
+  fecha.setUTCDate(fecha.getUTCDate() + diasOffset);
+  const yyyy = fecha.getUTCFullYear();
+  const mm = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getReserva, getHistorial } from '../services/reservas.service.js';
@@ -15,7 +15,7 @@ const DetalleReserva = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setCargando(true);
     setError(null);
     try {
@@ -30,11 +30,12 @@ const DetalleReserva = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarDatos();
-  }, [id]);
+  }, [cargarDatos]);
 
   if (cargando) {
     return (

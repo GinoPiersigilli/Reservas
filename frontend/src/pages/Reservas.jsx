@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getReservas } from '../services/reservas.service.js';
 import FiltrosReservas from '../components/FiltrosReservas.jsx';
@@ -7,7 +7,6 @@ import TablaReservas from '../components/TablaReservas.jsx';
 
 const Reservas = () => {
   const { usuario, cerrarSesion } = useAuth();
-  const navigate = useNavigate();
 
   const [reservas, setReservas] = useState([]);
   const [total, setTotal] = useState(0);
@@ -16,23 +15,24 @@ const Reservas = () => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
 
-  const cargarReservas = async () => {
+  const cargarReservas = useCallback(async () => {
     setCargando(true);
     setError(null);
     try {
       const res = await getReservas({ ...filtros, page: pagina, limit: 10 });
       setReservas(res.data.datos);
       setTotal(res.data.total);
-    } catch (err) {
+    } catch {
       setError('Error al cargar las reservas');
     } finally {
       setCargando(false);
     }
-  };
+  }, [filtros, pagina]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarReservas();
-  }, [filtros, pagina]);
+  }, [cargarReservas]);
 
   const handleFiltros = (nuevosFiltros) => {
     setFiltros(nuevosFiltros);

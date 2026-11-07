@@ -6,21 +6,27 @@ import Aula from '../models/aula.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
 import env from '../config/env.js';
+import { hoyArgentina, horaActualArgentina } from '../utils/fecha.js';
 
 const WORK_HOUR_START = env.WORK_HOUR_START;
 const WORK_HOUR_END = env.WORK_HOUR_END;
 const SORT_BY_PERMITIDOS = ['createdAt', 'fecha', 'horaInicio', 'estado', 'aulaId', 'id'];
+
+const esErrorSolapamiento = (err) =>
+  err?.name === 'SequelizeExclusionConstraintError' ||
+  err?.parent?.code === '23P01' ||
+  err?.original?.code === '23P01';
 
 // Función para crear una nueva reserva
 export const crearNuevaReserva = async (datosReserva) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
 
   // Validar que la horaInicio sea menor a horaFin
-if (horaInicio >= horaFin) {
-  const error = new Error('La hora de inicio debe ser menor a la hora de fin');
-  error.status = 400;
-  throw error;
-}
+  if (horaInicio >= horaFin) {
+    const error = new Error('La hora de inicio debe ser menor a la hora de fin');
+    error.status = 400;
+    throw error;
+  }
 
   if (horaInicio < WORK_HOUR_START || horaFin > WORK_HOUR_END) {
     const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
@@ -28,163 +34,185 @@ if (horaInicio >= horaFin) {
     throw error;
   }
 
-  // 2. Buscar el aula en la base de datos
-  const aula = await Aula.findByPk(aulaId);
-  if (!aula) {
-    const error = new Error('El aula solicitada no existe');
-    error.status = 404;
-    throw error;
-  }
-  if (!aula.activa) {
-    const error = new Error('El aula no está activa para nuevas reservas');
-    error.status = 400;
-    throw error;
-  }
+  try {
+    return await sequelize.transaction(async (transaction) => {
+      // 2. Buscar el aula en la base de datos
+      const aula = await Aula.findByPk(aulaId, { transaction });
+      if (!aula) {
+        const error = new Error('El aula solicitada no existe');
+        error.status = 404;
+        throw error;
+      }
+      if (!aula.activa) {
+        const error = new Error('El aula no está activa para nuevas reservas');
+        error.status = 400;
+        throw error;
+      }
 
-  // 3. Validar la capacidad
-  if (cantidadPersonas > aula.capacidad) {
-    const error = new Error('La cantidad de personas supera la capacidad del aula');
-    error.status = 400;
-    throw error;
-  }
+      // 3. Validar la capacidad
+      if (cantidadPersonas > aula.capacidad) {
+        const error = new Error('La cantidad de personas supera la capacidad del aula');
+        error.status = 400;
+        throw error;
+      }
 
-  // 4. Validar que no haya superposición horaria
-  // Buscamos si ya existe alguna reserva aprobada o pendiente para ese aula y fecha...
-  const reservaExistente = await Reserva.findOne({
-    where: {
-      aulaId,
-      fecha,
-      estado: {
-        [Op.in]: ['pendiente', 'aprobada'] // Filtramos solo las que ocupan lugar
-      },
-      // Lógica para detectar si las franjas se pisan
-      [Op.and]: [
-        { horaInicio: { [Op.lt]: horaFin } }, // Empieza antes de que termine la nueva
-        { horaFin: { [Op.gt]: horaInicio } }  // Termina después de que empiece la nueva
-      ]
+      // 4. Validar que no haya superposición horaria (chequeo previo amable)
+      const reservaExistente = await Reserva.findOne({
+        where: {
+          aulaId,
+          fecha,
+          estado: {
+            [Op.in]: ['pendiente', 'aprobada']
+          },
+          [Op.and]: [
+            { horaInicio: { [Op.lt]: horaFin } },
+            { horaFin: { [Op.gt]: horaInicio } }
+          ]
+        },
+        transaction
+      });
+
+      if (reservaExistente) {
+        const error = new Error('El aula ya está reservada en ese horario');
+        error.status = 400;
+        throw error;
+      }
+
+      // 5. Creamos la reserva dentro de la transacción
+      const nuevaReserva = await Reserva.create(
+        {
+          aulaId,
+          usuarioId,
+          fecha,
+          horaInicio,
+          horaFin,
+          cantidadPersonas,
+          motivo,
+          estado: 'pendiente'
+        },
+        { transaction }
+      );
+
+      // 6. Guardamos la creación en el historial dentro de la misma transacción
+      await registrarAccion(
+        nuevaReserva.id,
+        usuarioId,
+        'creacion',
+        null,
+        { estado: 'pendiente' },
+        { transaction }
+      );
+
+      return nuevaReserva;
+    });
+  } catch (err) {
+    if (esErrorSolapamiento(err)) {
+      const error = new Error('El aula ya está reservada en ese horario');
+      error.status = 400;
+      throw error;
     }
-  });
-
-  if (reservaExistente) {
-    const error = new Error('El aula ya está reservada en ese horario');
-    error.status = 400;
-    throw error;
+    throw err;
   }
-
-  // 5. Si pasó todas las pruebas, creamos la reserva
-  const nuevaReserva = await Reserva.create({
-    aulaId,
-    usuarioId,
-    fecha,
-    horaInicio,
-    horaFin,
-    cantidadPersonas,
-    motivo,
-    estado: 'pendiente' // Nace como pendiente por defecto
-  });
-
-// 6. ¡AGREGADO! Guardamos la creación en el historial
-  await registrarAccion(
-    nuevaReserva.id, // El ID de la reserva recién creada
-    usuarioId,       // El usuario que la solicitó
-    'creacion',
-    null,            // No hay valor anterior porque es nueva
-    { estado: 'pendiente' } // Valor nuevo
-  );
-
-
-
-  return nuevaReserva;
 };
 // ==========================================
 // 2. APROBAR RESERVA
 // ==========================================
 export const aprobarReserva = async (reservaId, usuarioIdAdmin) => {
-  // 1. Buscamos la reserva usando Sequelize
-  const reservaActual = await Reserva.findByPk(reservaId);
+  return await sequelize.transaction(async (transaction) => {
+    // 1. Buscamos la reserva usando Sequelize
+    const reservaActual = await Reserva.findByPk(reservaId, { transaction });
 
-  if (!reservaActual) {
-    const error = new Error("La reserva no existe");
-    error.status = 404;
-    throw error;
-  }
+    if (!reservaActual) {
+      const error = new Error("La reserva no existe");
+      error.status = 404;
+      throw error;
+    }
 
-  // 2. Validamos el flujo de estados
-  // Solo se permite pasar de 'pendiente' a 'aprobada' o 'rechazada'[cite: 67].
-  if (reservaActual.estado !== 'pendiente') {
-    const error = new Error("Solo se pueden aprobar reservas pendientes");
-    error.status = 400;
-    throw error;
-  }
+    // 2. Validamos el flujo de estados
+    // Solo se permite pasar de 'pendiente' a 'aprobada' o 'rechazada'[cite: 67].
+    if (reservaActual.estado !== 'pendiente') {
+      const error = new Error("Solo se pueden aprobar reservas pendientes");
+      error.status = 400;
+      throw error;
+    }
 
-  // 3. Ejecutamos el cambio y guardamos en la base de datos
-  reservaActual.estado = 'aprobada';
-  await reservaActual.save();
+    // NOTA: No hace falta re-chequear solapamiento al aprobar porque la constraint
+    // de exclusión `reservas_sin_solapamiento` en PostgreSQL aplica tanto al estado
+    // 'pendiente' como a 'aprobada' (`WHERE (estado IN ('pendiente', 'aprobada'))`).
+    // Cualquier reserva pendiente ya tiene garantizada su franja sin colisiones.
 
-  // 4. Registramos en el historial
-  await registrarAccion(
-    reservaId,
-    usuarioIdAdmin, // Quien disparó la ruta (viene del JWT de admin)
-    'aprobacion',
-    { estado: 'pendiente' }, // valorAnterior
-    { estado: 'aprobada' }   // valorNuevo
-  );
+    // 3. Ejecutamos el cambio y guardamos en la base de datos
+    reservaActual.estado = 'aprobada';
+    await reservaActual.save({ transaction });
 
-  return reservaActual;
+    // 4. Registramos en el historial (si falla, se revierte el cambio de estado)
+    await registrarAccion(
+      reservaId,
+      usuarioIdAdmin,
+      'aprobacion',
+      { estado: 'pendiente' },
+      { estado: 'aprobada' },
+      { transaction }
+    );
 
+    return reservaActual;
+  });
 };
 
 // ==========================================
 // CANCELAR RESERVA
 // ==========================================
 export const cancelarReserva = async (reservaId, usuarioLogueado) => {
-  // 1. Buscamos la reserva
-  const reservaActual = await Reserva.findByPk(reservaId);
+  return await sequelize.transaction(async (transaction) => {
+    // 1. Buscamos la reserva
+    const reservaActual = await Reserva.findByPk(reservaId, { transaction });
 
-  if (!reservaActual) {
-    const error = new Error("La reserva no existe");
-    error.status = 404;
-    throw error;
-  }
+    if (!reservaActual) {
+      const error = new Error("La reserva no existe");
+      error.status = 404;
+      throw error;
+    }
 
-  // 2. Validación de permisos por lista explícita (admin o dueño)
-  const esAdmin = usuarioLogueado?.rol === 'admin';
-  const esDuenio =
-    usuarioLogueado?.id !== undefined &&
-    usuarioLogueado?.id !== null &&
-    String(reservaActual.usuarioId) === String(usuarioLogueado.id);
+    // 2. Validación de permisos por lista explícita (admin o dueño)
+    const esAdmin = usuarioLogueado?.rol === 'admin';
+    const esDuenio =
+      usuarioLogueado?.id !== undefined &&
+      usuarioLogueado?.id !== null &&
+      String(reservaActual.usuarioId) === String(usuarioLogueado.id);
 
-  if (!esAdmin && !esDuenio) {
-    const error = new Error("No tienes permiso para cancelar esta reserva");
-    error.status = 403;
-    throw error;
-  }
+    if (!esAdmin && !esDuenio) {
+      const error = new Error("No tienes permiso para cancelar esta reserva");
+      error.status = 403;
+      throw error;
+    }
 
-  // 3. Validación de estado
-  // Solo se pueden cancelar reservas pendientes o aprobadas
-  if (reservaActual.estado !== 'pendiente' && reservaActual.estado !== 'aprobada') {
-    const error = new Error("Solo se pueden cancelar reservas pendientes o aprobadas");
-    error.status = 400;
-    throw error;
-  }
+    // 3. Validación de estado
+    // Solo se pueden cancelar reservas pendientes o aprobadas
+    if (reservaActual.estado !== 'pendiente' && reservaActual.estado !== 'aprobada') {
+      const error = new Error("Solo se pueden cancelar reservas pendientes o aprobadas");
+      error.status = 400;
+      throw error;
+    }
 
-  // Guardamos el estado anterior para el historial
-  const estadoAnterior = reservaActual.estado;
+    // Guardamos el estado anterior para el historial
+    const estadoAnterior = reservaActual.estado;
 
-  // 4. Ejecutamos el cambio sin borrar físicamente
-  reservaActual.estado = 'cancelada';
-  await reservaActual.save();
+    // 4. Ejecutamos el cambio sin borrar físicamente
+    reservaActual.estado = 'cancelada';
+    await reservaActual.save({ transaction });
 
-  // 5. Registramos en el historial
-  await registrarAccion(
-    reservaId,
-    usuarioLogueado.id, // Quien ejecutó la acción
-    'cancelacion',
-    { estado: estadoAnterior }, // valorAnterior
-    { estado: 'cancelada' }     // valorNuevo
-  );
+    // 5. Registramos en el historial (si falla, se revierte el cambio de estado)
+    await registrarAccion(
+      reservaId,
+      usuarioLogueado.id,
+      'cancelacion',
+      { estado: estadoAnterior },
+      { estado: 'cancelada' },
+      { transaction }
+    );
 
-  return reservaActual;
+    return reservaActual;
+  });
 };
 
 // ==========================================
@@ -234,32 +262,35 @@ export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, s
 // RECHAZAR RESERVA
 // ==========================================
 export const rechazarReserva = async (reservaId, usuarioIdAdmin) => {
-  const reservaActual = await Reserva.findByPk(reservaId);
+  return await sequelize.transaction(async (transaction) => {
+    const reservaActual = await Reserva.findByPk(reservaId, { transaction });
 
-  if (!reservaActual) {
-    const error = new Error('La reserva no existe');
-    error.status = 404;
-    throw error;
-  }
+    if (!reservaActual) {
+      const error = new Error('La reserva no existe');
+      error.status = 404;
+      throw error;
+    }
 
-  if (reservaActual.estado !== 'pendiente') {
-    const error = new Error('Solo se pueden rechazar reservas pendientes');
-    error.status = 400;
-    throw error;
-  }
+    if (reservaActual.estado !== 'pendiente') {
+      const error = new Error('Solo se pueden rechazar reservas pendientes');
+      error.status = 400;
+      throw error;
+    }
 
-  reservaActual.estado = 'rechazada';
-  await reservaActual.save();
+    reservaActual.estado = 'rechazada';
+    await reservaActual.save({ transaction });
 
-  await registrarAccion(
-    reservaId,
-    usuarioIdAdmin,
-    'rechazo',
-    { estado: 'pendiente' },
-    { estado: 'rechazada' }
-  );
+    await registrarAccion(
+      reservaId,
+      usuarioIdAdmin,
+      'rechazo',
+      { estado: 'pendiente' },
+      { estado: 'rechazada' },
+      { transaction }
+    );
 
-  return reservaActual;
+    return reservaActual;
+  });
 };
 
 
@@ -302,103 +333,141 @@ export const obtenerHistorialDeReserva = async (reservaId, usuario) => {
 // EDITAR RESERVA
 // ==========================================
 export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
-  const reserva = await Reserva.findByPk(reservaId);
+  try {
+    return await sequelize.transaction(async (transaction) => {
+      const reserva = await Reserva.findByPk(reservaId, { transaction });
 
-  if (!reserva) {
-    const error = new Error('La reserva no existe');
-    error.status = 404;
-    throw error;
-  }
+      if (!reserva) {
+        const error = new Error('La reserva no existe');
+        error.status = 404;
+        throw error;
+      }
 
-  if (reserva.estado === 'cancelada' || reserva.estado === 'rechazada') {
-    const error = new Error('No se puede editar una reserva cancelada o rechazada');
-    error.status = 400;
-    throw error;
-  }
+      if (reserva.estado === 'cancelada' || reserva.estado === 'rechazada') {
+        const error = new Error('No se puede editar una reserva cancelada o rechazada');
+        error.status = 400;
+        throw error;
+      }
 
-  const { fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datos;
+      const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datos;
 
-  // Tomamos los valores nuevos o los actuales si no vienen en el body
-  const nuevaFecha     = fecha            || reserva.fecha;
-  const nuevaInicio    = horaInicio       || reserva.horaInicio;
-  const nuevaFin       = horaFin          || reserva.horaFin;
-  const nuevaCantidad  = cantidadPersonas || reserva.cantidadPersonas;
+      // Tomamos los valores nuevos o los actuales si son undefined
+      const nuevoAulaId   = aulaId           !== undefined ? aulaId           : reserva.aulaId;
+      const nuevaFecha    = fecha            !== undefined ? fecha            : reserva.fecha;
+      const nuevaInicio   = horaInicio       !== undefined ? horaInicio       : reserva.horaInicio;
+      const nuevaFin      = horaFin          !== undefined ? horaFin          : reserva.horaFin;
+      const nuevaCantidad = cantidadPersonas !== undefined ? cantidadPersonas : reserva.cantidadPersonas;
+      const nuevoMotivo   = motivo           !== undefined ? motivo           : reserva.motivo;
 
-  if (nuevaInicio >= nuevaFin) {
-    const error = new Error('La hora de inicio debe ser menor a la hora de fin');
-    error.status = 400;
-    throw error;
-  }
+      if (!Number.isInteger(Number(nuevaCantidad)) || Number(nuevaCantidad) <= 0) {
+        const error = new Error('La cantidad de personas debe ser un número entero mayor a 0');
+        error.status = 400;
+        throw error;
+      }
 
-  // Validar horario laboral mediante configuración
-  if (nuevaInicio < WORK_HOUR_START || nuevaFin > WORK_HOUR_END) {
-    const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
-    error.status = 400;
-    throw error;
-  }
+      if (typeof nuevoMotivo !== 'string' || nuevoMotivo.trim().length === 0) {
+        const error = new Error('El motivo no puede estar vacío');
+        error.status = 400;
+        throw error;
+      }
 
-  // Validar capacidad con el aula actual
-  const aula = await Aula.findByPk(reserva.aulaId);
-  if (nuevaCantidad > aula.capacidad) {
-    const error = new Error('La cantidad de personas supera la capacidad del aula');
-    error.status = 400;
-    throw error;
-  }
+      if (nuevaInicio >= nuevaFin) {
+        const error = new Error('La hora de inicio debe ser menor a la hora de fin');
+        error.status = 400;
+        throw error;
+      }
 
-  // Detectar superposición ignorando la propia reserva
-  const conflicto = await Reserva.findOne({
-    where: {
-      id:     { [Op.ne]: reservaId },   // ignora la reserva actual
-      aulaId: reserva.aulaId,
-      fecha:  nuevaFecha,
-      estado: { [Op.in]: ['pendiente', 'aprobada'] },
-      [Op.and]: [
-        { horaInicio: { [Op.lt]: nuevaFin   } },
-        { horaFin:    { [Op.gt]: nuevaInicio } }
-      ]
+      // Validar horario laboral mediante configuración
+      if (nuevaInicio < WORK_HOUR_START || nuevaFin > WORK_HOUR_END) {
+        const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
+        error.status = 400;
+        throw error;
+      }
+
+      // Validar existencia, estado activo y capacidad del aula
+      const aula = await Aula.findByPk(nuevoAulaId, { transaction });
+      if (!aula) {
+        const error = new Error('El aula solicitada no existe');
+        error.status = 404;
+        throw error;
+      }
+      if (!aula.activa) {
+        const error = new Error('El aula no está activa para nuevas reservas');
+        error.status = 400;
+        throw error;
+      }
+      if (nuevaCantidad > aula.capacidad) {
+        const error = new Error('La cantidad de personas supera la capacidad del aula');
+        error.status = 400;
+        throw error;
+      }
+
+      // Detectar superposición ignorando la propia reserva (chequeo previo amable)
+      const conflicto = await Reserva.findOne({
+        where: {
+          id:     { [Op.ne]: reservaId },
+          aulaId: nuevoAulaId,
+          fecha:  nuevaFecha,
+          estado: { [Op.in]: ['pendiente', 'aprobada'] },
+          [Op.and]: [
+            { horaInicio: { [Op.lt]: nuevaFin   } },
+            { horaFin:    { [Op.gt]: nuevaInicio } }
+          ]
+        },
+        transaction
+      });
+
+      if (conflicto) {
+        const error = new Error('El aula ya está reservada en ese horario');
+        error.status = 400;
+        throw error;
+      }
+
+      const valorAnterior = {
+        fecha:            reserva.fecha,
+        horaInicio:       reserva.horaInicio,
+        horaFin:          reserva.horaFin,
+        cantidadPersonas: reserva.cantidadPersonas,
+        motivo:           reserva.motivo
+      };
+
+      // Aplicar cambios usando !== undefined
+      if (aulaId           !== undefined) reserva.aulaId           = aulaId;
+      if (fecha            !== undefined) reserva.fecha            = fecha;
+      if (horaInicio       !== undefined) reserva.horaInicio       = horaInicio;
+      if (horaFin          !== undefined) reserva.horaFin          = horaFin;
+      if (cantidadPersonas !== undefined) reserva.cantidadPersonas = cantidadPersonas;
+      if (motivo           !== undefined) reserva.motivo           = motivo;
+
+      await reserva.save({ transaction });
+
+      await registrarAccion(
+        reservaId,
+        usuarioIdAdmin,
+        'edicion',
+        valorAnterior,
+        { fecha: reserva.fecha, horaInicio: reserva.horaInicio, horaFin: reserva.horaFin, cantidadPersonas: reserva.cantidadPersonas, motivo: reserva.motivo },
+        { transaction }
+      );
+
+      return reserva;
+    });
+  } catch (err) {
+    if (esErrorSolapamiento(err)) {
+      const error = new Error('El aula ya está reservada en ese horario');
+      error.status = 400;
+      throw error;
     }
-  });
-
-  if (conflicto) {
-    const error = new Error('El aula ya está reservada en ese horario');
-    error.status = 400;
-    throw error;
+    throw err;
   }
-
-  const valorAnterior = {
-    fecha:            reserva.fecha,
-    horaInicio:       reserva.horaInicio,
-    horaFin:          reserva.horaFin,
-    cantidadPersonas: reserva.cantidadPersonas,
-    motivo:           reserva.motivo
-  };
-
-  // Aplicar cambios
-  if (fecha)            reserva.fecha            = fecha;
-  if (horaInicio)       reserva.horaInicio       = horaInicio;
-  if (horaFin)          reserva.horaFin          = horaFin;
-  if (cantidadPersonas) reserva.cantidadPersonas = cantidadPersonas;
-  if (motivo)           reserva.motivo           = motivo;
-
-  await reserva.save();
-
-  await registrarAccion(
-    reservaId,
-    usuarioIdAdmin,
-    'edicion',
-    valorAnterior,
-    { fecha: reserva.fecha, horaInicio: reserva.horaInicio, horaFin: reserva.horaFin, cantidadPersonas: reserva.cantidadPersonas, motivo: reserva.motivo }
-  );
-
-  return reserva;
 };
 
 // ==========================================
 // RESUMEN ADMINISTRATIVO
 // ==========================================
 export const obtenerResumen = async () => {
-  const fechaHoy = new Date().toISOString().split('T')[0];
-  const horaAhora = new Date().toTimeString().slice(0, 5);
+  const fechaHoy = hoyArgentina();
+  const horaAhora = horaActualArgentina();
 
   const [porEstado, porAula, proximasHoy] = await Promise.all([
     // Total por estado
