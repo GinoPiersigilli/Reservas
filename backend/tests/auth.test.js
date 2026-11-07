@@ -187,4 +187,26 @@ describe('Auth routes, token verification & env validation', () => {
       })
     ).rejects.toThrow('El email ya está registrado');
   });
+
+  it('responds 200 on GET /api/health without auth when database is connected and 503 on failure', async () => {
+    const resOk = await request(app).get('/api/health');
+    expect(resOk.status).toBe(200);
+    expect(resOk.body).toMatchObject({
+      status: 'ok',
+      db: 'ok'
+    });
+    expect(resOk.body).toHaveProperty('timestamp');
+
+    const authSpy = jest.spyOn(sequelize, 'authenticate').mockRejectedValueOnce(new Error('DB connection error'));
+    try {
+      const resFail = await request(app).get('/api/health');
+      expect(resFail.status).toBe(503);
+      expect(resFail.body).toMatchObject({
+        status: 'error',
+        db: 'disconnected'
+      });
+    } finally {
+      authSpy.mockRestore();
+    }
+  });
 });
