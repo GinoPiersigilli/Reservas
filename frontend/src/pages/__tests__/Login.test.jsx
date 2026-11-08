@@ -3,16 +3,25 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../context/AuthContext.jsx';
 import Login from '../Login.jsx';
 
+const mockAuthenticateWithRedirect = vi.fn();
+let mockIsLoaded = true;
+
 vi.mock('@clerk/clerk-react', () => ({
   useUser: () => ({ user: null, isLoaded: true }),
   useAuth: () => ({ getToken: vi.fn(), signOut: vi.fn() }),
-  SignIn: () => <div data-testid="clerk-signin">Clerk SignIn</div>
+  useSignIn: () => ({
+    isLoaded: mockIsLoaded,
+    signIn: { authenticateWithRedirect: mockAuthenticateWithRedirect }
+  }),
+  AuthenticateWithRedirectCallback: () => null
 }));
 
 describe('Login page', () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    mockIsLoaded = true;
+    mockAuthenticateWithRedirect.mockResolvedValue({});
   });
 
   it('renders login form fields without emoji or inline test credentials', () => {
@@ -28,6 +37,63 @@ describe('Login page', () => {
     expect(screen.getByLabelText(/Correo electrónico/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Contraseña/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Ingresar$/i })).toBeInTheDocument();
+  });
+
+  it('renders "Continuar con Google" button in Spanish and triggers OAuth redirect flow', async () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Continuar con Google/i });
+    expect(botonGoogle).toBeInTheDocument();
+    expect(screen.queryByText(/Sign In/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Clerk/i)).not.toBeInTheDocument();
+
+    fireEvent.click(botonGoogle);
+
+    expect(mockAuthenticateWithRedirect).toHaveBeenCalledTimes(1);
+    expect(mockAuthenticateWithRedirect).toHaveBeenCalledWith({
+      strategy: 'oauth_google',
+      redirectUrl: '/sso-callback',
+      redirectUrlComplete: '/reservas'
+    });
+  });
+
+  it('disables "Continuar con Google" button while Clerk is not loaded', () => {
+    mockIsLoaded = false;
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Continuar con Google/i });
+    expect(botonGoogle).toBeDisabled();
+  });
+
+  it('displays Spanish error message when Google OAuth redirect fails', async () => {
+    mockAuthenticateWithRedirect.mockRejectedValueOnce(new Error('Flujo cancelado por el usuario'));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Continuar con Google/i });
+    fireEvent.click(botonGoogle);
+
+    expect(await screen.findByText(/Flujo cancelado por el usuario/i)).toBeInTheDocument();
+    expect(botonGoogle).not.toBeDisabled();
   });
 
   it('authenticates local user and stores JWT token and user in localStorage', async () => {

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import { AuthProvider } from './context/AuthContext.jsx';
 import AppShell from './components/AppShell.jsx';
 import RutaProtegida from './components/RutaProtegida.jsx';
@@ -23,6 +24,15 @@ function App() {
         <Route path="/" element={<Navigate to="/reservas" replace />} />
         <Route path="/login/*" element={<Login />} />
         <Route path="/register/*" element={<Register />} />
+        <Route
+          path="/sso-callback"
+          element={
+            <AuthenticateWithRedirectCallback
+              signInForceRedirectUrl="/reservas"
+              signUpForceRedirectUrl="/reservas"
+            />
+          }
+        />
         <Route
           element={
             <RutaProtegida>

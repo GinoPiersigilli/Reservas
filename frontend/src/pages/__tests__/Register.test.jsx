@@ -3,8 +3,15 @@ import { MemoryRouter } from 'react-router-dom';
 import Register from '../Register.jsx';
 import * as authService from '../../services/auth.service.js';
 
+const mockAuthenticateWithRedirect = vi.fn();
+let mockIsLoaded = true;
+
 vi.mock('@clerk/clerk-react', () => ({
-  SignUp: () => <div data-testid="clerk-signup">Clerk SignUp</div>
+  useSignUp: () => ({
+    isLoaded: mockIsLoaded,
+    signUp: { authenticateWithRedirect: mockAuthenticateWithRedirect }
+  }),
+  AuthenticateWithRedirectCallback: () => null
 }));
 
 vi.mock('../../services/auth.service.js', () => ({
@@ -14,9 +21,11 @@ vi.mock('../../services/auth.service.js', () => ({
 describe('Register page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsLoaded = true;
+    mockAuthenticateWithRedirect.mockResolvedValue({});
   });
 
-  it('renders the registration form', () => {
+  it('renders the registration form without English or Clerk text', () => {
     render(
       <MemoryRouter>
         <Register />
@@ -28,6 +37,56 @@ describe('Register page', () => {
     expect(screen.getByLabelText(/^Contraseña/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Confirmar contraseña/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Crear cuenta$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Registrarse con Google/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Sign Up/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Clerk/i)).not.toBeInTheDocument();
+  });
+
+  it('renders "Registrarse con Google" button and triggers OAuth redirect flow', () => {
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Registrarse con Google/i });
+    fireEvent.click(botonGoogle);
+
+    expect(mockAuthenticateWithRedirect).toHaveBeenCalledTimes(1);
+    expect(mockAuthenticateWithRedirect).toHaveBeenCalledWith({
+      strategy: 'oauth_google',
+      redirectUrl: '/sso-callback',
+      redirectUrlComplete: '/reservas'
+    });
+  });
+
+  it('disables "Registrarse con Google" button when Clerk is not loaded', () => {
+    mockIsLoaded = false;
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Registrarse con Google/i });
+    expect(botonGoogle).toBeDisabled();
+  });
+
+  it('displays Spanish error message when Google OAuth redirect fails', async () => {
+    mockAuthenticateWithRedirect.mockRejectedValueOnce(new Error('Registro cancelado'));
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Registrarse con Google/i });
+    fireEvent.click(botonGoogle);
+
+    expect(await screen.findByText(/Registro cancelado/i)).toBeInTheDocument();
+    expect(botonGoogle).not.toBeDisabled();
   });
 
   it('submits the form and calls register service', async () => {
