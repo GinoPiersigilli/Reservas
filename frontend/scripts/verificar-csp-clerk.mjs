@@ -1,12 +1,60 @@
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
-const ROOT = 'c:\\Users\\ginob\\OneDrive\\Desktop\\Proyectos\\reservas';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, '..', '..');
 const DIST_DIR = path.join(ROOT, 'frontend', 'dist');
-const BRAVE_PATH = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
-const USER_DATA_DIR = 'C:\\Users\\ginob\\.gemini\\antigravity\\brain\\b9ae23d1-77cd-4b9a-938d-095f51419b55\\scratch\\brave-profile-csp';
+
+function findBrowserPath() {
+  if (process.env.BROWSER_PATH && fs.existsSync(process.env.BROWSER_PATH)) {
+    return process.env.BROWSER_PATH;
+  }
+  if (process.env.BROWSER_PATH) {
+    throw new Error(`El navegador especificado en BROWSER_PATH no existe: ${process.env.BROWSER_PATH}`);
+  }
+
+  const isWindows = process.platform === 'win32';
+  const isMac = process.platform === 'darwin';
+
+  const candidates = isWindows ? [
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google\\Chrome\\Application\\chrome.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Microsoft\\Edge\\Application\\msedge.exe'),
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Microsoft\\Edge\\Application\\msedge.exe'),
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+  ] : isMac ? [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+  ] : [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/brave-browser',
+    '/usr/bin/microsoft-edge',
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    'No se encontró ningún navegador compatible (Chrome, Edge o Brave) en las rutas estándar. ' +
+    'Por favor configurá la variable de entorno BROWSER_PATH con la ruta al ejecutable de tu navegador.'
+  );
+}
+
+const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'reservas-csp-'));
 
 const PORT = 5175;
 const CDP_PORT = 9231;
@@ -144,8 +192,6 @@ async function main() {
   console.log('=== VERIFICACIÓN EXPERIMENTAL DE CSP (Clerk OAuth y style-src) ===\n');
   console.log(`CSP evaluada:\n${TEST_CSP}\n`);
 
-  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
-
   const procs = [];
   let server;
 
@@ -156,6 +202,11 @@ async function main() {
     for (const p of procs) {
       try { p.kill(); } catch {}
     }
+    try {
+      if (fs.existsSync(USER_DATA_DIR)) {
+        fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+      }
+    } catch {}
   };
   process.on('exit', cleanup);
   process.on('SIGINT', () => { cleanup(); process.exit(0); });
@@ -163,9 +214,10 @@ async function main() {
   console.log(`1. Iniciando servidor estático con CSP de prueba en http://127.0.0.1:${PORT}...`);
   server = await startStaticServer();
 
-  console.log(`2. Lanzando navegador Brave headless con CDP en puerto ${CDP_PORT}...`);
-  const braveProc = spawn(
-    BRAVE_PATH,
+  const browserPath = findBrowserPath();
+  console.log(`2. Lanzando navegador headless (${path.basename(browserPath)}) con CDP en puerto ${CDP_PORT}...`);
+  const browserProc = spawn(
+    browserPath,
     [
       '--headless=new',
       '--disable-gpu',
@@ -177,11 +229,26 @@ async function main() {
     ],
     { stdio: 'ignore' }
   );
-  procs.push(braveProc);
+  procs.push(browserProc);
 
-  const versionRes = await waitForHttp(`http://127.0.0.1:${CDP_PORT}/json/list`);
-  const targets = await versionRes.json();
+  let targets = [];
+  const startTargets = Date.now();
+  while (Date.now() - startTargets < 15000) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
+      if (res.ok) {
+        targets = await res.json();
+        if (targets.length > 0 && targets.some((t) => t.webSocketDebuggerUrl)) {
+          break;
+        }
+      }
+    } catch {}
+    await sleep(200);
+  }
   const pageTarget = targets.find((t) => t.type === 'page') || targets[0];
+  if (!pageTarget || !pageTarget.webSocketDebuggerUrl) {
+    throw new Error('No se pudo obtener un target de página con webSocketDebuggerUrl del navegador');
+  }
 
   const cdp = new CDPClient(pageTarget.webSocketDebuggerUrl);
   await cdp.connect();
@@ -297,6 +364,12 @@ async function main() {
 
   cdp.close();
   cleanup();
+  await sleep(500);
+  try {
+    if (fs.existsSync(USER_DATA_DIR)) {
+      fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+    }
+  } catch {}
   process.exit(0);
 }
 
