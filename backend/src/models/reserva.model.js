@@ -92,6 +92,6 @@ Aula.hasMany(Reserva, { foreignKey: 'aulaId', onDelete: 'RESTRICT' });
 Reserva.belongsTo(Aula, { foreignKey: 'aulaId', onDelete: 'RESTRICT' });
 
 Usuario.hasMany(Reserva, { foreignKey: 'usuarioId', onDelete: 'RESTRICT' });
-Reserva.belongsTo(Usuario, { foreignKey: 'usuarioId', onDelete: 'RESTRICT' });
+Reserva.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario', onDelete: 'RESTRICT' });
 
 export default Reserva;

@@ -108,7 +108,7 @@ export const editarReserva = async (req, res, next) => {
 // ==========================================
 export const obtenerResumen = async (req, res, next) => {
   try {
-    const resumen = await reservasService.obtenerResumen();
+    const resumen = await reservasService.obtenerResumen(req.usuario);
     res.status(200).json(resumen);
   } catch (error) {
     next(error);

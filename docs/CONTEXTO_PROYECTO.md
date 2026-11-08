@@ -325,15 +325,21 @@ Todas las transiciones de estado y su registro en `historial_reservas` (`'aproba
 ### Reservas
 | Método | Ruta | Descripción | Auth |
 |---|---|---|---|
-| GET | `/api/reservas` | Listado con filtros y paginación (propias o todas si es admin) | Token |
-| GET | `/api/reservas/resumen` | Resumen administrativo | Admin |
-| GET | `/api/reservas/:id` | Detalle de una reserva | Token (propietario o admin) |
+| GET | `/api/reservas` | Listado con filtros y paginación (propias para usuario común; todas con `usuario: { id, nombre, email }` para admin) | Token |
+| GET | `/api/reservas/resumen` | Resumen administrativo (`proximasHoy` incluye `usuario: { id, nombre, email }`) | Admin |
+| GET | `/api/reservas/:id` | Detalle de una reserva (incluye `usuario: { id, nombre, email }` solo si quien consulta es admin) | Token (propietario o admin) |
 | GET | `/api/reservas/:id/historial` | Historial de cambios de la reserva | Token (propietario o admin) |
 | POST | `/api/reservas` | Crear reserva | Token |
 | PUT | `/api/reservas/:id` | Editar reserva | Admin |
 | PATCH | `/api/reservas/:id/aprobar` | Aprobar reserva pendiente | Admin |
 | PATCH | `/api/reservas/:id/rechazar` | Rechazar reserva pendiente | Admin |
 | PATCH | `/api/reservas/:id/cancelar` | Cancelar reserva pendiente o aprobada | Token (propietario o admin) |
+
+> **Forma de la respuesta y privacidad del solicitante:**
+> 1. Cuando la consulta la realiza un administrador (`rol === 'admin'`), `GET /api/reservas`, `GET /api/reservas/:id` y `GET /api/reservas/resumen` (`proximasHoy`) incluyen el objeto `usuario: { id, nombre, email }`.
+> 2. Si quien consulta es un usuario regular, el campo `usuario` se omite por completo y el endpoint solo lista sus propias reservas.
+> 3. Se especifica siempre una lista restrictiva de atributos (`attributes: ['id', 'nombre', 'email']`) para garantizar que `passwordHash` nunca sea recuperado de la base ni transmitido en las respuestas.
+> 4. `GET /api/aulas/:id/disponibilidad` permanece estrictamente técnico (`[{ horaInicio, horaFin, estado }]`) sin exponer nombres, correos ni identificadores personales.
 
 ---
 

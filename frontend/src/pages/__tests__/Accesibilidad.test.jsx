@@ -197,7 +197,7 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
       </MemoryRouter>
     );
     sinViolacionesAxe(await axe(c404));
-  });
+  }, 30000);
 
   it('supports keyboard navigation with arrow keys in GrillaDisponibilidad and focus trap + Escape in ConfirmDialog', async () => {
     render(

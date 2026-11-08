@@ -204,8 +204,17 @@ const Resumen = () => {
     {
       key: 'solicitante',
       titulo: 'Solicitante',
-      render: (r) =>
-        r.usuario?.nombre || r.usuarioNombre || `Usuario #${r.usuarioId}`
+      render: (r) => {
+        const nombre = r.usuario?.nombre || r.usuarioNombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : '—');
+        return (
+          <span
+            className={styles.solicitanteCelda}
+            title={r.usuario?.email || nombre}
+          >
+            {nombre}
+          </span>
+        );
+      }
     },
     {
       key: 'acciones',
@@ -311,6 +320,15 @@ const Resumen = () => {
                   </span>
                   <span className={styles.nombreAula}>
                     {obtenerNombreAula(r)}
+                  </span>
+                  <span className={styles.separadorHoy} aria-hidden="true">
+                    ·
+                  </span>
+                  <span
+                    className={styles.solicitanteHoy}
+                    title={r.usuario?.email || (r.usuario?.nombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : undefined))}
+                  >
+                    {r.usuario?.nombre || r.usuarioNombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : '—')}
                   </span>
                   {r.motivo ? (
                     <>

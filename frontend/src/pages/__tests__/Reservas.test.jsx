@@ -84,7 +84,7 @@ describe('Reservas page', () => {
 
     reservasService.getReservas.mockResolvedValueOnce({
       data: {
-        total: 1,
+        total: 2,
         pagina: 1,
         porPagina: 10,
         datos: [
@@ -92,11 +92,23 @@ describe('Reservas page', () => {
             id: 25,
             aulaId: 1,
             usuarioId: 2,
+            usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' },
             fecha: '2026-11-12',
             horaInicio: '10:00',
             horaFin: '12:00',
             cantidadPersonas: 30,
             motivo: 'Parcial Física',
+            estado: 'pendiente'
+          },
+          {
+            id: 26,
+            aulaId: 1,
+            usuarioId: 3,
+            fecha: '2026-11-12',
+            horaInicio: '14:00',
+            horaFin: '16:00',
+            cantidadPersonas: 20,
+            motivo: 'Consulta Álgebra',
             estado: 'pendiente'
           }
         ]
@@ -111,7 +123,10 @@ describe('Reservas page', () => {
 
     expect(screen.getByRole('heading', { name: 'Reservas' })).toBeInTheDocument();
     expect(await screen.findByRole('columnheader', { name: 'Solicitante' })).toBeInTheDocument();
-    expect(screen.getByText('Usuario #2')).toBeInTheDocument();
+    const nombreSolicitante = screen.getByText('David López');
+    expect(nombreSolicitante).toBeInTheDocument();
+    expect(nombreSolicitante).toHaveAttribute('title', 'david@utnfrc.edu.ar');
+    expect(screen.getByText('Usuario #3')).toBeInTheDocument();
   });
 
   it('shows empty state when there are no reservations', async () => {

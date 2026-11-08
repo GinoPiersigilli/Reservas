@@ -178,7 +178,11 @@ const DetalleReserva = () => {
           {usuario?.rol === 'admin' || reserva.usuario ? (
             <div className={styles.filaDato}>
               <dt className={styles.etiquetaDato}>Solicitante</dt>
-              <dd className={styles.valorDato}>{nombreSolicitante}</dd>
+              <dd className={styles.valorDato}>
+                <span title={reserva.usuario?.email || nombreSolicitante}>
+                  {nombreSolicitante}
+                </span>
+              </dd>
             </div>
           ) : null}
 

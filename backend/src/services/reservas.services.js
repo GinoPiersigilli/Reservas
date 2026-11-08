@@ -3,6 +3,7 @@ import Reserva from '../models/reserva.model.js';
 import HistorialReserva from '../models/historial.model.js';
 import sequelize from '../config/database.js';
 import Aula from '../models/aula.model.js';
+import Usuario from '../models/usuario.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
 import env from '../config/env.js';
@@ -221,8 +222,9 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
 export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, sortBy, order, usuario } = {}, usuarioParam) => {
   const where = {};
   const usuarioActual = usuarioParam || usuario;
+  const esAdmin = usuarioActual && usuarioActual.rol === 'admin';
 
-  if (usuarioActual && usuarioActual.rol !== 'admin') {
+  if (usuarioActual && !esAdmin) {
     where.usuarioId = usuarioActual.id;
   }
 
@@ -243,8 +245,14 @@ export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, s
   const orderUpper  = typeof order === 'string' ? order.toUpperCase() : '';
   const direccion   = orderUpper === 'ASC' || orderUpper === 'DESC' ? orderUpper : 'DESC';
 
+  const include = esAdmin
+    ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }]
+    : [];
+
   const { count, rows } = await Reserva.findAndCountAll({
     where,
+    include,
+    distinct: true,
     order:  [[columna, direccion]],
     limit:  porPagina,
     offset: (pagina - 1) * porPagina
@@ -298,7 +306,12 @@ export const rechazarReserva = async (reservaId, usuarioIdAdmin) => {
 // OBTENER RESERVA POR ID
 // ==========================================
 export const obtenerReservaPorId = async (reservaId, usuario) => {
-  const reserva = await Reserva.findByPk(reservaId);
+  const esAdmin = usuario && usuario.rol === 'admin';
+  const include = esAdmin
+    ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }]
+    : [];
+
+  const reserva = await Reserva.findByPk(reservaId, { include });
 
   if (!reserva) {
     const error = new Error('La reserva no existe');
@@ -306,7 +319,7 @@ export const obtenerReservaPorId = async (reservaId, usuario) => {
     throw error;
   }
 
-  if (usuario && usuario.rol !== 'admin' && String(reserva.usuarioId) !== String(usuario.id)) {
+  if (usuario && !esAdmin && String(reserva.usuarioId) !== String(usuario.id)) {
     const error = new Error('La reserva no existe');
     error.status = 404;
     throw error;
@@ -465,9 +478,14 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
 // ==========================================
 // RESUMEN ADMINISTRATIVO
 // ==========================================
-export const obtenerResumen = async () => {
+export const obtenerResumen = async (usuario) => {
   const fechaHoy = hoyArgentina();
   const horaAhora = horaActualArgentina();
+  const esAdmin = usuario && usuario.rol === 'admin';
+
+  const includeProximas = esAdmin
+    ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }]
+    : [];
 
   const [porEstado, porAula, proximasHoy] = await Promise.all([
     // Total por estado
@@ -489,6 +507,7 @@ export const obtenerResumen = async () => {
         fecha:  fechaHoy,
         horaInicio: { [Op.gte]: horaAhora }
       },
+      include: includeProximas,
       order: [['horaInicio', 'ASC']],
       limit: 10
     })
