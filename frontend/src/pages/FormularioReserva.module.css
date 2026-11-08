@@ -35,6 +35,16 @@
   font-weight: var(--peso-semibold);
 }
 
+.pasoCompletado {
+  color: var(--tinta);
+}
+
+.pasoCompletado .numeroPaso {
+  background-color: var(--acento);
+  color: var(--tinta-inversa);
+  border-color: var(--acento);
+}
+
 .numeroPaso {
   display: inline-flex;
   align-items: center;
