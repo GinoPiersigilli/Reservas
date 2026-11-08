@@ -99,14 +99,16 @@ Aunque no se utilicen `<SignIn />` ni `<SignUp />`, la aplicación inicializa `<
 | `frame-src` | **Sí** | `https://challenges.cloudflare.com`, `https://*.clerk.accounts.dev`, `https://*.protect.clerk.com`. Verificaciones de seguridad invisibles de Cloudflare Turnstile e iframes de ayuda para redirecciones de autenticación cruzada. |
 | `img-src` | **Sí** | `https://img.clerk.com`. Necesario si en fases posteriores se exhiben avatares sincronizados desde la cuenta de Google u otros assets alojados en el CDN de Clerk. |
 
-### 6.3. ¿Se puede remover `style-src 'unsafe-inline'` sin romper el login?
-- **Diagnóstico:** **NO.**
-- **Motivo técnico:** Aunque la pantalla de `/login` ya no renderice `<SignIn />`, el SDK cliente de Clerk (`@clerk/clerk-react` / `@clerk/shared`) inyecta dinámicamente elementos `<style>` en el `<head>` del documento durante el ciclo de vida del cliente. Esto ocurre para:
-  1. Contenedores y badges de Cloudflare Turnstile / Clerk Protect.
-  2. Overlays y modales de fallback que Clerk activa en caso de requerir verificación adicional (por ejemplo, paso intermedio de autenticación multifactor o resolución de cuentas vinculadas).
-  3. Estados de error globales o toasts inyectados por el runtime de Clerk.
-- Si se elimina `'unsafe-inline'` de `style-src`, el navegador genera violaciones de CSP (`Refused to apply inline style because it violates the following Content Security Policy directive...`) y los componentes de soporte/seguridad de Clerk fallan en inicializarse o rompen visualmente los flujos de redirección.
-- Al tratarse de una SPA servida como archivos estáticos a través de Nginx (sin un servidor Node SSR que pueda inyectar un `nonce` criptográfico único por cada petición HTTP), la directiva `'unsafe-inline'` en `style-src` sigue siendo **indispensable** mientras `@clerk/clerk-react` forme parte del frontend.
+### 6.3. ¿Se puede remover `style-src 'unsafe-inline'` sin romper el login? (Comprobación empírica)
+Se ejecutó una prueba empírica automatizada mediante `frontend/scripts/verificar-csp-clerk.mjs`, levantando un servidor con la política estricta de prueba (`style-src 'self'`, sin `'unsafe-inline'`) y evaluando el comportamiento en un navegador real headless (Brave) vía Chrome DevTools Protocol (CDP) con listeners sobre eventos `SecurityPolicyViolationEvent` y logs de seguridad del motor Chromium:
+
+1. **Ruta `/login`**: **0 violaciones de CSP** registradas. Al haber reemplazado el formulario embebido `<SignIn />` por el botón nativo de la aplicación ("Continuar con Google"), la carga e inicialización de la pantalla no inyecta etiquetas `<style>` ni atributos de estilo en línea en el DOM.
+2. **Ruta `/sso-callback`**: **0 violaciones de `style-src`** registradas. La carga del componente `<AuthenticateWithRedirectCallback />` tampoco genera estilos inline. (Se registró únicamente 1 advertencia en `script-src` por un intento interno de `eval` dentro del bundle de Clerk, bloqueado adecuadamente por la política sin `'unsafe-eval'`).
+
+**Diagnóstico y decisión:**
+- En el flujo estándar y feliz de login y redirección OAuth, **`style-src 'unsafe-inline'` podría removerse** sin generar bloqueos en el render inicial.
+- **Riesgo residual de contingencia:** Clerk documenta que si se desencadenan flujos secundarios no previstos (desafíos visuales interactivos de Cloudflare Turnstile, pantallas de resolución de conflictos de cuenta, autenticación multifactor o mensajes de error globales del runtime), el SDK inyecta dinámicamente estilos en el `<head>`.
+- **Decisión operativa:** Conforme a la regla estricta de la fase, **`frontend/nginx.conf` NO fue modificado**, manteniendo la política actual que garantiza total estabilidad ante cualquier bifurcación de flujo de Clerk.
 
 ### 6.4. Política en `frontend/nginx.conf`
 En cumplimiento estricto con las especificaciones del requerimiento, **`frontend/nginx.conf` NO fue modificado**. La configuración actual permanece intacta y garantiza total compatibilidad y operatividad del login con Google OAuth y Clerk.

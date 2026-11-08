@@ -1,14 +1,62 @@
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = 'c:\\Users\\ginob\\OneDrive\\Desktop\\Proyectos\\reservas';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, '..', '..');
 const IMG_DIR = path.join(ROOT, 'docs', 'img');
-const BRAVE_PATH = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
-const USER_DATA_DIR = 'C:\\Users\\ginob\\.gemini\\antigravity\\brain\\b9ae23d1-77cd-4b9a-938d-095f51419b55\\scratch\\brave-profile';
+
+function findBrowserPath() {
+  if (process.env.BROWSER_PATH && fs.existsSync(process.env.BROWSER_PATH)) {
+    return process.env.BROWSER_PATH;
+  }
+  if (process.env.BROWSER_PATH) {
+    throw new Error(`El navegador especificado en BROWSER_PATH no existe: ${process.env.BROWSER_PATH}`);
+  }
+
+  const isWindows = process.platform === 'win32';
+  const isMac = process.platform === 'darwin';
+
+  const candidates = isWindows ? [
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google\\Chrome\\Application\\chrome.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Microsoft\\Edge\\Application\\msedge.exe'),
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Microsoft\\Edge\\Application\\msedge.exe'),
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+  ] : isMac ? [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+  ] : [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/brave-browser',
+    '/usr/bin/microsoft-edge',
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    'No se encontró ningún navegador compatible (Chrome, Edge o Brave) en las rutas estándar. ' +
+    'Por favor configurá la variable de entorno BROWSER_PATH con la ruta al ejecutable de tu navegador.'
+  );
+}
+
+const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'reservas-capturas-'));
 
 fs.mkdirSync(IMG_DIR, { recursive: true });
-fs.mkdirSync(USER_DATA_DIR, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -63,6 +111,99 @@ class CDPClient {
   }
 }
 
+function startMockBackend() {
+  const server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const url = req.url.split('?')[0];
+    res.setHeader('Content-Type', 'application/json');
+
+    if (url === '/api/health') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ status: 'ok', db: 'ok' }));
+    } else if (url === '/api/auth/login') {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        token: 'mock-jwt-token',
+        usuario: { id: 1, nombre: 'Administrador Bedelía', email: 'admin@utnfrc.edu.ar', rol: 'admin' }
+      }));
+    } else if (url === '/api/aulas') {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        datos: [
+          { id: 1, nombre: 'Laboratorio de Informática 1', capacidad: 30, ubicacion: 'Edificio Central' },
+          { id: 2, nombre: 'Aula Magna', capacidad: 120, ubicacion: 'Edificio Central' }
+        ]
+      }));
+    } else if (url.includes('/disponibilidad')) {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        datos: [
+          { horaInicio: '10:00', horaFin: '12:00', estado: 'aprobada' },
+          { horaInicio: '14:00', horaFin: '16:00', estado: 'pendiente' }
+        ]
+      }));
+    } else if (url === '/api/reservas/resumen') {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        totales: { total: 10, aprobadas: 6, pendientes: 3, rechazadas: 1 },
+        proximasHoy: [
+          { id: 1, motivo: 'Clase Sistemas', aula: { nombre: 'Laboratorio de Informática 1' }, horaInicio: '10:00', horaFin: '12:00', estado: 'aprobada', usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' } }
+        ],
+        topAulas: [{ aula: 'Laboratorio de Informática 1', cantidad: 5 }]
+      }));
+    } else if (url.startsWith('/api/reservas/') && !url.includes('historial')) {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        datos: {
+          id: 1,
+          motivo: 'Clase Práctica',
+          fecha: '2026-11-09',
+          horaInicio: '10:00',
+          horaFin: '12:00',
+          estado: 'pendiente',
+          aula: { id: 1, nombre: 'Laboratorio de Informática 1', capacidad: 30 },
+          usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' },
+          historial: []
+        }
+      }));
+    } else if (url === '/api/reservas') {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        datos: [
+          {
+            id: 1,
+            motivo: 'Clase Práctica',
+            fecha: '2026-11-09',
+            horaInicio: '10:00',
+            horaFin: '12:00',
+            estado: 'pendiente',
+            aula: { id: 1, nombre: 'Laboratorio de Informática 1' },
+            usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' }
+          }
+        ],
+        paginacion: { total: 1, pagina: 1, limite: 10, totalPaginas: 1 }
+      }));
+    } else {
+      res.writeHead(200);
+      res.end(JSON.stringify({ datos: [] }));
+    }
+  });
+
+  return new Promise((resolve) => {
+    server.listen(3001, () => resolve(server));
+  });
+}
+
 async function main() {
   const procs = [];
   const cleanup = () => {
@@ -73,28 +214,52 @@ async function main() {
         // ignore
       }
     }
+    try {
+      if (fs.existsSync(USER_DATA_DIR)) {
+        fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
   };
   process.on('exit', cleanup);
 
-  console.log('1. Iniciando backend en puerto 3001...');
-  const backendProc = spawn('node', ['index.js'], {
-    cwd: path.join(ROOT, 'backend'),
-    stdio: 'ignore'
-  });
-  procs.push(backendProc);
-  await waitForHttp('http://localhost:3001/api/health');
-
-  console.log('2. Iniciando frontend preview en puerto 5173...');
-  const frontendProc = spawn(
-    process.execPath,
-    [path.join(ROOT, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js'), '--port', '5173', '--strictPort'],
-    {
-      cwd: path.join(ROOT, 'frontend'),
+  console.log('1. Verificando o iniciando backend en puerto 3001...');
+  try {
+    await waitForHttp('http://localhost:3001/api/health', 1500);
+    console.log('   Backend ya activo.');
+  } catch {
+    const backendProc = spawn('node', ['index.js'], {
+      cwd: path.join(ROOT, 'backend'),
       stdio: 'ignore'
+    });
+    procs.push(backendProc);
+    try {
+      await waitForHttp('http://localhost:3001/api/health', 4000);
+      console.log('   Backend iniciado con PostgreSQL.');
+    } catch {
+      console.log('   PostgreSQL no está activo; levantando servidor mock para capturas...');
+      const mockServer = await startMockBackend();
+      procs.push({ kill: () => mockServer.close() });
     }
-  );
-  procs.push(frontendProc);
-  await waitForHttp('http://localhost:5173/');
+  }
+
+  console.log('2. Verificando o iniciando frontend en puerto 5173...');
+  try {
+    await waitForHttp('http://localhost:5173/', 1500);
+    console.log('   Frontend ya activo.');
+  } catch {
+    const frontendProc = spawn(
+      process.execPath,
+      [path.join(ROOT, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js'), '--port', '5173', '--strictPort'],
+      {
+        cwd: path.join(ROOT, 'frontend'),
+        stdio: 'ignore'
+      }
+    );
+    procs.push(frontendProc);
+    await waitForHttp('http://localhost:5173/');
+  }
 
   console.log('3. Obteniendo sesiones de prueba (admin y usuario)...');
   const loginAdminRes = await fetch('http://localhost:3001/api/auth/login', {
@@ -120,9 +285,10 @@ async function main() {
   const reservaPendiente = listaReservas.find((r) => r.estado === 'pendiente') || listaReservas[0];
   const idDetalle = reservaPendiente?.id || 1;
 
-  console.log('4. Iniciando navegador headless Brave con CDP en puerto 9229 y locale es-AR...');
-  const braveProc = spawn(
-    BRAVE_PATH,
+  const browserPath = findBrowserPath();
+  console.log(`4. Iniciando navegador headless (${path.basename(browserPath)}) con CDP en puerto 9229 y locale es-AR...`);
+  const browserProc = spawn(
+    browserPath,
     [
       '--headless=new',
       '--disable-gpu',
@@ -135,11 +301,26 @@ async function main() {
     ],
     { stdio: 'ignore' }
   );
-  procs.push(braveProc);
+  procs.push(browserProc);
 
-  const versionRes = await waitForHttp('http://127.0.0.1:9229/json/list');
-  const targets = await versionRes.json();
-  const pageTarget = targets.find((t) => t.type === 'page');
+  let targets = [];
+  const startTargets = Date.now();
+  while (Date.now() - startTargets < 15000) {
+    try {
+      const res = await fetch('http://127.0.0.1:9229/json/list');
+      if (res.ok) {
+        targets = await res.json();
+        if (targets.length > 0 && targets.some((t) => t.webSocketDebuggerUrl)) {
+          break;
+        }
+      }
+    } catch {}
+    await sleep(200);
+  }
+  const pageTarget = targets.find((t) => t.type === 'page') || targets[0];
+  if (!pageTarget || !pageTarget.webSocketDebuggerUrl) {
+    throw new Error('No se pudo obtener un target de página con webSocketDebuggerUrl del navegador');
+  }
   const cdp = new CDPClient(pageTarget.webSocketDebuggerUrl);
   await cdp.connect();
   await cdp.send('Page.enable');
@@ -301,6 +482,14 @@ async function main() {
 
   cdp.close();
   cleanup();
+  await sleep(500);
+  try {
+    if (fs.existsSync(USER_DATA_DIR)) {
+      fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+    }
+  } catch {
+    // ignore
+  }
   console.log('5. Verificación responsive (360, 768, 1280 px) y capturas completadas con éxito.');
   process.exit(0);
 }

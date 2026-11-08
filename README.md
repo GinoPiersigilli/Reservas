@@ -216,6 +216,32 @@ npm test
 node scripts/verificar-contraste.js
 ```
 
+### Scripts de utilidad y verificación (Frontend)
+
+Desde la carpeta `frontend/`:
+
+1. **Auditoría de contraste accesible (WCAG 2.1 AA):**
+   ```bash
+   node scripts/verificar-contraste.js
+   ```
+   Valida que las combinaciones de color de texto, fondos y estados definidas en `src/styles/tokens.css` cumplan con un ratio de contraste mínimo de 4.5:1 (o 3:1 para texto grande).
+
+2. **Verificación experimental de CSP (`style-src` y Clerk):**
+   ```bash
+   node scripts/verificar-csp-clerk.mjs
+   ```
+   Levanta un servidor estático con la compilación de producción y una CSP estricta de prueba sin `'unsafe-inline'` en `style-src`. Utiliza un navegador Chromium headless (Chrome, Edge o Brave) mediante CDP para evaluar violaciones de `securitypolicyviolation` en `/login` y `/sso-callback`.
+   - *Opcional:* Se puede especificar la ruta al ejecutable con la variable de entorno `BROWSER_PATH`.
+
+3. **Generación automatizada de capturas de pantalla:**
+   ```bash
+   node scripts/capturar-pantallas.mjs
+   ```
+   Levanta temporalmente backend y frontend, obtiene tokens de prueba para administrador y docente, y navega con locale `es-AR` y zona horaria `America/Argentina/Cordoba` para regenerar las capturas responsive en `docs/img/`.
+   - *Requisito previo:* Contenedor de PostgreSQL activo (`npm run db:up` en `backend`).
+   - *Opcional:* Permite configurar `BROWSER_PATH` si se utiliza un ejecutable de navegador en una ruta personalizada.
+
+
 ---
 
 ## Nota de seguridad sobre el historial del repositorio
