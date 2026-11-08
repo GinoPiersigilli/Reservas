@@ -1,7 +1,7 @@
 .contenedor {
   display: flex;
   flex-direction: column;
-  gap: var(--espacio-3);
+  gap: var(--espacio-4);
   background-color: var(--superficie);
   border: var(--borde-ancho) solid var(--borde);
   border-radius: var(--radio-panel);
@@ -37,12 +37,14 @@
 .muestraLibre,
 .muestraSeleccionado,
 .muestraAprobada,
-.muestraPendiente {
+.muestraPendiente,
+.muestraMuesca {
   display: inline-block;
   width: var(--icono-sm);
   height: var(--icono-sm);
   border-radius: var(--radio-control);
   border: var(--borde-ancho) solid var(--borde-control);
+  flex-shrink: 0;
 }
 
 .muestraLibre {
@@ -78,6 +80,23 @@
   font-variant-numeric: tabular-nums;
 }
 
+.avisoSinFecha {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  padding: var(--espacio-4);
+  background-color: var(--fondo);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+}
+
+/* ==========================================================================
+   VISTA ESCRITORIO (>= 1100 px): Tabla fija de 28 columnas de 08:00 a 22:00
+   ========================================================================== */
+.vistaEscritorio {
+  display: block;
+  width: 100%;
+}
+
 .scrollWrapper {
   width: 100%;
   overflow-x: auto;
@@ -94,17 +113,17 @@
 }
 
 .colAula {
-  width: 130px;
+  width: 140px;
 }
 
 .colHora {
-  width: calc((100% - 130px) / 28);
+  width: calc((100% - 140px) / 28);
 }
 
 .thAula {
-  width: 130px;
-  max-width: 130px;
-  padding: var(--espacio-1) var(--espacio-2);
+  width: 140px;
+  max-width: 140px;
+  padding: var(--espacio-2);
   text-align: left;
   font-size: var(--texto-xs);
   font-weight: var(--peso-semibold);
@@ -112,9 +131,7 @@
   background-color: var(--fondo);
   border-bottom: var(--borde-ancho) solid var(--borde);
   border-right: var(--borde-ancho) solid var(--borde);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
 }
 
 .thHora {
@@ -136,9 +153,9 @@
 }
 
 .tdAula {
-  width: 130px;
-  max-width: 130px;
-  padding: var(--espacio-1) var(--espacio-2);
+  width: 140px;
+  max-width: 140px;
+  padding: var(--espacio-2);
   border-top: var(--borde-ancho) solid var(--borde);
   border-right: var(--borde-ancho) solid var(--borde);
   background-color: var(--superficie);
@@ -150,18 +167,17 @@
   font-size: var(--texto-xs);
   font-weight: var(--peso-semibold);
   color: var(--tinta);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: var(--linea-titulo);
+  white-space: normal;
+  word-break: break-word;
 }
 
 .metaAula {
   display: block;
   font-size: 11px;
   color: var(--tinta-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: var(--linea-titulo);
+  white-space: normal;
 }
 
 .tdCelda {
@@ -274,86 +290,218 @@
   cursor: not-allowed;
 }
 
-.etiquetaHoraMovil {
-  display: none;
+/* ==========================================================================
+   VISTA COMPACTA (< 1100 px): Tablet y Móvil
+   ========================================================================== */
+.vistaCompacta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+  width: 100%;
 }
 
-.avisoSinFecha {
+.tabsAulasCompactas {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}
+
+.tabAulaCompacta {
+  padding: var(--espacio-2) var(--espacio-3);
+  font-family: var(--fuente-cuerpo);
   font-size: var(--texto-sm);
+  font-weight: var(--peso-medium);
   color: var(--tinta-2);
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+  cursor: pointer;
+  min-height: var(--control-min-tactil);
+  display: inline-flex;
+  align-items: center;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.tabAulaCompacta:hover {
+  background-color: var(--fondo);
+  color: var(--tinta);
+  border-color: var(--borde-control);
+}
+
+.tabAulaCompactaActiva {
+  background-color: var(--acento);
+  color: var(--tinta-inversa);
+  border-color: var(--acento);
+  font-weight: var(--peso-semibold);
+}
+
+.tabAulaCompactaActiva:hover {
+  background-color: var(--acento-hover);
+  color: var(--tinta-inversa);
+}
+
+.tarjetaAulaCompacta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
   padding: var(--espacio-4);
   background-color: var(--fondo);
   border: var(--borde-ancho) solid var(--borde);
   border-radius: var(--radio-control);
 }
 
-@media (max-width: 768px) {
-  .theadEscritorio,
-  .colAula,
-  .colHora {
+.encabezadoAulaCompacta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  padding-bottom: var(--espacio-3);
+  border-bottom: var(--borde-ancho) solid var(--borde);
+}
+
+.nombreAulaCompacta {
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+
+.metaAulaCompacta {
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.seccionOcupadasCompacta,
+.seccionLibresCompacta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+}
+
+.subtituloCompacto {
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta-2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.listaOcupadasCompacta {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+}
+
+.itemOcupadaCompacta {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio-control);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.itemOcupadaAprobada {
+  background-color: var(--estado-aprobada-fondo);
+  border: var(--borde-ancho) solid var(--estado-aprobada-texto);
+  color: var(--estado-aprobada-texto);
+}
+
+.itemOcupadaPendiente {
+  background: var(--patron-pendiente);
+  border: var(--borde-ancho) solid var(--estado-pendiente-texto);
+  color: var(--estado-pendiente-texto);
+}
+
+.listaLibresCompacta {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+}
+
+.botonTramoLibre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--control-min-tactil);
+  padding: var(--espacio-2) var(--espacio-3);
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  color: var(--tinta);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.botonTramoLibre:hover {
+  background-color: var(--superficie-sutil);
+  border-color: var(--acento);
+}
+
+.botonTramoSeleccionado {
+  background-color: var(--acento);
+  border-color: var(--acento);
+  color: var(--tinta-inversa);
+  font-weight: var(--peso-semibold);
+}
+
+.botonTramoSeleccionado:hover {
+  background-color: var(--acento-hover);
+  color: var(--tinta-inversa);
+}
+
+.etiquetaTramoLibre {
+  font-weight: var(--peso-semibold);
+}
+
+.accionTramoLibre {
+  font-size: var(--texto-xs);
+  opacity: 0.9;
+}
+
+.textoVacioCompacto {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  font-style: italic;
+  padding: var(--espacio-1) 0;
+}
+
+/* ==========================================================================
+   BREAKPOINTS: >= 1100 px vs < 1100 px
+   ========================================================================== */
+@media (min-width: 1100px) {
+  .vistaEscritorio {
+    display: block;
+  }
+
+  .vistaCompacta {
+    display: none;
+  }
+}
+
+@media (max-width: 1099px) {
+  .vistaEscritorio {
     display: none;
   }
 
-  .tablaGrilla,
-  .tablaGrilla tbody {
+  .vistaCompacta {
     display: flex;
-    flex-direction: column;
-    gap: var(--espacio-4);
-  }
-
-  .filaAula {
-    display: flex;
-    flex-direction: column;
-    border: var(--borde-ancho) solid var(--borde);
-    border-radius: var(--radio-panel);
-    padding: var(--espacio-3);
-    gap: var(--espacio-2);
-    background-color: var(--superficie);
-  }
-
-  .tdAula {
-    width: 100%;
-    max-width: 100%;
-    border: none;
-    padding: 0 0 var(--espacio-2) 0;
-    border-bottom: var(--borde-ancho) solid var(--borde);
-    background: transparent;
-  }
-
-  .tdCelda {
-    width: 100%;
-    border: none;
-    padding: 0;
-    height: auto;
-  }
-
-  .celdaBoton {
-    min-height: var(--control-min-tactil);
-    padding: var(--espacio-2) var(--espacio-3);
-    border-radius: var(--radio-control);
-    border: var(--borde-ancho) solid var(--borde);
-    justify-content: space-between;
-    flex-direction: row;
-    background-color: var(--fondo);
-  }
-
-  .celdaLibre:hover:not(:disabled) {
-    background-color: var(--superficie-sutil);
-  }
-
-  .bloqueOcupado {
-    min-height: var(--control-min-tactil);
-    padding: var(--espacio-2) var(--espacio-3);
-    justify-content: flex-start;
-  }
-
-  .etiquetaHoraMovil {
-    display: inline;
-    font-size: var(--texto-sm);
-    font-weight: var(--peso-semibold);
-  }
-
-  .textoRangoOcupado {
-    display: none;
   }
 }

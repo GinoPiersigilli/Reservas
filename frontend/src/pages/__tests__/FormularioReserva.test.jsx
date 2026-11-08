@@ -157,4 +157,42 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
       '14:00 a 15:00'
     );
   });
+
+  it('prefills start and end times in compact view when tapping a grouped free slot', async () => {
+    aulaService.getDisponibilidadAula.mockImplementation((aulaId) => {
+      if (Number(aulaId) === 1) {
+        return Promise.resolve({
+          data: [{ horaInicio: '11:00', horaFin: '13:00', estado: 'aprobada' }]
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <MemoryRouter>
+        <FormularioReserva />
+      </MemoryRouter>
+    );
+
+    await screen.findByRole('option', { name: /Aula 910/i });
+
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), {
+      target: { name: 'fecha', value: '2027-11-20' }
+    });
+
+    expect(
+      await screen.findByText(/Ocupada 11:00–13:00, aprobada/i)
+    ).toBeInTheDocument();
+
+    const tramoLibre0811 = screen.getByRole('button', {
+      name: /Aula 910, libre de 08:00 a 11:00/i
+    });
+    fireEvent.click(tramoLibre0811);
+
+    expect(screen.getByLabelText(/^Hora de inicio/i)).toHaveValue('08:00');
+    expect(screen.getByLabelText(/^Hora de fin/i)).toHaveValue('11:00');
+    expect(screen.getByText(/Seleccionado: Aula 910/i)).toHaveTextContent(
+      '08:00 a 11:00'
+    );
+  });
 });
