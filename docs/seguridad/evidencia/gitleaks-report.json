@@ -1,0 +1,23 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 146,
+  "EndLine": 147,
+  "StartColumn": 13,
+  "EndColumn": 29,
+  "Match": "REDACTED",
+  "Secret": "REDACTED",
+  "File": "docs/CONTEXTO_PROYECTO.md",
+  "SymlinkFile": "",
+  "Commit": "f07ef07345415ced7e05c92da4aa6f4a44889858",
+  "Link": "https://github.com/GinoPiersigilli/Reservas/blob/f07ef07345415ced7e05c92da4aa6f4a44889858/docs/CONTEXTO_PROYECTO.md?plain=1#L146-L147",
+  "Entropy": 3.708966,
+  "Author": "Gino",
+  "Email": "401761@sistemas.frc.utn.edu.ar",
+  "Date": "2026-11-07T17:38:11Z",
+  "Message": "Actualizar CONTEXTO_PROYECTO y README con el esquema PostgreSQL y guia completa",
+  "Tags": [],
+  "Fingerprint": "f07ef07345415ced7e05c92da4aa6f4a44889858:docs/CONTEXTO_PROYECTO.md:generic-api-key:146"
+ }
+]
