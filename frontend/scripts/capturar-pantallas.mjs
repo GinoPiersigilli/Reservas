@@ -231,12 +231,8 @@ async function main() {
   // A) Login (sin sesión)
   await setSession(null);
   await goAndVerify('/login');
-  // Ocultar widget externo de Clerk si demora o muestra aviso de clave de desarrollo para mantener la captura limpia y sin claves
-  const ocultarClerk = `(() => {
-    document.querySelectorAll('[class*="separador"], [class*="bloqueClerk"]').forEach(el => { el.style.display = 'none'; });
-  })()`;
-  await capture('login-escritorio.png', 1280, 800, false, ocultarClerk);
-  await capture('login-movil.png', 360, 800, true, ocultarClerk);
+  await capture('login-escritorio.png', 1280, 800, false);
+  await capture('login-movil.png', 360, 800, true);
 
   // B) Sesión Administrador: Reservas, Nueva reserva (grilla), Detalle, Panel
   await setSession(adminAuth);

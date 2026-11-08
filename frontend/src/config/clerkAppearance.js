@@ -16,6 +16,12 @@ export const clerkAppearance = {
   },
   elements: {
     rootBox: {
+      width: '100%',
+      boxShadow: 'none'
+    },
+    cardBox: {
+      boxShadow: 'none',
+      border: 'none',
       width: '100%'
     },
     card: {
@@ -23,7 +29,7 @@ export const clerkAppearance = {
       border: '1px solid #D5DAE1',
       boxShadow: 'none',
       borderRadius: '6px',
-      padding: '16px'
+      padding: '24px'
     },
     headerTitle: {
       color: '#1B2430',
@@ -32,7 +38,8 @@ export const clerkAppearance = {
       fontWeight: '600'
     },
     headerSubtitle: {
-      color: '#566273'
+      color: '#566273',
+      fontSize: '14px'
     },
     socialButtonsBlockButton: {
       background: '#FFFFFF',
@@ -49,7 +56,8 @@ export const clerkAppearance = {
       background: '#D5DAE1'
     },
     dividerText: {
-      color: '#566273'
+      color: '#566273',
+      fontSize: '12px'
     },
     formFieldInput: {
       background: '#FFFFFF',
@@ -60,19 +68,30 @@ export const clerkAppearance = {
     },
     formFieldLabel: {
       color: '#1B2430',
-      fontWeight: '500'
+      fontWeight: '500',
+      fontSize: '14px'
     },
     formButtonPrimary: {
       background: '#1F4E8C',
+      backgroundImage: 'none',
       borderRadius: '4px',
       fontWeight: '500',
       boxShadow: 'none'
     },
+    footer: {
+      background: 'transparent',
+      border: 'none'
+    },
+    footerActionText: {
+      color: '#566273',
+      fontSize: '14px'
+    },
     footerActionLink: {
-      color: '#1F4E8C'
+      color: '#1F4E8C',
+      fontWeight: '500',
+      textDecoration: 'none'
     }
   }
 };
 
 export default clerkAppearance;
-

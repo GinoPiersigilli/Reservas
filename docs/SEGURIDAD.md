@@ -78,3 +78,37 @@ Para proteger la privacidad de los usuarios del sistema y evitar la filtración 
 4. **Tratamiento en interfaz de usuario (Frontend):**
    - En la tabla de reservas, el panel administrativo y la vista de detalle, el correo electrónico del solicitante no se renderiza en texto plano en la pantalla, sino únicamente como tooltip accesible en el atributo HTML `title` del nombre, reduciendo la exposición visual innecesaria de datos de contacto.
 
+---
+
+## 6. Evaluación de CSP tras la migración a Google OAuth directo (Fase 3b-7)
+
+En la Fase 3b-7 se reemplazaron los componentes embebidos de Clerk (`<SignIn />` y `<SignUp />`) en `/login` y `/register` por botones nativos de la aplicación ("Continuar con Google" y "Registrarse con Google") que disparan directamente el flujo OAuth mediante `signIn.authenticateWithRedirect` y `signUp.authenticateWithRedirect` con callback en `/sso-callback`.
+
+### 6.1. Impacto en el DOM y estilos de la aplicación
+- **Limpieza del DOM:** los formularios de login y registro se renderizan 100% con componentes propios estilizados mediante CSS Modules (`*.module.css`) y tokens semánticos (`tokens.css`). Ya no se inyecta en el DOM el árbol CSS-in-JS que Clerk construía para sus formularios embebidos.
+- **Sin estilos inline propios:** ni `Login.jsx` ni `Register.jsx` contienen atributos `style=`.
+
+### 6.2. Directivas de Clerk que continúan siendo estrictamente necesarias
+Aunque no se utilicen `<SignIn />` ni `<SignUp />`, la aplicación inicializa `<ClerkProvider>` en la raíz (`main.jsx`) para gestionar la sesión, el token JWT y el intercambio OAuth en `/sso-callback` (`<AuthenticateWithRedirectCallback />`). Por ende, el navegador carga el bundle core de Clerk (`@clerk/clerk-react`) que requiere:
+
+| Directiva | Requerida | Justificación técnica |
+|---|---|---|
+| `script-src` | **Sí** | `https://*.clerk.accounts.dev`, `https://*.clerk.com`, `https://challenges.cloudflare.com`, `https://*.protect.clerk.com`. Carga del script FAPI de Clerk y de Cloudflare Turnstile para protección antibot en la inicialización del cliente. |
+| `connect-src` | **Sí** | `https://*.clerk.accounts.dev`, `https://*.clerk.com`, `https://clerk-telemetry.com`, `https://*.protect.clerk.com:*`. Peticiones a la API de autenticación para obtener claves públicas de verificación, telemetría y sincronización de sesión. |
+| `worker-src` | **Sí** | `blob:`. El SDK de Clerk inicializa web workers internos mediante URLs `blob:` para tareas en segundo plano. |
+| `frame-src` | **Sí** | `https://challenges.cloudflare.com`, `https://*.clerk.accounts.dev`, `https://*.protect.clerk.com`. Verificaciones de seguridad invisibles de Cloudflare Turnstile e iframes de ayuda para redirecciones de autenticación cruzada. |
+| `img-src` | **Sí** | `https://img.clerk.com`. Necesario si en fases posteriores se exhiben avatares sincronizados desde la cuenta de Google u otros assets alojados en el CDN de Clerk. |
+
+### 6.3. ¿Se puede remover `style-src 'unsafe-inline'` sin romper el login?
+- **Diagnóstico:** **NO.**
+- **Motivo técnico:** Aunque la pantalla de `/login` ya no renderice `<SignIn />`, el SDK cliente de Clerk (`@clerk/clerk-react` / `@clerk/shared`) inyecta dinámicamente elementos `<style>` en el `<head>` del documento durante el ciclo de vida del cliente. Esto ocurre para:
+  1. Contenedores y badges de Cloudflare Turnstile / Clerk Protect.
+  2. Overlays y modales de fallback que Clerk activa en caso de requerir verificación adicional (por ejemplo, paso intermedio de autenticación multifactor o resolución de cuentas vinculadas).
+  3. Estados de error globales o toasts inyectados por el runtime de Clerk.
+- Si se elimina `'unsafe-inline'` de `style-src`, el navegador genera violaciones de CSP (`Refused to apply inline style because it violates the following Content Security Policy directive...`) y los componentes de soporte/seguridad de Clerk fallan en inicializarse o rompen visualmente los flujos de redirección.
+- Al tratarse de una SPA servida como archivos estáticos a través de Nginx (sin un servidor Node SSR que pueda inyectar un `nonce` criptográfico único por cada petición HTTP), la directiva `'unsafe-inline'` en `style-src` sigue siendo **indispensable** mientras `@clerk/clerk-react` forme parte del frontend.
+
+### 6.4. Política en `frontend/nginx.conf`
+En cumplimiento estricto con las especificaciones del requerimiento, **`frontend/nginx.conf` NO fue modificado**. La configuración actual permanece intacta y garantiza total compatibilidad y operatividad del login con Google OAuth y Clerk.
+
+

@@ -16,7 +16,10 @@ import * as reservasService from '../../services/reservas.service.js';
 
 vi.mock('@clerk/clerk-react', () => ({
   SignIn: () => <div data-testid="clerk-signin">Clerk SignIn</div>,
-  SignUp: () => <div data-testid="clerk-signup">Clerk SignUp</div>
+  SignUp: () => <div data-testid="clerk-signup">Clerk SignUp</div>,
+  useSignIn: () => ({ isLoaded: true, signIn: { authenticateWithRedirect: vi.fn() } }),
+  useSignUp: () => ({ isLoaded: true, signUp: { authenticateWithRedirect: vi.fn() } }),
+  AuthenticateWithRedirectCallback: () => null
 }));
 
 vi.mock('../../context/AuthContext.jsx', () => ({
