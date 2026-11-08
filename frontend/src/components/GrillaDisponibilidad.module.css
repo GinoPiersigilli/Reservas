@@ -6,6 +6,9 @@
   border: var(--borde-ancho) solid var(--borde);
   border-radius: var(--radio-panel);
   padding: var(--espacio-4);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .cabecera {
@@ -80,17 +83,28 @@
   overflow-x: auto;
   border: var(--borde-ancho) solid var(--borde);
   border-radius: var(--radio-control);
+  background-color: var(--superficie);
 }
 
 .tablaGrilla {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
 
+.colAula {
+  width: 130px;
+}
+
+.colHora {
+  width: calc((100% - 130px) / 28);
+}
+
 .thAula {
-  min-width: var(--grilla-aula-ancho);
-  padding: var(--espacio-2) var(--espacio-3);
+  width: 130px;
+  max-width: 130px;
+  padding: var(--espacio-1) var(--espacio-2);
   text-align: left;
   font-size: var(--texto-xs);
   font-weight: var(--peso-semibold);
@@ -98,18 +112,22 @@
   background-color: var(--fondo);
   border-bottom: var(--borde-ancho) solid var(--borde);
   border-right: var(--borde-ancho) solid var(--borde);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .thHora {
-  padding: var(--espacio-2) var(--espacio-1);
+  padding: var(--espacio-1) 0;
   text-align: center;
-  font-size: var(--texto-xs);
+  font-size: 11px;
   font-weight: var(--peso-semibold);
   color: var(--tinta-2);
   background-color: var(--fondo);
   border-bottom: var(--borde-ancho) solid var(--borde);
   border-left: var(--borde-ancho) solid var(--borde);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .thHoraAhora {
@@ -118,7 +136,9 @@
 }
 
 .tdAula {
-  padding: var(--espacio-2) var(--espacio-3);
+  width: 130px;
+  max-width: 130px;
+  padding: var(--espacio-1) var(--espacio-2);
   border-top: var(--borde-ancho) solid var(--borde);
   border-right: var(--borde-ancho) solid var(--borde);
   background-color: var(--superficie);
@@ -127,92 +147,131 @@
 
 .nombreAula {
   display: block;
-  font-size: var(--texto-sm);
+  font-size: var(--texto-xs);
   font-weight: var(--peso-semibold);
   color: var(--tinta);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metaAula {
   display: block;
-  font-size: var(--texto-xs);
+  font-size: 11px;
   color: var(--tinta-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tdCelda {
-  padding: var(--espacio-1);
+  padding: 0;
   border-top: var(--borde-ancho) solid var(--borde);
-  border-left: var(--borde-ancho) solid var(--borde);
   vertical-align: middle;
+  height: 38px;
+}
+
+.tdBordeHora {
+  border-left: var(--borde-ancho) solid var(--borde);
+}
+
+.tdBordeMedia {
+  border-left: var(--borde-ancho) solid var(--superficie-sutil);
 }
 
 .tdCeldaAhora {
-  border-left: var(--linea-ahora-ancho) solid var(--acento);
+  border-left: var(--linea-ahora-ancho) solid var(--acento) !important;
+}
+
+.tdOcupada {
+  padding: 2px;
+}
+
+.bloqueOcupado {
+  width: 100%;
+  height: 100%;
+  min-height: 34px;
+  padding: 0 var(--espacio-1);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radio-control);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-semibold);
+  font-variant-numeric: tabular-nums;
+  cursor: not-allowed;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.bloqueAprobado {
+  background-color: var(--estado-aprobada-fondo);
+  border: var(--borde-ancho) solid var(--estado-aprobada-texto);
+  color: var(--estado-aprobada-texto);
+}
+
+.bloquePendiente {
+  background: var(--patron-pendiente);
+  border: var(--borde-ancho) solid var(--estado-pendiente-texto);
+  color: var(--estado-pendiente-texto);
+}
+
+.textoRangoOcupado {
+  font-size: var(--texto-xs);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .celdaBoton {
   width: 100%;
-  min-width: var(--grilla-celda-ancho);
-  min-height: var(--grilla-celda-altura);
-  padding: var(--espacio-1);
+  height: 100%;
+  min-height: 38px;
+  padding: 0;
+  margin: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radio-control);
-  border: var(--borde-ancho) solid var(--borde);
-  background-color: var(--superficie);
-  color: var(--tinta-2);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinta);
   font-family: var(--fuente-cuerpo);
   font-size: var(--texto-xs);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition:
     background-color var(--transicion-rapida),
-    border-color var(--transicion-rapida),
     color var(--transicion-rapida);
 }
 
+.celdaBoton:focus-visible {
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: -2px;
+  z-index: 2;
+  position: relative;
+}
+
 .celdaLibre:hover:not(:disabled) {
-  background-color: var(--fondo);
-  border-color: var(--acento);
-  color: var(--tinta);
+  background-color: var(--superficie-sutil);
 }
 
 .celdaSeleccionada {
   background-color: var(--acento);
-  border-color: var(--acento);
   color: var(--tinta-inversa);
   font-weight: var(--peso-semibold);
 }
 
-.celdaAprobada {
-  background-color: var(--estado-aprobada-fondo);
-  border-color: var(--estado-aprobada-texto);
-  color: var(--estado-aprobada-texto);
-  font-weight: var(--peso-semibold);
-  cursor: not-allowed;
-}
-
-.celdaPendiente {
-  background: var(--patron-pendiente);
-  border-color: var(--estado-pendiente-texto);
-  color: var(--estado-pendiente-texto);
-  font-weight: var(--peso-semibold);
-  cursor: not-allowed;
-}
-
 .celdaPasada {
   background-color: var(--fondo);
-  border-color: var(--borde);
   color: var(--tinta-2);
   opacity: var(--opacidad-deshabilitado);
   cursor: not-allowed;
-}
-
-.etiquetaRangoOcupado {
-  font-size: var(--texto-xs);
-  line-height: var(--linea-titulo);
-  white-space: nowrap;
 }
 
 .etiquetaHoraMovil {
@@ -229,7 +288,9 @@
 }
 
 @media (max-width: 768px) {
-  .theadEscritorio {
+  .theadEscritorio,
+  .colAula,
+  .colHora {
     display: none;
   }
 
@@ -244,24 +305,55 @@
     display: flex;
     flex-direction: column;
     border: var(--borde-ancho) solid var(--borde);
-    border-radius: var(--radio-control);
+    border-radius: var(--radio-panel);
     padding: var(--espacio-3);
     gap: var(--espacio-2);
+    background-color: var(--superficie);
   }
 
   .tdAula {
+    width: 100%;
+    max-width: 100%;
     border: none;
     padding: 0 0 var(--espacio-2) 0;
     border-bottom: var(--borde-ancho) solid var(--borde);
+    background: transparent;
   }
 
   .tdCelda {
+    width: 100%;
     border: none;
     padding: 0;
+    height: auto;
+  }
+
+  .celdaBoton {
+    min-height: var(--control-min-tactil);
+    padding: var(--espacio-2) var(--espacio-3);
+    border-radius: var(--radio-control);
+    border: var(--borde-ancho) solid var(--borde);
+    justify-content: space-between;
+    flex-direction: row;
+    background-color: var(--fondo);
+  }
+
+  .celdaLibre:hover:not(:disabled) {
+    background-color: var(--superficie-sutil);
+  }
+
+  .bloqueOcupado {
+    min-height: var(--control-min-tactil);
+    padding: var(--espacio-2) var(--espacio-3);
+    justify-content: flex-start;
   }
 
   .etiquetaHoraMovil {
     display: inline;
+    font-size: var(--texto-sm);
+    font-weight: var(--peso-semibold);
+  }
+
+  .textoRangoOcupado {
+    display: none;
   }
 }
-

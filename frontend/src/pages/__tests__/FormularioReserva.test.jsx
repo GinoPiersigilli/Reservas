@@ -136,7 +136,7 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
     });
 
     const celdaOcupada = await screen.findByRole('button', {
-      name: /Aula 910, 10:00 a 10:30, ocupada/i
+      name: /Aula 910, 10:00 a 11:00, ocupada/i
     });
     expect(celdaOcupada).toBeDisabled();
 

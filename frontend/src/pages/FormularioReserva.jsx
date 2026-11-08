@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import { Button, Field, Input, Select, Toast } from '../components/ui/index.js';
 import GrillaDisponibilidad from '../components/GrillaDisponibilidad.jsx';
 import {
@@ -250,23 +251,39 @@ export default function FormularioReserva() {
           <li
             className={[
               styles.pasoItem,
-              pasoActual === 1 ? styles.pasoActivo : ''
+              pasoActual === 1 ? styles.pasoActivo : '',
+              pasoActual > 1 ? styles.pasoCompletado : ''
             ]
               .filter(Boolean)
               .join(' ')}
+            aria-current={pasoActual === 1 ? 'step' : undefined}
           >
-            <span className={styles.numeroPaso}>1</span>
+            <span className={styles.numeroPaso}>
+              {pasoActual > 1 ? (
+                <Check size={14} aria-hidden="true" />
+              ) : (
+                '1'
+              )}
+            </span>
             <span>{TEXTOS.formulario.paso1}</span>
           </li>
           <li
             className={[
               styles.pasoItem,
-              pasoActual === 2 ? styles.pasoActivo : ''
+              pasoActual === 2 ? styles.pasoActivo : '',
+              pasoActual > 2 ? styles.pasoCompletado : ''
             ]
               .filter(Boolean)
               .join(' ')}
+            aria-current={pasoActual === 2 ? 'step' : undefined}
           >
-            <span className={styles.numeroPaso}>2</span>
+            <span className={styles.numeroPaso}>
+              {pasoActual > 2 ? (
+                <Check size={14} aria-hidden="true" />
+              ) : (
+                '2'
+              )}
+            </span>
             <span>{TEXTOS.formulario.paso2}</span>
           </li>
           <li
@@ -276,6 +293,7 @@ export default function FormularioReserva() {
             ]
               .filter(Boolean)
               .join(' ')}
+            aria-current={pasoActual === 3 ? 'step' : undefined}
           >
             <span className={styles.numeroPaso}>3</span>
             <span>{TEXTOS.formulario.paso3}</span>
@@ -305,6 +323,11 @@ export default function FormularioReserva() {
             <Field
               id="aulaId"
               etiqueta={TEXTOS.formulario.aula}
+              ayuda={
+                aulaSeleccionada
+                  ? `${aulaSeleccionada.ubicacion ? `${aulaSeleccionada.ubicacion} · ` : ''}Capacidad: ${aulaSeleccionada.capacidad} personas.`
+                  : 'Elija un aula para consultar ubicación y capacidad.'
+              }
               error={erroresCampo.aulaId}
               obligatorio
             >
@@ -319,7 +342,7 @@ export default function FormularioReserva() {
                 </option>
                 {aulas.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.nombre} – {a.ubicacion} (cap. {a.capacidad})
+                    {a.nombre}
                   </option>
                 ))}
               </Select>
