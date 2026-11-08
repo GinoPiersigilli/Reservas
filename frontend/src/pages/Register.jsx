@@ -3,6 +3,7 @@ import { useSignUp } from '@clerk/clerk-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Field, Input, Toast } from '../components/ui/index.js';
 import { register } from '../services/auth.service.js';
+import { useGoogleOAuth } from '../hooks/useGoogleOAuth.js';
 import { TEXTOS } from '../textos.js';
 import styles from './Auth.module.css';
 
@@ -33,6 +34,16 @@ export default function Register() {
   const navigate = useNavigate();
 
   const { isLoaded, signUp } = useSignUp();
+  const {
+    redirigiendoGoogle,
+    errorGoogle,
+    setErrorGoogle,
+    iniciarOAuth
+  } = useGoogleOAuth({
+    authResource: signUp,
+    isLoaded,
+    defaultErrorMessage: TEXTOS.registro.errorGoogle
+  });
 
   const [form, setForm] = useState({
     nombre: '',
@@ -42,9 +53,7 @@ export default function Register() {
   });
   const [erroresCampo, setErroresCampo] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
-  const [errorGoogle, setErrorGoogle] = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [redirigiendoGoogle, setRedirigiendoGoogle] = useState(false);
 
   const handleChange = (evento) => {
     const { name, value } = evento.target;
@@ -99,21 +108,8 @@ export default function Register() {
   };
 
   const handleGoogleSignUp = async () => {
-    if (!isLoaded || !signUp) return;
     setErrorGeneral(null);
-    setErrorGoogle(null);
-    setRedirigiendoGoogle(true);
-
-    try {
-      await signUp.authenticateWithRedirect({
-        strategy: 'oauth_google',
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/reservas'
-      });
-    } catch (err) {
-      setRedirigiendoGoogle(false);
-      setErrorGoogle(err?.errors?.[0]?.longMessage || err?.message || TEXTOS.registro.errorGoogle);
-    }
+    await iniciarOAuth();
   };
 
   return (
