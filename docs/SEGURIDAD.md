@@ -58,3 +58,23 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' https:
    - **Riesgo residual:** permite cargar imágenes en formato `data:` e imágenes desde `img.clerk.com`.
    - **Mitigación:** las imágenes no tienen capacidad de ejecución de scripts y no se permiten orígenes arbitrarios (`*`) que faciliten *tracking pixels* externos.
 
+---
+
+## 5. Privacidad y protección de datos del solicitante (Fase 3b-6)
+
+Para proteger la privacidad de los usuarios del sistema y evitar la filtración accidental de datos personales sensibles o credenciales:
+
+1. **Exposición exclusiva a administradores:**
+   - El nombre y correo electrónico del solicitante (`usuario: { id, nombre, email }`) solo se incluyen en las respuestas de la API (`/api/reservas`, `/api/reservas/:id`, `/api/reservas/resumen`) si quien efectúa la consulta posee el rol de administrador (`rol === 'admin'`).
+   - Los usuarios comunes solo consultan sus propias reservas y no reciben el objeto `usuario` en las respuestas.
+
+2. **Proyección estricta de atributos de Usuario:**
+   - Dado que el modelo `Usuario` en Sequelize no oculta por defecto el campo `passwordHash`, queda terminantemente prohibido realizar `include` de `Usuario` sin una lista explícita y restringida de atributos: `attributes: ['id', 'nombre', 'email']`.
+   - Tests automatizados en backend (`backend/tests/reservas.test.js`) validan continuamente que ninguna respuesta de `/api/reservas`, `/api/reservas/:id` ni `/api/reservas/resumen` contenga las cadenas `passwordHash` o `password`.
+
+3. **Inmunidad en endpoints de disponibilidad:**
+   - El endpoint de consulta de ocupación de aulas (`GET /api/aulas/:id/disponibilidad`) permanece estrictamente técnico y público para usuarios autenticados: solo devuelve `horaInicio`, `horaFin` y `estado`, sin incluir jamás nombres, correos ni identificadores de solicitantes.
+
+4. **Tratamiento en interfaz de usuario (Frontend):**
+   - En la tabla de reservas, el panel administrativo y la vista de detalle, el correo electrónico del solicitante no se renderiza en texto plano en la pantalla, sino únicamente como tooltip accesible en el atributo HTML `title` del nombre, reduciendo la exposición visual innecesaria de datos de contacto.
+

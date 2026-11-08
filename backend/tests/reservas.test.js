@@ -1137,4 +1137,123 @@ describe('Reservas API', () => {
     expect(resPag2.body.datos).toHaveLength(1);
     expect(resPag1.body.datos[0].id).not.toBe(resPag2.body.datos[0].id);
   });
+
+  describe('Fase 3b-6: Visibilidad de solicitante para admin y protección de datos', () => {
+    it('(a) no response from /api/reservas, /api/reservas/:id or /api/reservas/resumen contains "passwordHash" or "password"', async () => {
+      const resListado = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resListado.status).toBe(200);
+      expect(resListado.text).not.toContain('passwordHash');
+      expect(resListado.text).not.toContain('password');
+
+      const resDetalle = await request(app)
+        .get(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resDetalle.status).toBe(200);
+      expect(resDetalle.text).not.toContain('passwordHash');
+      expect(resDetalle.text).not.toContain('password');
+
+      const resResumen = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resResumen.status).toBe(200);
+      expect(resResumen.text).not.toContain('passwordHash');
+      expect(resResumen.text).not.toContain('password');
+    });
+
+    it('(b) admin receives usuario.nombre and usuario.email in list, detail, and summary', async () => {
+      // Listado: admin ve solicitante con nombre y email
+      const resListado = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resListado.status).toBe(200);
+      const reservaA = resListado.body.datos.find((r) => r.id === reservaPendiente.id);
+      expect(reservaA).toBeDefined();
+      expect(reservaA.usuario).toEqual({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email
+      });
+
+      // Detalle: admin ve solicitante con nombre y email
+      const resDetalle = await request(app)
+        .get(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resDetalle.status).toBe(200);
+      expect(resDetalle.body.usuario).toEqual({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email
+      });
+
+      // Resumen: proximasHoy incluye usuario con nombre y email
+      const fechaHoy = hoyArgentina();
+      const reservaHoy = await Reserva.create({
+        aulaId: aula.id,
+        usuarioId: usuario.id,
+        fecha: fechaHoy,
+        horaInicio: '23:30',
+        horaFin: '23:59',
+        cantidadPersonas: 5,
+        motivo: 'Revisión nocturna',
+        estado: 'aprobada'
+      });
+
+      const resResumen = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resResumen.status).toBe(200);
+      const itemHoy = resResumen.body.proximasHoy.find((r) => r.id === reservaHoy.id);
+      expect(itemHoy).toBeDefined();
+      expect(itemHoy.usuario).toEqual({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email
+      });
+    });
+
+    it('(c) regular user does NOT receive usuario field and only sees own reservations', async () => {
+      // Listado usuario común
+      const resListado = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`);
+      expect(resListado.status).toBe(200);
+      // Solo ve sus reservas
+      expect(resListado.body.datos.length).toBeGreaterThan(0);
+      expect(resListado.body.datos.every((r) => r.usuarioId === usuario.id)).toBe(true);
+      expect(resListado.body.datos.some((r) => r.id === reservaOtroUsuario.id)).toBe(false);
+      // No incluye el campo usuario
+      resListado.body.datos.forEach((r) => {
+        expect(r.usuario).toBeUndefined();
+      });
+
+      // Detalle usuario común (propia reserva)
+      const resDetalle = await request(app)
+        .get(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${usuarioToken}`);
+      expect(resDetalle.status).toBe(200);
+      expect(resDetalle.body.id).toBe(reservaPendiente.id);
+      expect(resDetalle.body.usuario).toBeUndefined();
+    });
+
+    it('(d) availability endpoint does not contain nombre or email', async () => {
+      const fechaManiana = fechaFutura(1);
+      const resDisp = await request(app)
+        .get(`/api/aulas/${aula.id}/disponibilidad?fecha=${fechaManiana}`)
+        .set('Authorization', `Bearer ${usuarioToken}`);
+
+      expect(resDisp.status).toBe(200);
+      expect(Array.isArray(resDisp.body)).toBe(true);
+      expect(resDisp.body.length).toBeGreaterThan(0);
+      expect(resDisp.body[0]).toHaveProperty('horaInicio');
+      expect(resDisp.body[0]).toHaveProperty('horaFin');
+      expect(resDisp.body[0]).toHaveProperty('estado');
+      // No expone datos personales
+      expect(resDisp.text).not.toContain('nombre');
+      expect(resDisp.text).not.toContain('email');
+      expect(resDisp.text).not.toContain(usuario.nombre);
+      expect(resDisp.text).not.toContain(usuario.email);
+    });
+  });
 });

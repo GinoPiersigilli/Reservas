@@ -84,7 +84,19 @@ export default function TablaReservas({
             <Table.Cell className={styles.horarioCelda}>
               {r.horaInicio}–{r.horaFin}
             </Table.Cell>
-            {esAdmin ? <Table.Cell>{obtenerSolicitante(r)}</Table.Cell> : null}
+            {esAdmin ? (
+              <Table.Cell
+                className={styles.solicitanteCelda}
+                title={obtenerSolicitante(r)}
+              >
+                <span
+                  className={styles.nombreSolicitante}
+                  title={r.usuario?.email || obtenerSolicitante(r)}
+                >
+                  {obtenerSolicitante(r)}
+                </span>
+              </Table.Cell>
+            ) : null}
             <Table.Cell>{r.motivo}</Table.Cell>
             <Table.Cell>
               <EstadoBadge estado={r.estado} />
