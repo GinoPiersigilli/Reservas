@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../context/AuthContext.jsx';
 import Login from '../Login.jsx';
@@ -94,6 +94,62 @@ describe('Login page', () => {
 
     expect(await screen.findByText(/Flujo cancelado por el usuario/i)).toBeInTheDocument();
     expect(botonGoogle).not.toBeDisabled();
+  });
+
+  it('re-enables "Continuar con Google" button when restored from bfcache (pageshow persisted=true)', () => {
+    mockAuthenticateWithRedirect.mockImplementationOnce(() => new Promise(() => {}));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Continuar con Google/i });
+    fireEvent.click(botonGoogle);
+
+    expect(botonGoogle).toBeDisabled();
+    expect(botonGoogle).toHaveAttribute('aria-busy', 'true');
+
+    act(() => {
+      const event = new Event('pageshow');
+      Object.defineProperty(event, 'persisted', { value: true });
+      window.dispatchEvent(event);
+    });
+
+    expect(botonGoogle).not.toBeDisabled();
+    expect(botonGoogle).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('re-enables "Continuar con Google" button and displays Spanish error after 20s safety timeout', () => {
+    vi.useFakeTimers();
+    mockAuthenticateWithRedirect.mockImplementationOnce(() => new Promise(() => {}));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const botonGoogle = screen.getByRole('button', { name: /Continuar con Google/i });
+    fireEvent.click(botonGoogle);
+
+    expect(botonGoogle).toBeDisabled();
+    expect(botonGoogle).toHaveAttribute('aria-busy', 'true');
+
+    act(() => {
+      vi.advanceTimersByTime(20000);
+    });
+
+    expect(screen.getByText('No se completó el ingreso con Google. Intente de nuevo.')).toBeInTheDocument();
+    expect(botonGoogle).not.toBeDisabled();
+    expect(botonGoogle).toHaveAttribute('aria-busy', 'false');
+
+    vi.useRealTimers();
   });
 
   it('authenticates local user and stores JWT token and user in localStorage', async () => {

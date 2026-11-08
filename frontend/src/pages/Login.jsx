@@ -3,6 +3,7 @@ import { useSignIn } from '@clerk/clerk-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Field, Input, Toast } from '../components/ui/index.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useGoogleOAuth } from '../hooks/useGoogleOAuth.js';
 import { TEXTOS } from '../textos.js';
 import styles from './Auth.module.css';
 
@@ -36,13 +37,21 @@ export default function Login() {
   const mensajeInicial = location.state?.mensaje || null;
 
   const { isLoaded, signIn } = useSignIn();
+  const {
+    redirigiendoGoogle,
+    errorGoogle,
+    setErrorGoogle,
+    iniciarOAuth
+  } = useGoogleOAuth({
+    authResource: signIn,
+    isLoaded,
+    defaultErrorMessage: TEXTOS.login.errorGoogle
+  });
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [erroresCampo, setErroresCampo] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
-  const [errorGoogle, setErrorGoogle] = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [redirigiendoGoogle, setRedirigiendoGoogle] = useState(false);
 
   const handleChange = (evento) => {
     const { name, value } = evento.target;
@@ -85,21 +94,8 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!isLoaded || !signIn) return;
     setErrorGeneral(null);
-    setErrorGoogle(null);
-    setRedirigiendoGoogle(true);
-
-    try {
-      await signIn.authenticateWithRedirect({
-        strategy: 'oauth_google',
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/reservas'
-      });
-    } catch (err) {
-      setRedirigiendoGoogle(false);
-      setErrorGoogle(err?.errors?.[0]?.longMessage || err?.message || TEXTOS.login.errorGoogle);
-    }
+    await iniciarOAuth();
   };
 
   return (

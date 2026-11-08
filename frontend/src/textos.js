@@ -58,6 +58,7 @@ export const TEXTOS = {
     separadorO: 'o',
     continuarGoogle: 'Continuar con Google',
     errorGoogle: 'No se pudo iniciar sesión con Google. Intente nuevamente.',
+    noCompletadoGoogle: 'No se completó el ingreso con Google. Intente de nuevo.',
     sinCuenta: '¿No tiene cuenta?',
     crearCuenta: 'Crear cuenta'
   },
@@ -71,6 +72,7 @@ export const TEXTOS = {
     registrar: 'Crear cuenta',
     registrarseGoogle: 'Registrarse con Google',
     errorGoogle: 'No se pudo completar el registro con Google. Intente nuevamente.',
+    noCompletadoGoogle: 'No se completó el ingreso con Google. Intente de nuevo.',
     conCuenta: '¿Ya tiene cuenta?',
     ingresar: 'Ingresar'
   },
