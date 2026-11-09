@@ -6,6 +6,13 @@ export const manejadorErrores = (err, req, res, next) => {
     console.error(err.stack);
   }
 
+  // 1.1. Manejo de payload que excede el límite permitido (SEC-CFG-02)
+  if (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413) {
+    return res.status(413).json({
+      error: 'El cuerpo de la petición excede el tamaño máximo permitido'
+    });
+  }
+
   // 2. Mapeo de errores de constraints de Sequelize / PostgreSQL
   const pgCode = err.parent?.code || err.original?.code;
 
