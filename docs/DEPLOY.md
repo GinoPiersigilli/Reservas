@@ -53,6 +53,7 @@ chmod 600 .env.production
 | `WORK_HOUR_START` | Opcional | Hora de inicio de la franja laboral | `08:00` |
 | `WORK_HOUR_END` | Opcional | Hora de fin de la franja laboral | `22:00` |
 | `LOG_SQL` | Opcional | Impresión de consultas SQL por consola | `false` |
+| `TRUST_PROXY_HOPS` | Opcional | Cantidad de saltos de proxies confiables ante Express (por defecto `1` en producción para Nginx). Si hay otro proxy delante de Nginx (por ejemplo Cloudflare, AWS ALB, Traefik o Nginx del host con TLS), es necesario aumentar este valor (ej. `2`) para que `req.ip` resuelva la IP real del cliente y no la IP del proxy intermedio. | `1` |
 | `FRONTEND_PORT` | Opcional | Puerto publicado por Nginx en el host | `80` (o `8080` detrás de proxy TLS) |
 | `BACKEND_PORT` | Opcional | Puerto publicado en `127.0.0.1` para el backend | `3001` |
 

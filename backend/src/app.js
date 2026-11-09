@@ -10,6 +10,12 @@ import { manejadorErrores } from './middleware/error.middleware.js';
 
 const app = express();
 
+if (env.TRUST_PROXY_HOPS > 0) {
+  app.set('trust proxy', env.TRUST_PROXY_HOPS);
+} else {
+  app.set('trust proxy', false);
+}
+
 app.use(helmet());
 
 app.use(cors({
