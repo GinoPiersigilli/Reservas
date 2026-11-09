@@ -1,0 +1,30 @@
+docker : Unable to find image 'trufflesecurity/trufflehog:latest' locally
+At line:1 char:1
++ docker run --rm -v <ruta-local> ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Unable to find ...latest' locally:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+latest: Pulling from trufflesecurity/trufflehog
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+42fbb32bff63: Pulling fs layer
+d9452faad7ec: Pulling fs layer
+49c16260ac47: Pulling fs layer
+4f4fb700ef54: Download complete
+49c16260ac47: Download complete
+42fbb32bff63: Download complete
+42fbb32bff63: Pull complete
+d9452faad7ec: Download complete
+d9452faad7ec: Pull complete
+4f4fb700ef54: Pull complete
+49c16260ac47: Pull complete
+Digest: sha256:674b2f187620a19df77f44cf9a7d77efcc581a5662accef2f2739cbb46ba4a3a
+Status: Downloaded newer image for trufflesecurity/trufflehog:latest
+{"level":"info-0","ts":"2026-11-08T21:04:46Z","logger":"trufflehog","msg":"running source","source_name":"trufflehog - git","source_type":"SOURCE_TYPE_GIT","source_id":1,"job_id":1,"source_manager_worker_id":"ZVjjb","with_units":true}
+{"SourceMetadata":{"Data":{"Git":{"commit":"15bbc8a96ddda27d3e10f2d196c2382f76d1e227","file":"backend/node_modules/@types/node/https.d.ts","email":"Gino \u003c401761@sistemas.frc.utn.edu.ar\u003e","repository":"file:///path","timestamp":"2026-06-09 21:39:08 +0000","line":250}}},"SourceID":1,"SourceType":16,"SourceName":"trufflehog - git","DetectorType":17,"DetectorName":"URI","DetectorDescription":"This detector identifies URLs with embedded credentials, which can be used to access web resources without explicit user interaction.","DecoderName":"PLAIN","Verified":false,"VerificationError":"lookup example.com on 192.168.127.7:53: no such host","VerificationFromCache":false,"Raw":"REDACTED","RawV2":"REDACTED","Redacted":"REDACTED","ExtraData":null,"StructuredData":null,"SecretParts":"REDACTED"}
+{"SourceMetadata":{"Data":{"Git":{"commit":"15bbc8a96ddda27d3e10f2d196c2382f76d1e227","file":"backend/node_modules/@types/node/http.d.ts","email":"Gino \u003c401761@sistemas.frc.utn.edu.ar\u003e","repository":"file:///path","timestamp":"2026-06-09 21:39:08 +0000","line":1854}}},"SourceID":1,"SourceType":16,"SourceName":"trufflehog - git","DetectorType":17,"DetectorName":"URI","DetectorDescription":"This detector identifies URLs with embedded credentials, which can be used to access web resources without explicit user interaction.","DecoderName":"PLAIN","Verified":false,"VerificationError":"lookup example.com on 192.168.127.7:53: no such host","VerificationFromCache":false,"Raw":"REDACTED","RawV2":"REDACTED","Redacted":"REDACTED","ExtraData":null,"StructuredData":null,"SecretParts":"REDACTED"}
+{"SourceMetadata":{"Data":{"Git":{"commit":"3cbba4cf498fd872c1d9f9b61c458ab3bc85b2b7","file":".env.production.example","email":"Gino \u003c401761@sistemas.frc.utn.edu.ar\u003e","repository":"file:///path","timestamp":"2026-11-07 19:47:19 +0000","line":17,"repository_local_path":"/tmp/trufflehog-20-3149303825"}}},"SourceID":1,"SourceType":16,"SourceName":"trufflehog - git","DetectorType":968,"DetectorName":"Postgres","DetectorDescription":"Postgres connection string containing credentials","DecoderName":"PLAIN","Verified":false,"VerificationError":"lookup postgres on 192.168.127.7:53: no such host","VerificationFromCache":false,"Raw":"REDACTED","RawV2":"REDACTED","Redacted":"REDACTED","ExtraData":{"database":"reservas","host":"postgres:5432","sslmode":"\u003cunset\u003e","username":"reservas_prod"},"StructuredData":null,"SecretParts":"REDACTED"}
+{"SourceMetadata":{"Data":{"Git":{"commit":"15bbc8a96ddda27d3e10f2d196c2382f76d1e227","file":"backend/node_modules/json5/README.md","email":"Gino \u003c401761@sistemas.frc.utn.edu.ar\u003e","repository":"file:///path","timestamp":"2026-06-09 21:39:08 +0000","line":14,"repository_local_path":"/tmp/trufflehog-20-3149303825"}}},"SourceID":1,"SourceType":16,"SourceName":"trufflehog - git","DetectorType":924,"DetectorName":"GitHubOauth2","DetectorDescription":"GitHub OAuth2 credentials are used to authenticate and authorize applications to access GitHub's API on behalf of a user or organization. These credentials include a client ID and client secret, which can be used to obtain access tokens for accessing GitHub resources.","DecoderName":"HTML","Verified":false,"VerificationFromCache":false,"Raw":"REDACTED","RawV2":"REDACTED","Redacted":"REDACTED","ExtraData":{"rotation_guide":"https://howtorotate.com/docs/tutorials/github/"},"StructuredData":null,"SecretParts":"REDACTED"}
+{"SourceMetadata":{"Data":{"Git":{"commit":"15bbc8a96ddda27d3e10f2d196c2382f76d1e227","file":"backend/node_modules/json5/README.md","email":"Gino \u003c401761@sistemas.frc.utn.edu.ar\u003e","repository":"file:///path","timestamp":"2026-06-09 21:39:08 +0000","line":14,"repository_local_path":"/tmp/trufflehog-20-3149303825"}}},"SourceID":1,"SourceType":16,"SourceName":"trufflehog - git","DetectorType":924,"DetectorName":"GitHubOauth2","DetectorDescription":"GitHub OAuth2 credentials are used to authenticate and authorize applications to access GitHub's API on behalf of a user or organization. These credentials include a client ID and client secret, which can be used to obtain access tokens for accessing GitHub resources.","DecoderName":"HTML","Verified":false,"VerificationFromCache":false,"Raw":"REDACTED","RawV2":"REDACTED","Redacted":"REDACTED","ExtraData":{"rotation_guide":"https://howtorotate.com/docs/tutorials/github/"},"StructuredData":null,"SecretParts":"REDACTED"}
+{"level":"info-0","ts":"2026-11-08T21:04:50Z","logger":"trufflehog","msg":"finished scanning","chunks":9373,"bytes":37789476,"verified_secrets":0,"unverified_secrets":5,"scan_duration":"8.977737934s","trufflehog_version":"3.99.8","verification_caching":{"Hits":0,"Misses":12,"HitsWasted":0,"AttemptsSaved":0,"VerificationTimeSpentMS":8982}}

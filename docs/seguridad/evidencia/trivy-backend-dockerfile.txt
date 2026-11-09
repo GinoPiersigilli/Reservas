@@ -1,0 +1,24 @@
+docker : 2026-11-08T21:20:50Z	INFO	[misconfig] Misconfiguration scanning is enabled
+At line:2 char:1
++ docker run --rm -v <ruta-local> ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-11-08T21:2...ning is enabled:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-11-08T21:20:50Z	INFO	[checks-client] Need to update the checks bundle
+2026-11-08T21:20:50Z	INFO	[checks-client] Downloading the checks bundle...
+234.57 KiB / 234.57 KiB [--------------------------------------------------------->] 100.00% ? p/s ?234.57 KiB / 
+234.57 KiB [-----------------------------------------------] 100.00% 4.39 MiB p/s 300ms2026-11-08T21:20:55Z	INFO	
+Detected config files	num=1
+
+Report Summary
+
+┌────────────┬────────────┬───────────────────┐
+│   Target   │    Type    │ Misconfigurations │
+├────────────┼────────────┼───────────────────┤
+│ Dockerfile │ dockerfile │         0         │
+└────────────┴────────────┴───────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
