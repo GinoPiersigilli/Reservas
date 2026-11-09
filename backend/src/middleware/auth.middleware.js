@@ -79,11 +79,17 @@ export const verificarToken = async (req, res, next) => {
       algorithms: ['HS256'],
       issuer: 'reservas-api'
     });
+
+    const usuarioLocal = await Usuario.findByPk(payload.id);
+    if (!usuarioLocal || !usuarioLocal.activo) {
+      return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
+    }
+
     req.usuario = {
-      id:     payload.id,
-      nombre: payload.nombre,
-      email:  payload.email,
-      rol:    payload.rol
+      id:     usuarioLocal.id,
+      nombre: usuarioLocal.nombre,
+      email:  usuarioLocal.email,
+      rol:    usuarioLocal.rol
     };
     return next();
   } catch {}

@@ -166,7 +166,7 @@ describe('Reservas API', () => {
     expect(responseOtroUsuario.body).toHaveProperty('error', 'No tienes permiso para cancelar esta reserva');
 
     const tokenRolDesconocido = jwt.sign(
-      { id: 99999, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
+      { id: usuario.id, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
       env.JWT_SECRET,
       { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
     );

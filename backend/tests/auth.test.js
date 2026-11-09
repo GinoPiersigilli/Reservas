@@ -117,6 +117,70 @@ describe('Auth routes, token verification & env validation', () => {
     });
   });
 
+  describe('SEC-AUTH-02: estado del usuario en cada petición (BD)', () => {
+    it('blocks deactivated user with 401 without token expiring', async () => {
+      const passwordHash = await bcrypt.hash('pass123', 10);
+      const user = await Usuario.create({
+        nombre: 'Usuario Activo',
+        email: 'activo-test@example.com',
+        passwordHash,
+        rol: 'usuario',
+        activo: true
+      });
+
+      const token = jwt.sign(
+        { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const resAntes = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${token}`);
+      expect(resAntes.status).toBe(200);
+
+      // Desactivamos el usuario en la BD
+      await user.update({ activo: false });
+
+      const resDespues = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${token}`);
+      expect(resDespues.status).toBe(401);
+      expect(resDespues.body).toHaveProperty('error');
+    });
+
+    it('revokes admin access when downgraded to usuario without re-login', async () => {
+      const passwordHash = await bcrypt.hash('pass123', 10);
+      const admin = await Usuario.create({
+        nombre: 'Admin Downgrade',
+        email: 'admin-downgrade@example.com',
+        passwordHash,
+        rol: 'admin',
+        activo: true
+      });
+
+      const tokenAdmin = jwt.sign(
+        { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const resAntes = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${tokenAdmin}`);
+      expect(resAntes.status).toBe(200);
+
+      // Degradar a usuario en la BD
+      await admin.update({ rol: 'usuario' });
+
+      const resDespues = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${tokenAdmin}`);
+      expect(resDespues.status).toBe(403);
+      expect(resDespues.body).toHaveProperty('error', 'Acceso denegado: se requiere rol admin');
+    });
+  });
+
   it('aborts startup when JWT_SECRET is missing in development or production', async () => {
     expect(() => validarEnv({ NODE_ENV: 'development', JWT_SECRET: '' })).toThrow(/JWT_SECRET/);
     expect(() => validarEnv({ NODE_ENV: 'production', CLERK_SECRET_KEY: 'sk_test_123' })).toThrow(/JWT_SECRET/);
