@@ -1,4 +1,39 @@
+import { z } from 'zod';
 import { esFechaValida, esFechaPasada } from '../utils/fecha.js';
+
+export const validar = (schema, target = 'body') => (req, res, next) => {
+  if (schema && (schema.params || schema.query || schema.body)) {
+    const targets = ['params', 'query', 'body'];
+    for (const t of targets) {
+      if (schema[t]) {
+        const result = schema[t].safeParse(req[t]);
+        if (!result.success) {
+          const firstIssue = result.error.issues[0];
+          return res.status(400).json({ error: firstIssue.message });
+        }
+        req[t] = result.data;
+      }
+    }
+    return next();
+  }
+
+  const result = schema.safeParse(req[target]);
+  if (!result.success) {
+    const firstIssue = result.error.issues[0];
+    return res.status(400).json({ error: firstIssue.message });
+  }
+  req[target] = result.data;
+  return next();
+};
+
+export const loginSchema = z.object({
+  email: z.string({ message: 'Email y contraseña son obligatorios' })
+    .trim()
+    .min(1, 'Email y contraseña son obligatorios')
+    .email('El formato del email es inválido'),
+  password: z.string({ message: 'Email y contraseña son obligatorios' })
+    .min(1, 'Email y contraseña son obligatorios')
+});
 
 const HORA_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 

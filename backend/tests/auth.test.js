@@ -276,6 +276,26 @@ describe('Auth routes, token verification & env validation', () => {
     expect(resInactivo.status).toBe(401);
   });
 
+  describe('SEC-VAL-01: validación de esquema con Zod en login', () => {
+    it('rejects login with invalid email format with 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'correo-invalido-sin-arroba', password: 'password123' });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', 'El formato del email es inválido');
+    });
+
+    it('rejects login with empty strings with 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: '   ', password: '' });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', 'Email y contraseña son obligatorios');
+    });
+  });
+
   it('registers a new user with registrarUsuario, forces rol usuario ignoring input rol, and rejects duplicate email', async () => {
     const creado = await registrarUsuario({
       nombre: 'Nuevo Usuario',
