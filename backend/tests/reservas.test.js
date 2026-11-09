@@ -274,6 +274,45 @@ describe('Reservas API', () => {
     });
   });
 
+  describe('SEC-VAL-01: validación de cuerpo en POST y PUT /api/reservas con Zod', () => {
+    it('rejects POST /api/reservas with float cantidadPersonas with 400', async () => {
+      const response = await request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`)
+        .send({
+          aulaId: aula.id,
+          fecha: fechaFutura(3),
+          horaInicio: '10:00',
+          horaFin: '12:00',
+          cantidadPersonas: 15.5,
+          motivo: 'Reunion con float'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La cantidad de personas debe ser un número entero mayor a 0');
+    });
+
+    it('rejects PUT /api/reservas/:id with non-positive aulaId with 400', async () => {
+      const response = await request(app)
+        .put(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ aulaId: 0 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El aulaId debe ser un número entero válido');
+    });
+
+    it('rejects PUT /api/reservas/:id with motivo exceeding 255 characters with 400', async () => {
+      const response = await request(app)
+        .put(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ motivo: 'A'.repeat(256) });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El motivo no puede superar los 255 caracteres');
+    });
+  });
+
   it('should create a valid reservation', async () => {
     const response = await request(app)
       .post('/api/reservas')

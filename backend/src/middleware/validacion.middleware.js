@@ -85,103 +85,184 @@ const esEntero = (valor) => {
   return false;
 };
 
-const validarFormatoCamposReserva = (req, res) => {
-  const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = req.body;
-
-  if (aulaId !== undefined) {
-    if (!esEntero(aulaId) || Number(aulaId) <= 0) {
-      return res.status(400).json({
-        error: 'El aulaId debe ser un número entero válido'
-      });
-    }
-    req.body.aulaId = Number(aulaId);
-  }
-
-  if (fecha !== undefined) {
-    if (!esFechaValida(fecha)) {
-      return res.status(400).json({
-        error: 'La fecha debe tener un formato válido YYYY-MM-DD'
-      });
-    }
-    if (esFechaPasada(fecha)) {
-      return res.status(400).json({
-        error: 'No se permiten reservas en una fecha pasada'
-      });
-    }
-  }
-
-  if (horaInicio !== undefined) {
-    if (typeof horaInicio !== 'string' || !HORA_REGEX.test(horaInicio)) {
-      return res.status(400).json({
-        error: 'La hora de inicio debe tener el formato HH:MM'
-      });
-    }
-  }
-
-  if (horaFin !== undefined) {
-    if (typeof horaFin !== 'string' || !HORA_REGEX.test(horaFin)) {
-      return res.status(400).json({
-        error: 'La hora de fin debe tener el formato HH:MM'
-      });
-    }
-  }
-
-  if (cantidadPersonas !== undefined) {
-    if (!esEntero(cantidadPersonas) || Number(cantidadPersonas) <= 0) {
-      return res.status(400).json({
-        error: 'La cantidad de personas debe ser un número entero mayor a 0'
-      });
-    }
-    req.body.cantidadPersonas = Number(cantidadPersonas);
-  }
-
-  if (motivo !== undefined) {
-    if (typeof motivo !== 'string' || motivo.trim().length === 0) {
-      return res.status(400).json({
-        error: 'El motivo no puede estar vacío'
-      });
-    }
-    if (motivo.length > 255) {
-      return res.status(400).json({
-        error: 'El motivo no puede superar los 255 caracteres'
-      });
-    }
-  }
-
-  return null;
-};
-
-export const validarCrearReserva = (req, res, next) => {
-  const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = req.body;
+export const crearReservaBodySchema = z.object({
+  aulaId: z.unknown().optional(),
+  fecha: z.unknown().optional(),
+  horaInicio: z.unknown().optional(),
+  horaFin: z.unknown().optional(),
+  cantidadPersonas: z.unknown().optional(),
+  motivo: z.unknown().optional()
+}).superRefine((data, ctx) => {
   const faltantes = [];
-
-  if (estaVacio(aulaId))           faltantes.push('aulaId');
-  if (estaVacio(fecha))            faltantes.push('fecha');
-  if (estaVacio(horaInicio))       faltantes.push('horaInicio');
-  if (estaVacio(horaFin))          faltantes.push('horaFin');
-  if (estaVacio(cantidadPersonas)) faltantes.push('cantidadPersonas');
-  if (estaVacio(motivo))           faltantes.push('motivo');
+  if (estaVacio(data.aulaId))           faltantes.push('aulaId');
+  if (estaVacio(data.fecha))            faltantes.push('fecha');
+  if (estaVacio(data.horaInicio))       faltantes.push('horaInicio');
+  if (estaVacio(data.horaFin))          faltantes.push('horaFin');
+  if (estaVacio(data.cantidadPersonas)) faltantes.push('cantidadPersonas');
+  if (estaVacio(data.motivo))           faltantes.push('motivo');
 
   if (faltantes.length > 0) {
-    return res.status(400).json({
-      error: `Faltan campos obligatorios: ${faltantes.join(', ')}`
+    ctx.addIssue({
+      code: 'custom',
+      message: `Faltan campos obligatorios: ${faltantes.join(', ')}`
+    });
+    return;
+  }
+
+  if (!esEntero(data.aulaId) || Number(data.aulaId) <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['aulaId'],
+      message: 'El aulaId debe ser un número entero válido'
     });
   }
 
-  if (validarFormatoCamposReserva(req, res)) {
-    return;
+  if (!esFechaValida(data.fecha)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['fecha'],
+      message: 'La fecha debe tener un formato válido YYYY-MM-DD'
+    });
+  } else if (esFechaPasada(data.fecha)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['fecha'],
+      message: 'No se permiten reservas en una fecha pasada'
+    });
   }
 
-  next();
-};
-
-export const validarEditarReserva = (req, res, next) => {
-  if (validarFormatoCamposReserva(req, res)) {
-    return;
+  if (typeof data.horaInicio !== 'string' || !HORA_REGEX.test(data.horaInicio)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['horaInicio'],
+      message: 'La hora de inicio debe tener el formato HH:MM'
+    });
   }
 
-  next();
-};
+  if (typeof data.horaFin !== 'string' || !HORA_REGEX.test(data.horaFin)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['horaFin'],
+      message: 'La hora de fin debe tener el formato HH:MM'
+    });
+  }
+
+  if (!esEntero(data.cantidadPersonas) || Number(data.cantidadPersonas) <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['cantidadPersonas'],
+      message: 'La cantidad de personas debe ser un número entero mayor a 0'
+    });
+  }
+
+  if (typeof data.motivo !== 'string' || data.motivo.trim().length === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['motivo'],
+      message: 'El motivo no puede estar vacío'
+    });
+  } else if (data.motivo.length > 255) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['motivo'],
+      message: 'El motivo no puede superar los 255 caracteres'
+    });
+  }
+}).transform((data) => {
+  const result = { ...data };
+  if (result.aulaId !== undefined && esEntero(result.aulaId)) result.aulaId = Number(result.aulaId);
+  if (result.cantidadPersonas !== undefined && esEntero(result.cantidadPersonas)) result.cantidadPersonas = Number(result.cantidadPersonas);
+  return result;
+});
+
+export const editarReservaBodySchema = z.object({
+  aulaId: z.unknown().optional(),
+  fecha: z.unknown().optional(),
+  horaInicio: z.unknown().optional(),
+  horaFin: z.unknown().optional(),
+  cantidadPersonas: z.unknown().optional(),
+  motivo: z.unknown().optional()
+}).superRefine((data, ctx) => {
+  if (data.aulaId !== undefined) {
+    if (!esEntero(data.aulaId) || Number(data.aulaId) <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['aulaId'],
+        message: 'El aulaId debe ser un número entero válido'
+      });
+    }
+  }
+
+  if (data.fecha !== undefined) {
+    if (!esFechaValida(data.fecha)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fecha'],
+        message: 'La fecha debe tener un formato válido YYYY-MM-DD'
+      });
+    } else if (esFechaPasada(data.fecha)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fecha'],
+        message: 'No se permiten reservas en una fecha pasada'
+      });
+    }
+  }
+
+  if (data.horaInicio !== undefined) {
+    if (typeof data.horaInicio !== 'string' || !HORA_REGEX.test(data.horaInicio)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['horaInicio'],
+        message: 'La hora de inicio debe tener el formato HH:MM'
+      });
+    }
+  }
+
+  if (data.horaFin !== undefined) {
+    if (typeof data.horaFin !== 'string' || !HORA_REGEX.test(data.horaFin)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['horaFin'],
+        message: 'La hora de fin debe tener el formato HH:MM'
+      });
+    }
+  }
+
+  if (data.cantidadPersonas !== undefined) {
+    if (!esEntero(data.cantidadPersonas) || Number(data.cantidadPersonas) <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['cantidadPersonas'],
+        message: 'La cantidad de personas debe ser un número entero mayor a 0'
+      });
+    }
+  }
+
+  if (data.motivo !== undefined) {
+    if (typeof data.motivo !== 'string' || data.motivo.trim().length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['motivo'],
+        message: 'El motivo no puede estar vacío'
+      });
+    } else if (data.motivo.length > 255) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['motivo'],
+        message: 'El motivo no puede superar los 255 caracteres'
+      });
+    }
+  }
+}).transform((data) => {
+  const result = { ...data };
+  if (result.aulaId !== undefined && esEntero(result.aulaId)) result.aulaId = Number(result.aulaId);
+  if (result.cantidadPersonas !== undefined && esEntero(result.cantidadPersonas)) result.cantidadPersonas = Number(result.cantidadPersonas);
+  return result;
+});
+
+export const validarCrearReserva = validar(crearReservaBodySchema);
+export const validarEditarReserva = validar(editarReservaBodySchema);
 
 export const validarLogin = (req, res, next) => {
   const { email, password } = req.body;
