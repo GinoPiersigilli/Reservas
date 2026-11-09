@@ -1,12 +1,12 @@
 import express from 'express';
 import * as reservasController from '../controllers/reservas.controller.js';
-import { validarCrearReserva, validarEditarReserva, validar, idParamSchema } from '../middleware/validacion.middleware.js';
+import { validarCrearReserva, validarEditarReserva, validar, idParamSchema, queryReservasSchema } from '../middleware/validacion.middleware.js';
 import { verificarToken, soloAdmin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
 router.get('/resumen',verificarToken,soloAdmin,reservasController.obtenerResumen);
-router.get('/',verificarToken,reservasController.listarReservas);
+router.get('/',verificarToken,validar(queryReservasSchema, 'query'),reservasController.listarReservas);
 
 router.post('/', verificarToken, validarCrearReserva, reservasController.crearReserva);
 router.get('/:id', verificarToken, validar(idParamSchema, 'params'), reservasController.obtenerReservaPorId);

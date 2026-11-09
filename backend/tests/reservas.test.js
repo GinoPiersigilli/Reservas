@@ -236,6 +236,44 @@ describe('Reservas API', () => {
     });
   });
 
+  describe('SEC-VAL-01: validación de query params en GET /api/reservas con Zod', () => {
+    it('rejects invalid fecha format in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=2026-13-45')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La fecha debe tener un formato válido YYYY-MM-DD');
+    });
+
+    it('rejects invalid estado in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?estado=estado_inexistente')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El estado no es válido');
+    });
+
+    it('rejects invalid page in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?page=0')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La página debe ser un número entero mayor a 0');
+    });
+
+    it('rejects invalid aulaId in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?aulaId=no-es-numero')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El aulaId debe ser un número entero válido');
+    });
+  });
+
   it('should create a valid reservation', async () => {
     const response = await request(app)
       .post('/api/reservas')
