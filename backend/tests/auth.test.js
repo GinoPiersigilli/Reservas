@@ -276,11 +276,12 @@ describe('Auth routes, token verification & env validation', () => {
     expect(resInactivo.status).toBe(401);
   });
 
-  it('registers a new user with registrarUsuario and rejects duplicate email', async () => {
+  it('registers a new user with registrarUsuario, forces rol usuario ignoring input rol, and rejects duplicate email', async () => {
     const creado = await registrarUsuario({
       nombre: 'Nuevo Usuario',
       email: 'nuevo@utnfrc.edu.ar',
-      password: 'password123'
+      password: 'password123',
+      rol: 'admin'
     });
 
     expect(creado).toHaveProperty('id');

@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 
 export const registrarUsuario = async (datos) => {
-  const { nombre, email, password, rol } = datos;
+  const { nombre, email, password } = datos;
 
   // 1. Verificar si el email ya existe en la base de datos
   const usuarioExistente = await Usuario.findOne({ where: { email } });
@@ -19,12 +19,12 @@ export const registrarUsuario = async (datos) => {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
-  // 3. Crear el usuario
+  // 3. Crear el usuario (SEC-AUTH-04: ignorar campo rol del parámetro y forzar 'usuario')
   const nuevoUsuario = await Usuario.create({
     nombre,
     email,
     passwordHash, // Guardamos el hash de forma segura, nunca la clave plana
-    rol: rol || 'usuario', // Si no envían rol, por defecto es 'usuario'
+    rol: 'usuario',
     activo: true
   });
 
