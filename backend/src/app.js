@@ -10,6 +10,12 @@ import { manejadorErrores } from './middleware/error.middleware.js';
 
 const app = express();
 
+if (env.TRUST_PROXY_HOPS > 0) {
+  app.set('trust proxy', env.TRUST_PROXY_HOPS);
+} else {
+  app.set('trust proxy', false);
+}
+
 app.use(helmet());
 
 app.use(cors({
@@ -19,7 +25,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 app.get('/', (req, res) => res.send('Backend funcionando'));
 

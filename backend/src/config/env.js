@@ -22,9 +22,15 @@ export const validarEnv = (rawEnv = process.env) => {
     );
   }
 
+  const defaultTrustProxyHops = nodeEnv === 'production' ? 1 : 0;
+  const trustProxyHops = rawEnv.TRUST_PROXY_HOPS !== undefined && String(rawEnv.TRUST_PROXY_HOPS).trim() !== ''
+    ? Number(rawEnv.TRUST_PROXY_HOPS)
+    : defaultTrustProxyHops;
+
   return {
     NODE_ENV: nodeEnv,
     PORT: Number(rawEnv.PORT) || 3001,
+    TRUST_PROXY_HOPS: Number.isFinite(trustProxyHops) ? trustProxyHops : defaultTrustProxyHops,
     JWT_SECRET: String(rawEnv.JWT_SECRET).trim(),
     CLERK_SECRET_KEY: rawEnv.CLERK_SECRET_KEY ? String(rawEnv.CLERK_SECRET_KEY).trim() : '',
     DATABASE_URL: rawEnv.DATABASE_URL ? String(rawEnv.DATABASE_URL).trim() : '',

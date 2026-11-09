@@ -9,6 +9,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Etapa 2: Imagen final de producción (sin código de test ni seeders, usuario no root)
 FROM node:20-alpine AS production
 
+RUN apk upgrade --no-cache
+
 WORKDIR /app
 
 ENV NODE_ENV=production

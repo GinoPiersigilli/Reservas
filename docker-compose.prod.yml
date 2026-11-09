@@ -50,14 +50,14 @@ services:
     container_name: reservas-frontend-prod
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-80}:8080"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - reservas-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3

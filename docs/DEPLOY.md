@@ -21,7 +21,7 @@ El despliegue con `docker-compose.prod.yml` levanta tres servicios conectados me
    - Incluye `healthcheck` contra `GET /api/health`.
 3. **`frontend` (`frontend/Dockerfile` + `frontend/nginx.conf`):**
    - Etapa 1 (`build`): compila la aplicación React + Vite estática (`npm run build`).
-   - Etapa 2 (`production`): sirve los archivos estáticos desde `nginx:1.27-alpine`, maneja rutas de React Router (`try_files $uri $uri/ /index.html`) y actúa como proxy inverso reenviando `/api/` hacia `http://backend:3001/api/`.
+   - Etapa 2 (`production`): sirve los archivos estáticos desde `nginxinc/nginx-unprivileged:1.27-alpine` (usuario sin privilegios `nginx`, puerto interno `8080`), maneja rutas de React Router (`try_files $uri $uri/ /index.html`) y actúa como proxy inverso reenviando `/api/` hacia `http://backend:3001/api/` con encabezado Host fijo (`backend`).
 
 > **Despliegue alternativo con PostgreSQL gestionado (Neon, RDS, Supabase, Railway):**
 > Si se utiliza una base de datos gestionada externa en lugar del servicio `postgres` de Docker Compose, asegurate de que el proveedor permita habilitar la extensión `btree_gist` (`CREATE EXTENSION IF NOT EXISTS btree_gist;`), requerida por la migración `002-esquema-definitivo.cjs` para la restricción de exclusión `reservas_sin_solapamiento`.
@@ -53,7 +53,8 @@ chmod 600 .env.production
 | `WORK_HOUR_START` | Opcional | Hora de inicio de la franja laboral | `08:00` |
 | `WORK_HOUR_END` | Opcional | Hora de fin de la franja laboral | `22:00` |
 | `LOG_SQL` | Opcional | Impresión de consultas SQL por consola | `false` |
-| `FRONTEND_PORT` | Opcional | Puerto publicado por Nginx en el host | `80` (o `8080` detrás de proxy TLS) |
+| `TRUST_PROXY_HOPS` | Opcional | Cantidad de saltos de proxies confiables ante Express (por defecto `1` en producción para Nginx). Si hay otro proxy delante de Nginx (por ejemplo Cloudflare, AWS ALB, Traefik o Nginx del host con TLS), es necesario aumentar este valor (ej. `2`) para que `req.ip` resuelva la IP real del cliente y no la IP del proxy intermedio. | `1` |
+| `FRONTEND_PORT` | Opcional | Puerto publicado en el host (mapeado al puerto interno sin privilegios `8080` de Nginx) | `80` (o `8080` detrás de proxy TLS) |
 | `BACKEND_PORT` | Opcional | Puerto publicado en `127.0.0.1` para el backend | `3001` |
 
 ---
