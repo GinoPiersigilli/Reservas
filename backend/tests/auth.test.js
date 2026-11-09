@@ -72,6 +72,51 @@ describe('Auth routes, token verification & env validation', () => {
     expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
   });
 
+  describe('SEC-AUTH-02: restricciones criptográficas de JWT local', () => {
+    it('rejects token with algorithm "none" with 401', async () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ id: 1, rol: 'usuario', email: 'user@test.com', iss: 'reservas-api' })).toString('base64url');
+      const tokenNone = `${header}.${payload}.`;
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenNone}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+
+    it('rejects token signed with HS512 with 401', async () => {
+      const tokenHS512 = jwt.sign(
+        { id: 1, rol: 'usuario', email: 'user@test.com' },
+        env.JWT_SECRET,
+        { algorithm: 'HS512', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenHS512}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+
+    it('rejects token without issuer with 401', async () => {
+      const tokenSinIssuer = jwt.sign(
+        { id: 1, rol: 'usuario', email: 'user@test.com' },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', expiresIn: '2h' }
+      );
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenSinIssuer}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+  });
+
   it('aborts startup when JWT_SECRET is missing in development or production', async () => {
     expect(() => validarEnv({ NODE_ENV: 'development', JWT_SECRET: '' })).toThrow(/JWT_SECRET/);
     expect(() => validarEnv({ NODE_ENV: 'production', CLERK_SECRET_KEY: 'sk_test_123' })).toThrow(/JWT_SECRET/);

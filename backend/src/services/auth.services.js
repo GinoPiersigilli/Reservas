@@ -69,8 +69,12 @@ export const loginUsuario = async (email, password) => {
     rol: usuario.rol
   };
 
-  // 5. Generar el token que expira en 2 horas
-  const token = jwt.sign(payload, env.JWT_SECRET, { expiresIn: '2h' });
+  // 5. Generar el token que expira en 2 horas con algoritmo HS256 e issuer institucional
+  const token = jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: '2h',
+    algorithm: 'HS256',
+    issuer: 'reservas-api'
+  });
 
   // Devolvemos el token y los datos limpios para que el frontend los use
   return {

@@ -75,7 +75,10 @@ export const verificarToken = async (req, res, next) => {
 
   // Intentar con JWT local primero (usuarios de prueba)
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET);
+    const payload = jwt.verify(token, env.JWT_SECRET, {
+      algorithms: ['HS256'],
+      issuer: 'reservas-api'
+    });
     req.usuario = {
       id:     payload.id,
       nombre: payload.nombre,

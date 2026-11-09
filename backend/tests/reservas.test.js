@@ -43,9 +43,9 @@ beforeEach(async () => {
   usuario = await Usuario.create({ nombre: 'User Test A', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
   otroUsuario = await Usuario.create({ nombre: 'User Test B', email: 'userb@test.com', passwordHash, rol: 'usuario', activo: true });
 
-  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h' });
-  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
-  otroUsuarioToken = jwt.sign({ id: otroUsuario.id, nombre: otroUsuario.nombre, email: otroUsuario.email, rol: otroUsuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
+  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
+  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
+  otroUsuarioToken = jwt.sign({ id: otroUsuario.id, nombre: otroUsuario.nombre, email: otroUsuario.email, rol: otroUsuario.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
 
   aula = await Aula.create({ nombre: 'Aula de Prueba', ubicacion: 'Piso 1', capacidad: 20, recursos: 'pizarra', activa: true });
 
@@ -168,7 +168,7 @@ describe('Reservas API', () => {
     const tokenRolDesconocido = jwt.sign(
       { id: 99999, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
       env.JWT_SECRET,
-      { expiresIn: '2h' }
+      { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
     );
 
     const responseRolDesconocido = await request(app)
@@ -508,7 +508,7 @@ describe('Reservas API', () => {
       const tokenAdmin22hs = jwt.sign(
         { id: 1, nombre: 'Admin Test', email: 'admin@test.com', rol: 'admin' },
         env.JWT_SECRET,
-        { expiresIn: '2h' }
+        { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
       );
 
       const reservaNocturnaHoy = await Reserva.create({
