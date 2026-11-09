@@ -1,0 +1,22 @@
+
+> frontend@0.0.0 test
+> vitest run --run
+
+
+ RUN  v1.6.1 <ruta-local>/frontend
+
+ ✓ src/components/ui/__tests__/ui.test.jsx  (13 tests) 530ms
+ ✓ src/pages/__tests__/Login.test.jsx  (8 tests) 500ms
+ ✓ src/pages/__tests__/Accesibilidad.test.jsx  (5 tests) 2280ms
+ ✓ src/pages/__tests__/Register.test.jsx  (8 tests) 469ms
+ ✓ src/pages/__tests__/FormularioReserva.test.jsx  (4 tests) 1750ms
+ ✓ src/hooks/__tests__/useGoogleOAuth.test.jsx  (7 tests) 36ms
+ ✓ src/pages/__tests__/Reservas.test.jsx  (4 tests) 563ms
+ ✓ src/pages/__tests__/Resumen.test.jsx  (1 test) 333ms
+ ✓ src/components/__tests__/AppShell.test.jsx  (2 tests) 191ms
+
+ Test Files  9 passed (9)
+      Tests  52 passed (52)
+   Start at  02:40:46
+   Duration  24.12s (transform 528ms, setup 2.62s, collect 32.67s, tests 6.65s, environment 19.51s, prepare 2.22s)
+

@@ -1,0 +1,91 @@
+
+> backend@1.0.0 test
+> cross-env NODE_ENV=test jest --config jest.config.cjs
+
+◇ injected env (6) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+
+Sequelize CLI [Node: 26.3.0, CLI: 6.6.5, ORM: 6.37.8]
+
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Loaded configuration file "db\config.cjs".
+Using environment "test".
+== 001-baseline: migrating =======
+== 001-baseline: migrated (0.089s)
+
+== 002-esquema-definitivo: migrating =======
+== 002-esquema-definitivo: migrated (0.192s)
+
+
+PASS tests/reservas.test.js (8.788 s)
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/auth.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      [AUTH] Cuenta local vinculada a cuenta Clerk (usuarioId: 3)
+
+      at log (src/middleware/auth.middleware.js:63:13)
+
+PASS tests/clerk-verification.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      [AUTH] Cuenta local vinculada a cuenta Clerk (usuarioId: 1)
+
+      at log (src/middleware/auth.middleware.js:63:13)
+
+PASS tests/esquema-constraint.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/trust-proxy.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/body-limit.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/error-handling.test.js
+PASS tests/global-setup-guard.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+
+Test Suites: 8 passed, 8 total
+Tests:       78 passed, 78 total
+Snapshots:   0 total
+Time:        17.437 s, estimated 18 s
+Ran all test suites.
