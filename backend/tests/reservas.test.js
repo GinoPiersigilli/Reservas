@@ -200,6 +200,42 @@ describe('Reservas API', () => {
     expect(response.body).toHaveProperty('error', 'La reserva no existe');
   });
 
+  describe('SEC-VAL-01: validación de parámetros de ruta :id con Zod', () => {
+    it('rejects non-integer id with 400 on GET /api/reservas/:id', async () => {
+      const response = await request(app)
+        .get('/api/reservas/invalido')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+    });
+
+    it('rejects non-positive id <= 0 with 400 on GET /api/reservas/:id', async () => {
+      const resCero = await request(app)
+        .get('/api/reservas/0')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(resCero.status).toBe(400);
+      expect(resCero.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+
+      const resNegativo = await request(app)
+        .get('/api/reservas/-4')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(resNegativo.status).toBe(400);
+      expect(resNegativo.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+    });
+
+    it('rejects invalid id with 400 on GET /api/aulas/:id/disponibilidad', async () => {
+      const response = await request(app)
+        .get('/api/aulas/no-es-numero/disponibilidad?fecha=2026-11-20')
+        .set('Authorization', `Bearer ${usuarioToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+    });
+  });
+
   it('should create a valid reservation', async () => {
     const response = await request(app)
       .post('/api/reservas')

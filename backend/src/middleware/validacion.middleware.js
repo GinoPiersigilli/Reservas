@@ -35,6 +35,12 @@ export const loginSchema = z.object({
     .min(1, 'Email y contraseña son obligatorios')
 });
 
+export const idParamSchema = z.object({
+  id: z.coerce.number({ message: 'El id debe ser un número entero mayor a 0' })
+    .int('El id debe ser un número entero mayor a 0')
+    .positive('El id debe ser un número entero mayor a 0')
+});
+
 const HORA_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const estaVacio = (valor) =>
