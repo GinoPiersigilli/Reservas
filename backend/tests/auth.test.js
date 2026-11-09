@@ -222,7 +222,7 @@ describe('Auth routes, token verification & env validation', () => {
       id: 'user_nuevo456',
       firstName: 'Ana',
       lastName: 'Gómez',
-      emailAddresses: [{ emailAddress: 'ana.gomez@utnfrc.edu.ar' }],
+      emailAddresses: [{ emailAddress: 'ana.gomez@utnfrc.edu.ar', verification: { status: 'verified' } }],
       publicMetadata: { rol: 'admin' }
     });
 
@@ -245,7 +245,7 @@ describe('Auth routes, token verification & env validation', () => {
       id: 'user_clerk_vincular_email',
       firstName: 'Usuario',
       lastName: 'Preexistente',
-      emailAddresses: [{ emailAddress: 'preexistente@utnfrc.edu.ar' }],
+      emailAddresses: [{ emailAddress: 'preexistente@utnfrc.edu.ar', verification: { status: 'verified' } }],
       publicMetadata: { rol: 'admin' }
     });
 

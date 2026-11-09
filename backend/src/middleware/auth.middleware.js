@@ -9,7 +9,11 @@ const clerkClient = createClerkClient({
 
 export async function sincronizarUsuarioClerk(clerkUser) {
   const clerkId = clerkUser.id;
-  const emailClerk = clerkUser.emailAddresses?.[0]?.emailAddress || `${clerkId.toLowerCase()}@placeholder.clerk.local`;
+  const primaryEmailObj = clerkUser.emailAddresses?.find(
+    (e) => e.id === clerkUser.primaryEmailAddressId
+  ) || clerkUser.emailAddresses?.[0];
+
+  const emailClerk = primaryEmailObj?.emailAddress || `${clerkId.toLowerCase()}@placeholder.clerk.local`;
   const nombreCompleto = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim();
   const nombreClerk = nombreCompleto || clerkUser.username || emailClerk;
   const rolClerk = clerkUser.publicMetadata?.rol === 'admin' ? 'admin' : 'usuario';
@@ -40,6 +44,14 @@ export async function sincronizarUsuarioClerk(clerkUser) {
     return usuarioLocal;
   }
 
+  // SEC-AUTH-05: Al aprovisionar o vincular cuenta por email, verificar estrictamente status === 'verified'
+  const isEmailVerified = primaryEmailObj?.verification?.status === 'verified';
+  if (!isEmailVerified) {
+    const error = new Error('El correo electrónico principal de Clerk no está verificado');
+    error.status = 403;
+    throw error;
+  }
+
   // 2. Si no existe por clerkId, buscar por email para vincular cuenta existente
   usuarioLocal = await Usuario.findOne({ where: { email: emailClerk } });
   if (usuarioLocal) {
@@ -48,6 +60,7 @@ export async function sincronizarUsuarioClerk(clerkUser) {
       usuarioLocal.rol = rolClerk;
     }
     await usuarioLocal.save();
+    console.log(`[AUTH] Cuenta local vinculada a cuenta Clerk (usuarioId: ${usuarioLocal.id})`);
     return usuarioLocal;
   }
 
@@ -116,7 +129,10 @@ export const verificarToken = async (req, res, next) => {
     };
 
     return next();
-  } catch {
+  } catch (err) {
+    if (err && err.status === 403) {
+      return res.status(403).json({ error: err.message });
+    }
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 };
