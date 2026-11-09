@@ -896,7 +896,7 @@ describe('Reservas API', () => {
   // TESTS FASE 4 — COBERTURA DE REGLAS DE NEGOCIO
   // ==========================================
 
-  it('should list only active classrooms on public GET /api/aulas without requiring token', async () => {
+  it('should require authentication on GET /api/aulas (SEC-INV-01) and list only active classrooms', async () => {
     await Aula.create({
       nombre: 'Aula Inactiva X',
       ubicacion: 'Subsuelo',
@@ -905,11 +905,17 @@ describe('Reservas API', () => {
       activa: false
     });
 
-    const response = await request(app).get('/api/aulas');
-    expect(response.status).toBe(200);
-    expect(Array.isArray(response.body)).toBe(true);
-    expect(response.body.some((a) => a.id === aula.id)).toBe(true);
-    expect(response.body.every((a) => a.activa === true)).toBe(true);
+    const responseSinToken = await request(app).get('/api/aulas');
+    expect(responseSinToken.status).toBe(401);
+    expect(responseSinToken.body).toHaveProperty('error', 'Token no informado');
+
+    const responseConToken = await request(app)
+      .get('/api/aulas')
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(responseConToken.status).toBe(200);
+    expect(Array.isArray(responseConToken.body)).toBe(true);
+    expect(responseConToken.body.some((a) => a.id === aula.id)).toBe(true);
+    expect(responseConToken.body.every((a) => a.activa === true)).toBe(true);
   });
 
   it('should validate all creation business rules (missing fields, non-existent/inactive aula, working hours, start<end, history)', async () => {

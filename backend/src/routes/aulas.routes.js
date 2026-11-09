@@ -6,7 +6,7 @@ import { validar, idParamSchema } from '../middleware/validacion.middleware.js';
 
 const router = express.Router();
 
-router.get('/', listarAulas);
+router.get('/', verificarToken, listarAulas);
 router.get('/:id/disponibilidad', verificarToken, validar(idParamSchema, 'params'), obtenerDisponibilidadAula);
 
 export default router;
