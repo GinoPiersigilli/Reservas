@@ -1,19 +1,36 @@
 // src/middleware/error.middleware.js
+import crypto from 'crypto';
 
-export const manejadorErrores = (err, req, res, next) => {
-  // 1. Logueamos el error en la consola del servidor para desarrollo
-  if (process.env.NODE_ENV !== 'test') {
+export const sanitizarMensaje = (texto = '') => {
+  if (typeof texto !== 'string') return '';
+  return texto
+    .replace(/(password|contrasena|contraseña|jwt_secret|secret|token)\s*[:=]\s*['"]?[^'"\s,;]+['"]?/gi, '$1=[REDACTED]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
+    .replace(/eyJ[A-Za-z0-9_-]{10,}/g, '[REDACTED]');
+};
+
+export const manejadorErrores = (err, req, res, _next) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const correlationId = req.id || req.headers?.['x-correlation-id'] || crypto.randomUUID();
+
+  // 1. Logging seguro de errores (SEC-CFG-03)
+  const mensajeLimpio = sanitizarMensaje(err.message || 'Error desconocido');
+  if (isProduction) {
+    // En producción: solo registrar correlationId y mensaje saneado; NUNCA err.stack ni req.body
+    console.error(`[Error ${correlationId}] ${mensajeLimpio}`);
+  } else if (process.env.NODE_ENV !== 'test') {
+    // En desarrollo: registrar traza completa
     console.error(err.stack);
   }
 
-  // 1.1. Manejo de payload que excede el límite permitido (SEC-CFG-02)
+  // 2. Manejo de payload que excede el límite permitido (SEC-CFG-02)
   if (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413) {
     return res.status(413).json({
       error: 'El cuerpo de la petición excede el tamaño máximo permitido'
     });
   }
 
-  // 2. Mapeo de errores de constraints de Sequelize / PostgreSQL
+  // 3. Mapeo de errores de constraints de Sequelize / PostgreSQL
   const pgCode = err.parent?.code || err.original?.code;
 
   if (err.name === 'SequelizeExclusionConstraintError' || pgCode === '23P01') {
@@ -56,14 +73,24 @@ export const manejadorErrores = (err, req, res, next) => {
     });
   }
 
-  // 3. Extraemos el código de estado (por defecto 500 si no se especificó)
-  const statusCode = err.status || 500;
+  // 4. Código de estado HTTP
+  const statusCode = err.status || err.statusCode || 500;
 
-  // 4. Extraemos el mensaje de error
-  const mensaje = err.message || 'Error interno del servidor';
+  // 5. Respuesta al cliente
+  if (statusCode >= 500) {
+    if (isProduction) {
+      return res.status(500).json({
+        error: 'Error interno del servidor',
+        correlationId
+      });
+    }
+    return res.status(500).json({
+      error: err.message || 'Error interno del servidor',
+      correlationId
+    });
+  }
 
-  // 5. Respondemos al cliente con el formato JSON claro que pide el enunciado
-  res.status(statusCode).json({
-    error: mensaje
+  return res.status(statusCode).json({
+    error: err.message || 'Error en la petición'
   });
 };
