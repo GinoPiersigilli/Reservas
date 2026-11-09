@@ -58,13 +58,18 @@ export default function Reservas() {
     setCargando(true);
     setError(null);
     try {
-      const res = await getReservas({
-        ...filtros,
+      const params = {
         page: pagina,
         limit: POR_PAGINA,
         sortBy,
         order
-      });
+      };
+      if (filtros.fecha && filtros.fecha.trim() !== '') params.fecha = filtros.fecha.trim();
+      if (filtros.estado && filtros.estado.trim() !== '') params.estado = filtros.estado.trim();
+      if (filtros.aulaId && String(filtros.aulaId).trim() !== '') params.aulaId = filtros.aulaId;
+      if (filtros.q && filtros.q.trim() !== '') params.q = filtros.q.trim();
+
+      const res = await getReservas(params);
       const lista = Array.isArray(res.data?.datos)
         ? res.data.datos
         : Array.isArray(res.data?.data)

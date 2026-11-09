@@ -274,6 +274,70 @@ describe('Reservas API', () => {
     });
   });
 
+  describe('Compatibilidad de contrato con frontend: GET /api/reservas con parámetros vacíos o inválidos', () => {
+    it('responde 200 para admin con exactamente los parámetros del frontend con filtros vacíos', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=&estado=&aulaId=&q=&page=1&limit=10&sortBy=createdAt&order=DESC')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('datos');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.pagina).toBe(1);
+    });
+
+    it('responde 200 para usuario con exactamente los parámetros del frontend con filtros vacíos', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=&estado=&aulaId=&q=&page=1&limit=10&sortBy=createdAt&order=DESC')
+        .set('Authorization', `Bearer ${usuarioToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('datos');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.pagina).toBe(1);
+    });
+
+    it('responde 200 con cada filtro individual con valor', async () => {
+      const resFecha = await request(app)
+        .get(`/api/reservas?fecha=${fechaFutura(1)}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resFecha.status).toBe(200);
+
+      const resEstado = await request(app)
+        .get('/api/reservas?estado=pendiente')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resEstado.status).toBe(200);
+
+      const resAula = await request(app)
+        .get(`/api/reservas?aulaId=${aula.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resAula.status).toBe(200);
+
+      const resQ = await request(app)
+        .get('/api/reservas?q=consulta')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resQ.status).toBe(200);
+    });
+
+    it('responde 200 con los valores por defecto ante sortBy y order inválidos, no 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?sortBy=columnaInexistente&order=direccionInvalida')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('datos');
+    });
+
+    it('responde 400 con fecha mal formada', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=2026-13-45')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La fecha debe tener un formato válido YYYY-MM-DD');
+    });
+  });
+
   describe('SEC-VAL-01: validación de cuerpo en POST y PUT /api/reservas con Zod', () => {
     it('rejects POST /api/reservas with float cantidadPersonas with 400', async () => {
       const response = await request(app)

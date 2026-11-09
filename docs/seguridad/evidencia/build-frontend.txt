@@ -1,4 +1,3 @@
-
 > frontend@0.0.0 build
 > vite build
 
@@ -17,6 +16,6 @@ dist/assets/public-sans-latin-600-normal-BR59oU-I.woff       18.55 kB
 dist/assets/source-serif-4-latin-600-normal-DouSKlru.woff2   21.53 kB
 dist/assets/source-serif-4-latin-600-normal-DeJomR3S.woff    25.71 kB
 dist/assets/index-D7qA0Etp.css                               45.98 kB │ gzip:   7.11 kB
-dist/assets/index-DDS2xIJQ.js                               464.62 kB │ gzip: 143.14 kB
+dist/assets/index-CbT4QccP.js                               465.09 kB │ gzip: 143.29 kB
 
-✓ built in 1.19s
+✓ built in 1.43s

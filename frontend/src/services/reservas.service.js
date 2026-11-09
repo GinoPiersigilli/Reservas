@@ -1,7 +1,16 @@
 import api from './axios.js';
 
-export const getReservas = (params) =>
-  api.get('/reservas', { params });
+export const getReservas = (params = {}) => {
+  const cleanParams = {};
+  if (params && typeof params === 'object') {
+    for (const [key, val] of Object.entries(params)) {
+      if (val !== undefined && val !== null && !(typeof val === 'string' && val.trim() === '')) {
+        cleanParams[key] = typeof val === 'string' ? val.trim() : val;
+      }
+    }
+  }
+  return api.get('/reservas', { params: cleanParams });
+};
 
 export const getReserva = (id) =>
   api.get(`/reservas/${id}`);

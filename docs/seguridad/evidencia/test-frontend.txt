@@ -1,22 +1,61 @@
-
 > frontend@0.0.0 test
 > vitest run --run
 
 
  RUN  v1.6.1 <ruta-local>/frontend
 
- ✓ src/components/ui/__tests__/ui.test.jsx  (13 tests) 530ms
- ✓ src/pages/__tests__/Login.test.jsx  (8 tests) 500ms
- ✓ src/pages/__tests__/Accesibilidad.test.jsx  (5 tests) 2280ms
- ✓ src/pages/__tests__/Register.test.jsx  (8 tests) 469ms
- ✓ src/pages/__tests__/FormularioReserva.test.jsx  (4 tests) 1750ms
- ✓ src/hooks/__tests__/useGoogleOAuth.test.jsx  (7 tests) 36ms
- ✓ src/pages/__tests__/Reservas.test.jsx  (4 tests) 563ms
- ✓ src/pages/__tests__/Resumen.test.jsx  (1 test) 333ms
- ✓ src/components/__tests__/AppShell.test.jsx  (2 tests) 191ms
+ ✓ src/pages/__tests__/Login.test.jsx  (8 tests) 1207ms
+ ✓ src/components/ui/__tests__/ui.test.jsx  (13 tests) 1285ms
+ ✓ src/pages/__tests__/Accesibilidad.test.jsx  (5 tests) 3076ms
+ ✓ src/pages/__tests__/Register.test.jsx  (8 tests) 1177ms
+ ✓ src/pages/__tests__/FormularioReserva.test.jsx  (4 tests) 3265ms
+ ✓ src/hooks/__tests__/useGoogleOAuth.test.jsx  (7 tests) 65ms
+ ✓ src/pages/__tests__/Reservas.test.jsx  (4 tests) 715ms
+ ✓ src/pages/__tests__/Resumen.test.jsx  (1 test) 349ms
+ ✓ src/components/__tests__/AppShell.test.jsx  (2 tests) 201ms
 
  Test Files  9 passed (9)
       Tests  52 passed (52)
-   Start at  02:40:46
-   Duration  24.12s (transform 528ms, setup 2.62s, collect 32.67s, tests 6.65s, environment 19.51s, prepare 2.22s)
+   Start at  19:50:49
+   Duration  39.61s (transform 1.09s, setup 3.92s, collect 53.76s, tests 11.34s, environment 35.58s, prepare 3.71s)
 
+
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on Login and Register screens
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on Login and Register screens
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on AppShell + Reservas, FormularioReserva, DetalleReserva, Resumen, and NotFound
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on AppShell + Reservas, FormularioReserva, DetalleReserva, Resumen, and NotFound
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on AppShell + Reservas, FormularioReserva, DetalleReserva, Resumen, and NotFound
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on AppShell + Reservas, FormularioReserva, DetalleReserva, Resumen, and NotFound
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/pages/__tests__/Accesibilidad.test.jsx > Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados > passes axe accessibility audit on AppShell + Reservas, FormularioReserva, DetalleReserva, Resumen, and NotFound
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17092) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
