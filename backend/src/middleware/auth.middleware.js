@@ -97,7 +97,8 @@ export const verificarToken = async (req, res, next) => {
   // Intentar con Clerk verificando firma real y vinculando/creando usuario local en BD
   try {
     const verified = await verifyToken(token, {
-      secretKey: env.CLERK_SECRET_KEY
+      secretKey: env.CLERK_SECRET_KEY,
+      authorizedParties: env.CORS_ORIGINS
     });
     const clerkUser = await clerkClient.users.getUser(verified.sub);
     const usuarioLocal = await sincronizarUsuarioClerk(clerkUser);
