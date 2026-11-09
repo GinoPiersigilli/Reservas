@@ -34,7 +34,7 @@ jobs:
       NODE_ENV: test
       JWT_SECRET: ci_jwt_secret_key_for_tests_only
       CLERK_SECRET_KEY: sk_test_ci_placeholder
-      DATABASE_URL: postgres://reservas:reservas_dev_password@localhost:5432/reservas_test
+      DATABASE_URL: postgres://reservas:reservas_dev_password@localhost:5432/reservas_dev
       DATABASE_URL_TEST: postgres://reservas:reservas_dev_password@localhost:5432/reservas_test
       WORK_HOUR_START: '08:00'
       WORK_HOUR_END: '22:00'
