@@ -1,5 +1,5 @@
 # Etapa 1: Instalación de dependencias de producción
-FROM node:20-alpine AS deps
+FROM node:25-alpine AS deps
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Etapa 2: Imagen final de producción (sin código de test ni seeders, usuario no root)
-FROM node:20-alpine AS production
+FROM node:25-alpine AS production
 
 RUN apk upgrade --no-cache && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
