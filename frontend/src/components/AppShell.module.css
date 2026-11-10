@@ -129,6 +129,57 @@
   border-color: var(--tinta-2);
 }
 
+.botonTema {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--espacio-2);
+  width: 100%;
+  min-height: var(--control-altura);
+  padding: var(--espacio-2) var(--espacio-3);
+  background-color: transparent;
+  border: var(--borde-ancho) solid var(--borde-control);
+  border-radius: var(--radio-control);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta);
+  cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.botonTema:hover {
+  background-color: var(--fondo);
+  border-color: var(--tinta-2);
+}
+
+.botonTemaMovil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  min-width: var(--control-min-tactil);
+  min-height: var(--control-min-tactil);
+  padding: var(--espacio-2);
+  background-color: transparent;
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+  color: var(--tinta);
+  cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    border-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.botonTemaMovil:hover {
+  background-color: var(--fondo);
+  border-color: var(--tinta-2);
+}
+
 .contenido {
   flex: 1;
   width: 100%;
@@ -202,7 +253,8 @@
   }
 
   .enlace,
-  .botonCerrar {
+  .botonCerrar,
+  .botonTema {
     min-height: var(--control-min-tactil);
   }
 

@@ -409,10 +409,27 @@ async function main() {
     console.log(`   [Captura guardada] docs/img/${nombreArchivo} (${width}x${height})`);
   }
 
+  async function setTemaModo(tema) {
+    const modo = tema === 'oscuro' ? 'dark' : 'light';
+    await cdp.send('Runtime.evaluate', {
+      expression: `(() => {
+        try {
+          localStorage.setItem('tema', '${tema}');
+        } catch {}
+        document.documentElement.setAttribute('data-theme', '${modo}');
+        document.documentElement.setAttribute('data-tema', '${tema}');
+      })()`
+    });
+    await sleep(300);
+  }
+
   // A) Login (sin sesión)
   await setSession(null);
   await goAndVerify('/login');
   await capture('login-escritorio.png', 1280, 800, false);
+  await setTemaModo('oscuro');
+  await capture('login-oscuro.png', 1280, 800, false);
+  await setTemaModo('claro');
   await capture('login-movil.png', 360, 800, true);
 
   // B) Sesión Administrador: Reservas, Nueva reserva (grilla), Detalle, Panel
@@ -460,6 +477,9 @@ async function main() {
     }
   })()`;
   await capture('nueva-reserva-grilla-escritorio.png', 1280, 960, false, seleccionarFechaYFranja);
+  await setTemaModo('oscuro');
+  await capture('nueva-reserva-grilla-oscuro.png', 1280, 960, false);
+  await setTemaModo('claro');
   await capture('nueva-reserva-grilla-1280.png', 1280, 960, false);
   await capture('nueva-reserva-grilla-1024.png', 1024, 850, false);
   await capture('nueva-reserva-grilla-800.png', 800, 850, false);
@@ -472,6 +492,9 @@ async function main() {
 
   await goAndVerify('/resumen');
   await capture('panel-admin-escritorio.png', 1280, 860, false);
+  await setTemaModo('oscuro');
+  await capture('panel-admin-oscuro.png', 1280, 860, false);
+  await setTemaModo('claro');
   await capture('panel-admin-movil.png', 360, 860, true);
 
   // C) Sesión Usuario común (david@utnfrc.edu.ar): Mis reservas en móvil y escritorio

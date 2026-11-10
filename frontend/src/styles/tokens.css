@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   /* Colores base (Sección 3 — DISENO_PROPUESTA.md) */
   --fondo: #F5F6F8;
   --superficie: #FFFFFF;
@@ -12,6 +14,7 @@
   --peligro: #A4262C;
   --peligro-hover: #8F1F24;
   --peligro-fondo: #F8E3E3;
+  --peligro-texto: #A4262C;
   --superficie-sutil: #E6E9ED;
   --overlay: rgba(27, 36, 48, 0.45);
 
@@ -99,4 +102,44 @@
   --transicion-rapida: 120ms ease-out;
   --transicion-base: 150ms ease-out;
 }
+
+:root[data-theme="dark"],
+:root[data-theme="oscuro"] {
+  color-scheme: dark;
+
+  /* Colores base en modo oscuro (contraste WCAG 2.1 AA verificado) */
+  --fondo: #0F141A;
+  --superficie: #171E27;
+  --superficie-sutil: #1E2733;
+  --tinta: #E7ECF2;
+  --tinta-2: #A3B0C0;
+  --tinta-inversa: #0B1626;
+  --acento: #7AAEF0;
+  --acento-hover: #9CC2F5;
+  --borde: #2C3847;
+  --borde-control: #6B7A8E;
+  --peligro: #C4343B;
+  --peligro-hover: #A62B31;
+  --peligro-fondo: #3A1618;
+  --peligro-texto: #F29A9E;
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  /* Estados en modo oscuro */
+  --estado-pendiente-texto: #F2C46D;
+  --estado-pendiente-fondo: #3A2D12;
+  --patron-pendiente: repeating-linear-gradient(
+    -45deg,
+    var(--estado-pendiente-fondo),
+    var(--estado-pendiente-fondo) 6px,
+    #4D3C19 6px,
+    #4D3C19 9px
+  );
+  --estado-aprobada-texto: #7FD39B;
+  --estado-aprobada-fondo: #12301F;
+  --estado-rechazada-texto: #F29A9E;
+  --estado-rechazada-fondo: #3A1618;
+  --estado-cancelada-texto: #B8C2CF;
+  --estado-cancelada-fondo: #272F3A;
+}
+
 

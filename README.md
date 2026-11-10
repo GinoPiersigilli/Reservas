@@ -70,6 +70,12 @@ reservas/
 |---|---|---|---|
 | ![Login móvil](docs/img/login-movil.png) | ![Mis reservas móvil](docs/img/reservas-usuario-movil.png) | ![Grilla móvil](docs/img/nueva-reserva-grilla-movil.png) | ![Panel móvil](docs/img/panel-admin-movil.png) |
 
+### Modo Oscuro (`Fase 7`)
+
+| Ingreso en Modo Oscuro | Grilla en Modo Oscuro | Panel en Modo Oscuro |
+|---|---|---|
+| ![Login oscuro](docs/img/login-oscuro.png) | ![Grilla oscura](docs/img/nueva-reserva-grilla-oscuro.png) | ![Panel oscuro](docs/img/panel-admin-oscuro.png) |
+
 ---
 
 ## Instalación y puesta en marcha desde cero

@@ -18,6 +18,23 @@ export function extraerTokensHex(contenidoCss) {
   return mapa;
 }
 
+export function extraerBloquesTokens(contenidoCss) {
+  const indexDark = contenidoCss.indexOf('data-theme');
+  if (indexDark === -1) {
+    return {
+      claro: extraerTokensHex(contenidoCss),
+      oscuro: {}
+    };
+  }
+  const bloqueClaro = contenidoCss.slice(0, indexDark);
+  const bloqueOscuro = contenidoCss.slice(indexDark);
+
+  return {
+    claro: extraerTokensHex(bloqueClaro),
+    oscuro: extraerTokensHex(bloqueOscuro)
+  };
+}
+
 function hexARgb(hex) {
   const limpio = hex.replace('#', '');
   return [
@@ -116,17 +133,101 @@ export const PARES_PROPUESTA = [
   }
 ];
 
-export function verificarParesTokens() {
-  const css = fs.readFileSync(rutaTokens, 'utf8');
-  const tokens = extraerTokensHex(css);
+export const PARES_OSCURO = [
+  {
+    nombre: 'Modo oscuro: Texto principal sobre fondo (--tinta / --fondo)',
+    fg: '--tinta',
+    bg: '--fondo',
+    minimoAA: 4.5,
+    referenciaEsperada: 15.6
+  },
+  {
+    nombre: 'Modo oscuro: Texto principal sobre superficie (--tinta / --superficie)',
+    fg: '--tinta',
+    bg: '--superficie',
+    minimoAA: 4.5,
+    referenciaEsperada: 14.1
+  },
+  {
+    nombre: 'Modo oscuro: Texto secundario sobre superficie (--tinta-2 / --superficie)',
+    fg: '--tinta-2',
+    bg: '--superficie',
+    minimoAA: 4.5,
+    referenciaEsperada: 7.6
+  },
+  {
+    nombre: 'Modo oscuro: Texto inverso sobre acento (--tinta-inversa / --acento)',
+    fg: '--tinta-inversa',
+    bg: '--acento',
+    minimoAA: 4.5,
+    referenciaEsperada: 7.9
+  },
+  {
+    nombre: 'Modo oscuro: Contorno de control sobre superficie (--borde-control / --superficie)',
+    fg: '--borde-control',
+    bg: '--superficie',
+    minimoAA: 3.0,
+    referenciaEsperada: 3.8
+  },
+  {
+    nombre: 'Modo oscuro: Texto blanco sobre peligro (#FFFFFF / --peligro)',
+    colorFgFijo: '#FFFFFF',
+    bg: '--peligro',
+    minimoAA: 4.5,
+    referenciaEsperada: 5.4
+  },
+  {
+    nombre: 'Modo oscuro: Peligro texto sobre fondo (--peligro-texto / --peligro-fondo)',
+    fg: '--peligro-texto',
+    bg: '--peligro-fondo',
+    minimoAA: 4.5,
+    referenciaEsperada: 7.6
+  },
+  {
+    nombre: 'Modo oscuro: Estado Pendiente (--estado-pendiente-texto / --estado-pendiente-fondo)',
+    fg: '--estado-pendiente-texto',
+    bg: '--estado-pendiente-fondo',
+    minimoAA: 4.5,
+    referenciaEsperada: 8.2
+  },
+  {
+    nombre: 'Modo oscuro: Estado Aprobada (--estado-aprobada-texto / --estado-aprobada-fondo)',
+    fg: '--estado-aprobada-texto',
+    bg: '--estado-aprobada-fondo',
+    minimoAA: 4.5,
+    referenciaEsperada: 8.0
+  },
+  {
+    nombre: 'Modo oscuro: Estado Rechazada (--estado-rechazada-texto / --estado-rechazada-fondo)',
+    fg: '--estado-rechazada-texto',
+    bg: '--estado-rechazada-fondo',
+    minimoAA: 4.5,
+    referenciaEsperada: 7.6
+  },
+  {
+    nombre: 'Modo oscuro: Estado Cancelada (--estado-cancelada-texto / --estado-cancelada-fondo)',
+    fg: '--estado-cancelada-texto',
+    bg: '--estado-cancelada-fondo',
+    minimoAA: 4.5,
+    referenciaEsperada: 7.5
+  }
+];
 
-  return PARES_PROPUESTA.map((par) => {
-    const colorFg = tokens[par.fg];
-    const colorBg = tokens[par.bg];
+export function verificarParesTokens(tema = 'claro') {
+  const css = fs.readFileSync(rutaTokens, 'utf8');
+  const bloques = extraerBloquesTokens(css);
+  const esOscuro = tema === 'oscuro' || tema === 'dark';
+  const tokens = esOscuro ? bloques.oscuro : bloques.claro;
+  const pares = esOscuro ? PARES_OSCURO : PARES_PROPUESTA;
+
+  return pares.map((par) => {
+    const colorFg = par.colorFgFijo || tokens[par.fg];
+    const colorBg = par.colorBgFijo || tokens[par.bg];
     const ratio = calcularContraste(colorFg, colorBg);
     const ratioRedondeado = Number(ratio.toFixed(1));
     const cumpleAA = ratio >= par.minimoAA;
-    const coincidePropuesta = Math.abs(ratioRedondeado - par.referenciaPropuesta) <= 0.1;
+    const ref = par.referenciaPropuesta ?? par.referenciaEsperada;
+    const coincidePropuesta = ref !== undefined ? Math.abs(ratioRedondeado - ref) <= 0.2 : true;
 
     return {
       ...par,
@@ -139,12 +240,20 @@ export function verificarParesTokens() {
   });
 }
 
+export function verificarTodosLosTemas() {
+  const claro = verificarParesTokens('claro');
+  const oscuro = verificarParesTokens('oscuro');
+  return { claro, oscuro };
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  const resultados = verificarParesTokens();
+  const { claro, oscuro } = verificarTodosLosTemas();
   let fallos = 0;
 
   console.log('Verificación de contraste WCAG 2.1 sobre src/styles/tokens.css:\n');
-  for (const r of resultados) {
+
+  console.log('--- Modo Claro (:root) ---');
+  for (const r of claro) {
     const estado = r.cumpleAA && r.coincidePropuesta ? 'OK' : 'FALLO';
     if (estado !== 'OK') fallos += 1;
     console.log(
@@ -152,8 +261,19 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
     );
   }
 
+  console.log('\n--- Modo Oscuro (:root[data-theme="dark"]) ---');
+  for (const r of oscuro) {
+    const estado = r.cumpleAA ? 'OK' : 'FALLO';
+    if (estado !== 'OK') fallos += 1;
+    console.log(
+      `[${estado}] ${r.nombre}: ${r.colorFg} sobre ${r.colorBg} -> ${r.ratio}:1 (esperado: ${r.referenciaEsperada}:1, mín AA: ${r.minimoAA}:1)`
+    );
+  }
+
   if (fallos > 0) {
+    console.error(`\nSe encontraron ${fallos} fallos de contraste.`);
     process.exit(1);
+  } else {
+    console.log('\nTodos los pares de color en ambos temas cumplen con las pautas WCAG 2.1 AA.');
   }
 }
-

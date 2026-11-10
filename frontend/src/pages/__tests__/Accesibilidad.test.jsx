@@ -92,6 +92,15 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
     }
   });
 
+  it('verifies all dark mode color pairs in tokens.css meet WCAG AA', () => {
+    const resultados = verificarParesTokens('oscuro');
+    expect(resultados.length).toBeGreaterThanOrEqual(10);
+    for (const par of resultados) {
+      expect(par.cumpleAA).toBe(true);
+      expect(par.coincidePropuesta).toBe(true);
+    }
+  });
+
   it('passes axe accessibility audit on Login and Register screens', async () => {
     const { container: loginContainer, unmount: unmountLogin } = render(
       <MemoryRouter>
@@ -107,6 +116,48 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
       </MemoryRouter>
     );
     sinViolacionesAxe(await axe(registerContainer));
+  });
+
+  it('passes axe accessibility audit on main screens in dark theme', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    try {
+      const { container: loginContainer, unmount: unmountLogin } = render(
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      );
+      sinViolacionesAxe(await axe(loginContainer));
+      unmountLogin();
+
+      const { container: registerContainer, unmount: unmountRegister } = render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>
+      );
+      sinViolacionesAxe(await axe(registerContainer));
+      unmountRegister();
+
+      reservasService.getReservas.mockResolvedValueOnce({
+        data: {
+          data: [reservaDetalleMock],
+          pagination: { total: 1, page: 1, limit: 10, totalPages: 1 }
+        }
+      });
+      const { container: cReservas, unmount: uReservas } = render(
+        <MemoryRouter initialEntries={['/reservas']}>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/reservas" element={<Reservas />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      );
+      await screen.findByText('Parcial de Física');
+      sinViolacionesAxe(await axe(cReservas));
+      uReservas();
+    } finally {
+      document.documentElement.removeAttribute('data-theme');
+    }
   });
 
   it('passes axe accessibility audit on AppShell + Reservas, FormularioReserva, DetalleReserva, Resumen, and NotFound', async () => {
