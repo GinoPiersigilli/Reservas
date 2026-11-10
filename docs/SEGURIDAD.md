@@ -4,13 +4,22 @@ Este documento centraliza el estado de seguridad, los hallazgos de auditoría au
 
 ---
 
-## Resumen Ejecutivo de la Auditoría 6a y Endurecimiento 6b
+## Resumen Ejecutivo de Auditorías (6a, 6c) y Endurecimiento (6b, 6c)
 
 En la **Fase 6a** se llevó a cabo una auditoría automatizada y exhaustiva del sistema completo (backend, frontend, base de datos, dependencias, historial de control de versiones y contenedores Docker), ejecutando herramientas estándar de la industria bajo la regla de **solo medir y reportar sin aplicar modificaciones de código aún**.
 
 Posteriormente, en las **Fases 6b1 y 6b2**, se implementó el plan de mitigación y endurecimiento de seguridad mediante commits individuales verificados con tests automatizados:
 - **Fase 6b1 (Configuración e Infraestructura):** Corrección de vulnerabilidades en dependencias (`SEC-DEP-01` a `04`), configuración de `trust proxy` para proxies reversos (`SEC-CFG-01`), limitación de cuerpos HTTP a 10kb con respuesta 413 (`SEC-CFG-02`), manejo seguro de excepciones sin volcados de trazas en producción (`SEC-CFG-03`), ejecución de Nginx como usuario sin privilegios `nginx` UID 101 (`SEC-CNT-01`), actualización de parches del sistema operativo base en contenedores (`SEC-CNT-02`), y prevención de inyección de Host en proxy inverso (`SEC-SAST-01`).
 - **Fase 6b2 (Autenticación, Validación y Autorización):** Fijación estricta de algoritmo `HS256` e issuer `reservas-api` en JWT local, junto con la consulta en base de datos del estado (`activo === true`) y rol del usuario en cada petición (`SEC-AUTH-02`); validación de `authorizedParties` (`azp`) en tokens de Clerk (`SEC-AUTH-03`); bloqueo de asignación masiva de roles en `registrarUsuario` (`SEC-AUTH-04`); vinculación de cuentas Clerk a cuentas locales restringida a emails verificados (`SEC-AUTH-05`); salvaguarda contra destrucción de bases de datos de desarrollo/producción en tests y exclusión de carreras con advisory locks (`SEC-TEST-01`); validación tipada con esquemas Zod en todas las entradas críticas (`SEC-VAL-01`); protección de la ruta de aulas con autenticación (`SEC-INV-01`); documentación formal del riesgo aceptado de `localStorage` (`SEC-AUTH-01`); y catalogación de hallazgos SAST (`SEC-SAST-02`, `SEC-SAST-03`).
+
+En la **Fase 6c (Pruebas Avanzadas, DAST y Endurecimiento Definitivo)** se consolidaron las siguientes defensas y verificaciones:
+- **Extensión de Advisory Lock en Tests (`SEC-TEST-01`):** El bloqueo asesor `pg_advisory_lock` se mantiene de forma ininterrumpida durante la ejecución de migraciones (`db:migrate`) en `globalSetup.cjs`, liberándose estrictamente en el bloque `finally` para evitar carreras entre suites paralelas.
+- **Resiliencia ante Fallos de Base de Datos en Autenticación (`SEC-AUTH-06`):** En `auth.middleware.js`, un fallo de base de datos durante `Usuario.findByPk` responde `500 Internal Server Error` sin derivar indebidamente a Clerk con un falso `401`.
+- **Cierre Seguro de Sesión en Frontend (`SEC-AUTH-07`):** Interceptor de Axios que ante un `401` limpia el estado local de autenticación, llama a `signOut` de Clerk y redirige a `/login` con mensaje informativo, previniendo bucles de redirección.
+- **Pruebas de Contrato Frontend-Backend (`SEC-TEST-02`):** Suite completa (`contrato-frontend.test.js`) que replica con exactitud los pedidos del cliente React (filtros vacíos, strings numéricos, paginación, panel, detalle e historial).
+- **Suite Integral de Ataques Reales (`SEC-TEST-03`):** 26 pruebas automáticas (`seguridad.test.js`) verificando mitigación de manipulación de tokens, IDOR, escalamiento de privilegios, mass assignment, inyección SQL/XSS, límites de cuerpo (413), JSON malformado (400), fuerza bruta (429), carrera de 20 reservas simultáneas con exactamente 1 creada, censura de `passwordHash` y cabeceras Helmet.
+- **Auditoría Dinámica DAST con OWASP ZAP Baseline Scan (`SEC-AUDIT-01`):** Escaneo sobre el contenedor productivo (`http://host.docker.internal:80`) arrojando **0 fallos (`FAIL-NEW: 0`) y 63 verificaciones exitosas (`PASS: 63`)**, con hardening adicional de `server_tokens off;` y `Permissions-Policy`.
+- **Revisión de Seguridad de Base de Datos (`SEC-DB-01`):** Conexión vía usuario dedicado `reservas_prod`, puerto 5432 no expuesto al host, y documentación de directivas SSL para bases gestionadas.
 
 Toda la evidencia cruda generada por las herramientas se encuentra preservada en el directorio `docs/seguridad/evidencia/`:
 - **Dependencias:** `npm audit` y `npm outdated` (en backend y frontend, diferenciando dependencias globales y exclusivas de producción con `--omit=dev`).
@@ -41,13 +50,19 @@ Toda la evidencia cruda generada por las herramientas se encuentra preservada en
 | `SEC-SAST-01` | **Media** | Nginx (`frontend/nginx.conf:20`) | Uso de la variable `$host` en `proxy_set_header Host $host` susceptible a *Host Header Injection*. | `docs/seguridad/evidencia/semgrep-report.json` | **Cerrado** (Fijado `proxy_set_header Host backend;` en proxy inverso) |
 | `SEC-SAST-02` | **Baja** | CI/CD (`.github/workflows/ci.yml:45,48,76,79`) | Pasos de GitHub Actions (`actions/checkout`, `actions/setup-node`) utilizando etiquetas de versión mutables (`@v4`, `@v5`) en vez de fijar commit SHAs inmutables. | `docs/seguridad/evidencia/semgrep-report.json` | **Abierto** (Planificado fijar commit SHAs en futuro commit de mantenimiento de CI/CD) |
 | `SEC-SAST-03` | **Baja** | Backend (`backend/src/config/env.js:16`) | Acceso dinámico a variables de entorno (`process.env[variable]`) señalado por `eslint-plugin-security` (`detect-object-injection`). | `docs/seguridad/evidencia/eslint-security-backend.txt` | **Falso Positivo** (Itera array inmutable estático `obligatorias`; sin entrada no confiable ni vector de inyección) |
-| `SEC-AUTH-01` | **Media** | Frontend (`AuthContext.jsx:51`) | Token JWT de autenticación local almacenado en `localStorage`. Aunque el frontend no posee inyecciones HTML y la CSP es estricta, un XSS permitiría la extracción del token. | Inspección de `frontend/src/context/AuthContext.jsx` | **Riesgo Aceptado** (Mitigaciones activas: CSP estricta sin `'unsafe-inline'`, 0 usos de `innerHTML`, expiración 2h; recomendación futura: cookies httpOnly) |
+| `SEC-AUTH-01` | **Media** | Frontend (`AuthContext.jsx:51`) | Token JWT de autenticación local almacenado en `localStorage`. Aunque el frontend no posee inyecciones HTML y la CSP es estricta, un XSS permitiría la extracción del token. | Inspección de `frontend/src/context/AuthContext.jsx` | **Riesgo Aceptado** (Mitigaciones activas: sin `'unsafe-inline'` en `script-src`; `style-src` sí lo permite por Clerk, 0 usos de `innerHTML`, expiración 2h; recomendación futura: cookies httpOnly) |
 | `SEC-AUTH-02` | **Media** | Backend (`auth.middleware.js:78`) | `jwt.verify(token, env.JWT_SECRET)` no fijaba algoritmos permitidos (`algorithms: ['HS256']`), ni issuer, ni validaba si el usuario local continuaba activo en la BD (`activo === true`) antes de autorizar la sesión. | Inspección de `backend/src/middleware/auth.middleware.js` | **Cerrado** (Fijado `HS256`, `issuer: 'reservas-api'`, consulta obligatoria de `activo === true` y rol en Postgres en cada petición; commits `ff107dc`, `81a53b8`) |
 | `SEC-AUTH-03` | **Media** | Backend (`auth.middleware.js:90`) | La verificación de tokens de Clerk mediante `verifyToken` no validaba el claim `authorizedParties` (`azp`), omitiendo restringir qué orígenes de cliente son válidos. | Inspección de `backend/src/middleware/auth.middleware.js` | **Cerrado** (Pasado `authorizedParties: env.CORS_ORIGINS` a `verifyToken`; commit `21069d1`) |
 | `SEC-VAL-01` | **Media** | Backend (`routes/*.routes.js`) | Ausencia de validación con esquema formal tipado (como Zod) para los parámetros de ruta `:id`, parámetros de query y cuerpos de creación/edición de reservas. | Inspección de `backend/src/routes/` | **Cerrado** (Integrado `zod@4.6.7` y middleware `validar`: login, id entero positivo, query params con límite y orden, cuerpos de creación y edición; commits `11427ef`, `0b4ed1c`, `bf28d0a`, `b1b42fc`) |
-| `SEC-TEST-01` | **Media** | Backend Tests (`globalSetup.cjs:17`) | `globalSetup` ejecutaba `DROP SCHEMA public CASCADE;` sobre `DATABASE_URL_TEST` sin verificar mediante una guarda de seguridad que el nombre de la base de datos terminara obligatoriamente en `_test` ni que fuera distinta a `DATABASE_URL`. | `backend/tests/setup/globalSetup.cjs` | **Cerrado** (Guarda de aborto por nombre/igualdad, `pg_advisory_lock(987654321)` y terminación de conexiones concurrentes; commit `0e6cff2`) |
+| `SEC-TEST-01` | **Media** | Backend Tests (`globalSetup.cjs:17`) | `globalSetup` ejecutaba `DROP SCHEMA public CASCADE;` sobre `DATABASE_URL_TEST` sin verificar mediante una guarda de seguridad que el nombre de la base de datos terminara obligatoriamente en `_test` ni que fuera distinta a `DATABASE_URL`. | `backend/tests/setup/globalSetup.cjs` | **Cerrado** (Guarda de aborto por nombre/igualdad, `pg_advisory_lock(987654321)` sostenido hasta finalizar migraciones y terminación de conexiones; commits `0e6cff2`, `5241532`) |
 | `SEC-HIST-01` | **Baja** | Git History (commit `32838b48`) | Rutas personales absolutas del entorno local de desarrollo (`<ruta-local>/...`) versionadas en scripts auxiliares (`capturar-pantallas.mjs`) antes de su saneamiento en commit `0b1c7ac2`. | `git log` | **Abierto** |
 | `SEC-INV-01` | **Baja** | Backend (`aulas.routes.js:8`) | `GET /api/aulas` no requería autenticación. | Inspección de `backend/src/routes/aulas.routes.js` | **Cerrado** (Exige autenticación mediante `verificarToken`; frontend solo accede desde páginas autenticadas; commit `19949d9`) |
+| `SEC-AUTH-06` | **Media** | Backend (`auth.middleware.js:77`) | Si `Usuario.findByPk` fallaba por error de base de datos durante autenticación JWT local, la excepción era capturada por el bloque externo y caía indebidamente a la verificación de Clerk devolviendo 401 en vez de 500. | `backend/src/middleware/auth.middleware.js` | **Cerrado** (Captura explícita de fallo en consulta a BD invocando `next(dbError)` para retornar status 500; commit `be3e397`) |
+| `SEC-AUTH-07` | **Media** | Frontend (`api/axios.js`, `AuthContext.jsx`) | Ante revocación o expiración de sesión (401 de la API), el frontend no cerraba de forma coordinada la sesión local, no invocaba `signOut` de Clerk ni notificaba al usuario evitando bucles de redirección. | `frontend/src/services/axios.js`, `frontend/src/context/AuthContext.jsx` | **Cerrado** (Interceptor global de respuesta que limpia estado, invoca `signOut`, setea mensaje en sessionStorage y redirige a `/login` sin bucles; commit `b66c9de`) |
+| `SEC-TEST-02` | **Baja** | Backend Tests (`contrato-frontend.test.js`) | Riesgo de regresión de contrato API donde el cliente envía filtros opcionales como cadenas vacías (`fecha=&estado=`), strings numéricos en formularios y consultas de resumen/pendientes. | `backend/tests/contrato-frontend.test.js` | **Cerrado** (Suite de 15 pruebas de integración replicando fielmente las peticiones exactas del frontend para admin y usuario; commit `0e52260`) |
+| `SEC-TEST-03` | **Media** | Backend Tests (`seguridad.test.js`) | Falta de batería integral automatizada de pruebas de ataque en vivo: manipulación de tokens, IDOR en todas las rutas con `:id`, elevación de rol, mass assignment, SQLi, XSS, 413, 400, 429 y condiciones de carrera de 20 reservas simultáneas. | `backend/tests/seguridad.test.js` | **Cerrado** (Suite integral de 26 pruebas automáticas de ataques reales en ejecución continua con PostgreSQL; commit `07f721c`) |
+| `SEC-AUDIT-01` | **Informativa** | Infraestructura Web / DAST (`frontend/nginx.conf`) | Verificación dinámica de vulnerabilidades en runtime sobre contenedores productivos de producción local. | `docs/seguridad/evidencia/zap-report.html`, `zap-report.json` | **Cerrado** (OWASP ZAP Baseline Scan: 0 fallos, 63 pass, 5 advertencias aceptadas; Nginx endurecido con `server_tokens off;` y `Permissions-Policy`; commit `34869c3`) |
+| `SEC-DB-01` | **Baja** | Base de Datos (`docker-compose.prod.yml`, `src/config/database.js`) | Exposición innecesaria del puerto de BD o uso de superusuario en backend, y definición de directivas de cifrado TLS para bases gestionadas. | `docker-compose.prod.yml`, `docs/SEGURIDAD.md` | **Cerrado** (Usuario dedicado `reservas_prod`, puerto 5432 no mapeado a host, y especificación de dialectOptions SSL para nube) |
 
 ---
 
@@ -216,7 +231,7 @@ Revisión punto por punto del estado y resolución de los problemas identificado
    - **Estado:** **Riesgo Aceptado**.
    - **Vector de ataque:** *Cross-Site Scripting* (XSS). Si un script malicioso lograra ejecutarse en el contexto del navegador, tendría acceso a `localStorage.getItem('token')` y podría exfiltrar el token local.
    - **Mitigaciones activas en el sistema:**
-     1. **Content Security Policy (CSP) estricta sin `'unsafe-inline'` para scripts:** La directiva `script-src` en Nginx (`frontend/nginx.conf`) restringe la ejecución de scripts exclusivamente a `'self'` y a los endpoints autorizados de Clerk y Cloudflare Turnstile. Se bloquea cualquier script embebido o inyección de scripts externos.
+     1. **Content Security Policy (CSP) estricta sin `'unsafe-inline'` en `script-src` (`style-src` sí lo permite por Clerk):** La directiva `script-src` en Nginx (`frontend/nginx.conf`) restringe la ejecución de scripts exclusivamente a `'self'` y a los endpoints autorizados de Clerk y Cloudflare Turnstile (`challenges.cloudflare.com`). Se bloquea cualquier script embebido o inyección de scripts externos. Por requerimiento funcional del SDK `@clerk/clerk-react` para inyectar hojas de estilo de sus modales de autenticación, `style-src` sí admite `'unsafe-inline'`.
      2. **Cero inyecciones HTML en frontend:** El código del cliente React fue auditado rigurosamente y posee estrictamente **0 usos de `innerHTML` y 0 usos de `dangerouslySetInnerHTML`**, minimizando la superficie de vulnerabilidades XSS basadas en DOM.
      3. **Expiración de tokens reducida:** El token JWT local posee una vida útil acotada de 2 horas (`expiresIn: '2h'`). Para usuarios autenticados mediante Google/Clerk, la sesión no se guarda en `localStorage` sino que reside en memoria y se refresca automáticamente con tokens de 60 segundos de Clerk.
    - **Recomendación futura:** Migrar a cookies `httpOnly` con flags `SameSite=Strict` y `Secure`, acompañadas de protección CSRF (tokens de sincronización o doble submit cookie), si en el futuro la arquitectura evoluciona hacia un esquema monolítico o *Backend For Frontend* (BFF).
@@ -277,8 +292,14 @@ Revisión punto por punto del estado y resolución de los problemas identificado
 3. **Tipografías autoalojadas (`'self'`)**: Fuentes **Source Serif 4** y **Public Sans** autoalojadas mediante `@fontsource`.
 4. **Íconos e imágenes locales**: Íconos de `lucide-react` servidos como SVG en el bundle local (`'self'`).
 
-### 7.2. Política CSP configurada en `frontend/nginx.conf`
+### 7.2. Política CSP y Cabeceras de Endurecimiento en `frontend/nginx.conf`
 ```nginx
+server_tokens off;
+
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://*.protect.clerk.com:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com; font-src 'self'; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.protect.clerk.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';" always;
 ```
 
@@ -286,3 +307,50 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' https:
 1. **Exposición exclusiva a administradores:** Los atributos `nombre` y `email` del solicitante solo se proyectan (`attributes: ['id', 'nombre', 'email']`) si `req.usuario.rol === 'admin'`.
 2. **Prohibición de exposición de hashes:** Queda prohibido consultar el modelo `Usuario` sin exclusión estricta de `passwordHash`.
 3. **Inmunidad en disponibilidad:** El endpoint `GET /api/aulas/:id/disponibilidad` no vincula identidades de usuarios con franjas horarias ocupadas.
+
+---
+
+## 8. Revisión de Seguridad de Base de Datos y Auditoría DAST (Fase 6c)
+
+### 8.1. Seguridad de PostgreSQL y Aislamiento de Red (`SEC-DB-01`)
+1. **Usuario Dedicado sin Privilegios de Superusuario:**
+   En el despliegue productivo (`docker-compose.prod.yml` y `.env.production`), la base de datos es creada y operada bajo el rol de usuario `reservas_prod` (`POSTGRES_USER`). El backend jamás se conecta como superusuario `postgres`, minimizando el impacto de cualquier eventual compromiso a nivel de base de datos.
+2. **Exposición de Puertos Aislada:**
+   El contenedor `reservas-postgres-prod` no mapea el puerto `5432` hacia el host (`ports:` omitido). La comunicación con PostgreSQL ocurre exclusivamente a través de la red interna bridge de Docker (`reservas-net`), quedando inaccesible desde el host o interfaces externas no autorizadas.
+
+### 8.2. Prerrequisitos para Cifrado en Tránsito (SSL/TLS) con Bases de Datos Gestionadas
+Para despliegues productivos que utilicen bases de datos PostgreSQL gestionadas en la nube (AWS RDS, GCP Cloud SQL, Supabase, Neon), la conexión debe cifrarse obligatoriamente mediante SSL/TLS.
+En `backend/src/config/database.js`, la configuración de Sequelize debe incluir `dialectOptions.ssl`:
+```javascript
+const dialectOptions = process.env.NODE_ENV === 'production' && process.env.DATABASE_SSL === 'true'
+  ? {
+      ssl: {
+        require: true,
+        rejectUnauthorized: true,
+        ca: process.env.PG_CA_CERT // Certificado CA de la autoridad emisora de la nube
+      }
+    }
+  : {};
+```
+Esto garantiza que:
+- El tráfico permanezca cifrado de extremo a extremo en tránsito a través de la red pública o nube privada.
+- Se valide estrictamente la identidad del servidor de base de datos (`rejectUnauthorized: true`), previniendo ataques de hombre en el medio (MITM) o spoofing de DNS.
+
+### 8.3. Auditoría Dinámica DAST con OWASP ZAP Baseline Scan (`SEC-AUDIT-01`)
+Se ejecutó el contenedor oficial de OWASP ZAP (`ghcr.io/zaproxy/zaproxy:stable`) contra el entorno de producción local (`http://host.docker.internal:80`).
+- **Evidencias generadas:** `docs/seguridad/evidencia/zap-report.html` y `docs/seguridad/evidencia/zap-report.json`.
+- **Resultados globales:**
+  - **Vulnerabilidades y fallos detectados:** **0 (`FAIL-NEW: 0`)**.
+  - **Reglas validadas exitosamente:** **63 (`PASS: 63`)**, incluyendo protección contra clickjacking, inyección de scripts, revelación de errores de depuración, ausencia de fugas en cookies y cabeceras estrictas.
+  - **Hardening aplicado:** Inclusión de `server_tokens off;` para eliminar la revelación de versión de Nginx y cabecera `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
+  - **Advertencias catalogadas y justificadas (5):**
+    1. `style-src unsafe-inline`: Requisito mandatorio del SDK de Clerk para estilos dinámicos de sus componentes visuales.
+    2. `Cross-Origin-Embedder-Policy (COEP)`: Omitido deliberadamente para permitir la carga de frames cruzados y recursos externos legítimos (Clerk y Cloudflare Turnstile).
+    3. `Information Disclosure - Suspicious Comments`: Comentarios estándar de bundles minificados de librerías de terceros en el frontend empaquetado.
+    4. `Storable and Cacheable Content`: Control de caché de assets estáticos de frontend.
+    5. `Modern Web Application`: Señalización informativa estándar de arquitectura Single Page Application (SPA).
+
+### 8.4. Verificación Automatizada de Ataques Reales y Contrato de Cliente
+- **Suite de Pruebas de Ataque (`backend/tests/seguridad.test.js` - `SEC-TEST-03`):** 26 tests en ejecución continua que simulan ataques reales de fuerza bruta (429), límites de memoria (413), JSON malformado (400), inyección SQL y XSS, suplantación horizontal IDOR, elevación de privilegios, manipulación de firmas y algoritmos en tokens JWT, mass assignment, condiciones de carrera de 20 reservas concurrentes en PostgreSQL con exactamente 1 creada, y verificación de ausencia total de `passwordHash` en respuestas.
+- **Suite de Contrato Frontend (`backend/tests/contrato-frontend.test.js` - `SEC-TEST-02`):** 15 tests que emulan la interacción exacta del cliente React, confirmando compatibilidad plena ante parámetros vacíos y tipos de datos string de formularios.
+
