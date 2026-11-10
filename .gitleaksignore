@@ -1,0 +1,9 @@
+# docs/CONTEXTO_PROYECTO.md: placeholder de documentación 'CLERK_SECRET_KEY=sk_test_...' (SEC-SEC-01)
+f07ef07345415ced7e05c92da4aa6f4a44889858:docs/CONTEXTO_PROYECTO.md:generic-api-key:146
+
+# backend/tests/error-handling.test.js: token sintético de prueba para verificar que el logger sanitiza tokens JWT (SEC-CFG-03)
+bd1fe11cd0c4beee05cf004167c926c1def571f7:backend/tests/error-handling.test.js:generic-api-key:14
+
+# backend/tests/auth.test.js: token sintético con firma alterada para verificar rechazo de 401 en fallback a Clerk (SEC-AUTH-02)
+be3e397f4433ad2484f7538d3f8a719181ce669f:backend/tests/auth.test.js:generic-api-key:182
+

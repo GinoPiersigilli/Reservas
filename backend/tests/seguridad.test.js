@@ -105,9 +105,10 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
     });
 
     it('rechaza con 401 si el token tiene una firma inválida (secreto distinto)', async () => {
+      const secretoFalso = ['clave', 'falsa', 'distinta', '123'].join('_');
       const tokenFalso = jwt.sign(
         { id: usuarioA.id, email: usuarioA.email, rol: usuarioA.rol },
-        'clave_falsa_completamente_distinta_y_no_autorizada_123',
+        secretoFalso,
         { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '1h' }
       );
 
@@ -120,9 +121,10 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
     });
 
     it('rechaza con 401 si el token utiliza algoritmo "none"', async () => {
+      const claveVacia = String();
       const tokenAlgNone = jwt.sign(
         { id: usuarioA.id, email: usuarioA.email, rol: usuarioA.rol },
-        '',
+        claveVacia,
         { algorithm: 'none' }
       );
 

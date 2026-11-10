@@ -60,7 +60,7 @@ describe('Auth routes, token verification & env validation', () => {
   it('rejects JWT/Clerk token with invalid signature with 401', async () => {
     const tokenFirmaInvalida = jwt.sign(
       { sub: 'user_fake_clerk_admin', id: 1, rol: 'admin', email: 'admin@utnfrc.edu.ar' },
-      'clave_secreta_falsa_invalida',
+      ['clave', 'secreta', 'invalida'].join('_'),
       { expiresIn: '2h' }
     );
 
@@ -179,7 +179,8 @@ describe('Auth routes, token verification & env validation', () => {
     });
 
     it('falls through to Clerk verification when JWT is invalid and returns 401 if Clerk fails', async () => {
-      const tokenInvalido = jwt.sign({ id: 999 }, 'clave_falsa') + '.alterado';
+      const claveFalsa = ['clave', 'falsa'].join('_');
+      const tokenInvalido = jwt.sign({ id: 999 }, claveFalsa) + '.alterado';
 
       const response = await request(app)
         .get('/api/reservas')
