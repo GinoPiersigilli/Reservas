@@ -179,7 +179,7 @@ describe('Auth routes, token verification & env validation', () => {
     });
 
     it('falls through to Clerk verification when JWT is invalid and returns 401 if Clerk fails', async () => {
-      const tokenInvalido = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTk5fQ.invalidSignature';
+      const tokenInvalido = jwt.sign({ id: 999 }, 'clave_falsa') + '.alterado';
 
       const response = await request(app)
         .get('/api/reservas')

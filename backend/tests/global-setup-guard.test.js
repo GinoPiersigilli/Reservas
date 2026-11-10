@@ -59,8 +59,8 @@ describe('SEC-TEST-01: guarda de seguridad en globalSetup para DATABASE_URL_TEST
       };
 
       await globalSetup({
-        testDbUrl: 'postgres://postgres:pass@localhost:5432/reservas_test',
-        prodDbUrl: 'postgres://postgres:pass@localhost:5432/reservas_dev',
+        testDbUrl: 'postgresql://dummy_user:dummy_pass@localhost:5432/reservas_test',
+        prodDbUrl: 'postgresql://dummy_user:dummy_pass@localhost:5432/reservas_dev',
         Client: MockClient,
         execSync: mockExecSync
       });
@@ -103,8 +103,8 @@ describe('SEC-TEST-01: guarda de seguridad en globalSetup para DATABASE_URL_TEST
 
       await expect(
         globalSetup({
-          testDbUrl: 'postgres://postgres:pass@localhost:5432/reservas_test',
-          prodDbUrl: 'postgres://postgres:pass@localhost:5432/reservas_dev',
+          testDbUrl: 'postgresql://dummy_user:dummy_pass@localhost:5432/reservas_test',
+          prodDbUrl: 'postgresql://dummy_user:dummy_pass@localhost:5432/reservas_dev',
           Client: MockClient,
           execSync: mockFailingExecSync
         })
