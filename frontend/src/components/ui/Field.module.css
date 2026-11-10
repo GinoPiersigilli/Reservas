@@ -16,7 +16,7 @@
 }
 
 .obligatorio {
-  color: var(--peligro);
+  color: var(--peligro-texto);
   font-weight: var(--peso-semibold);
 }
 
@@ -29,7 +29,7 @@
 .error {
   font-size: var(--texto-xs);
   font-weight: var(--peso-medio);
-  color: var(--peligro);
+  color: var(--peligro-texto);
   line-height: var(--linea-base);
 }
 

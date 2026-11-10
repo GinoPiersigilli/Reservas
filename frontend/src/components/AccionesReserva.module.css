@@ -12,7 +12,7 @@
   background-color: var(--peligro-fondo);
   border: var(--borde-ancho) solid var(--peligro);
   border-radius: var(--radio-control);
-  color: var(--peligro);
+  color: var(--peligro-texto);
   font-size: var(--texto-sm);
   font-weight: var(--peso-medio);
 }

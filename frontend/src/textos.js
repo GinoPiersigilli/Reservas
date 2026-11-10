@@ -138,6 +138,10 @@ export const TEXTOS = {
     cerrarNotificacion: 'Cerrar notificación',
     cerrarDialogo: 'Cerrar diálogo',
     campoObligatorio: 'Obligatorio'
+  },
+  tema: {
+    cambiarOscuro: 'Cambiar a modo oscuro',
+    cambiarClaro: 'Cambiar a modo claro'
   }
 };
 

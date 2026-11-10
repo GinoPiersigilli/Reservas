@@ -304,6 +304,10 @@ add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk-telemetry.com https://*.protect.clerk.com:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.clerk.com; font-src 'self'; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.protect.clerk.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';" always;
 ```
 
+> [!NOTE]
+> **Compatibilidad de Modo Oscuro con CSP (Fase 7):**
+> Para prevenir el parpadeo de tema (FOUC) al cargar la aplicación sin relajar la directiva `script-src` de la CSP, la inicialización del tema se implementa mediante un script externo de mismo origen (`frontend/public/tema-init.js`, cargado en el `<head>` mediante `<script src="/tema-init.js"></script>`). Al ser un recurso estático servido desde `'self'`, se ejecuta sincrónicamente antes del renderizado del DOM sin recurrir a scripts embebidos en línea (`'unsafe-inline'`) y la Content-Security-Policy (CSP) no se modificó.
+
 ### 7.3. Protección de Privacidad de Datos del Solicitante (Fase 3b-6)
 1. **Exposición exclusiva a administradores:** Los atributos `nombre` y `email` del solicitante solo se proyectan (`attributes: ['id', 'nombre', 'email']`) si `req.usuario.rol === 'admin'`.
 2. **Prohibición de exposición de hashes:** Queda prohibido consultar el modelo `Usuario` sin exclusión estricta de `passwordHash`.
