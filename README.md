@@ -47,7 +47,7 @@ graph LR
 
 ## Decisiones Técnicas Destacadas
 
-- **Inmunidad a la Doble Reserva:** Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`) con rangos `tsrange` semiabiertos `[)` que rechaza físicamente solapamientos ante concurrencia.
+- **Inmunidad a la Doble Reserva:** Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`) con rangos `tsrange` semiabiertos `[inicio, fin)` que rechaza físicamente solapamientos ante concurrencia.
 - **Atomicidad Transaccional:** Creación, edición y transiciones de estado envueltas en transacciones ACID con registro inmutable en `historial_reservas`.
 - **Autenticación Híbrida y Estado Activo:** Soporte simultáneo para Clerk SSO y JWT local (HS256), con validación obligatoria del estado del usuario en la base de datos en cada petición.
 - **Accesibilidad y Modo Oscuro:** Interfaz auditada con axe sin violaciones (WCAG 2.1 AA), navegación por teclado y modo oscuro con anti-flicker (`/tema-init.js`) compatible con CSP.

@@ -120,6 +120,7 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
 ### 2.1. Escaneo con Gitleaks y Trufflehog
 - **Evidencia Gitleaks:** `docs/seguridad/evidencia/gitleaks-report.json` (valores sensibles redactados).
 - **Evidencia Trufflehog:** `docs/seguridad/evidencia/trufflehog-report.json` (valores sensibles redactados).
+- **Actualización Cierre Técnico (156 commits):** Se re-ejecutó Gitleaks completo mediante contenedor Docker oficial sobre el historial íntegro de 156 commits del repositorio, confirmando **0 secretos detectados (`no leaks found`)**.
 - **Análisis de Hallazgo Gitleaks (`SEC-SEC-01`):**
   - Archivo en commit histórico: `docs/CONTEXTO_PROYECTO.md` (Commit `f07ef07345415ced7e05c92da4aa6f4a44889858`).
   - Diagnóstico: Se constató en el historial completo que el texto introducido es literalmente la cadena de ejemplo ilustrativa `CLERK_SECRET_KEY` con puntos suspensivos. No existe en el historial ninguna clave de Clerk de longitud real. El estado se clasifica como **No confirmado: placeholder**.
@@ -146,6 +147,7 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
       - **Estado:** **Cerrado** (Commits `4f0f3da` y `d82c87b`). Todas las acciones de terceros utilizadas en `.github/workflows/ci.yml` y `.github/workflows/codeql.yml` (`actions/checkout`, `actions/setup-node`, `aquasec/trivy-action`, `github/codeql-action`) fueron fijadas a sus commit SHAs inmutables completos de 40 caracteres oficiales, acompañadas de comentarios aclaratorios con el tag de versión de referencia para evitar ataques en la cadena de suministro de GitHub Marketplace.
     - 1 hallazgo `generic.nginx.security.request-host-used.request-host-used` en `frontend/nginx.conf:20` por uso de la variable `$host` en `proxy_set_header Host $host`. Cerrado en Fase 6b1 fijando el host estático interno `backend` (`SEC-SAST-01`).
   - **INFO:** 0 hallazgos.
+- **Actualización Cierre Técnico (186 archivos rastreados):** Se re-ejecutó Semgrep con los 4 rulesets comunitarios oficiales (`p/javascript`, `p/nodejs`, `p/react`, `p/owasp-top-ten`), analizando 186 archivos con 116 reglas: **0 hallazgos activos (0 errores, 0 advertencias)** tras la subsanación de tags de CI, Host Nginx y retiro de scripts legacy.
 
 ### 3.2. Resumen de Hallazgos ESLint y `eslint-plugin-security`
 - **Evidencia estándar:** `docs/seguridad/evidencia/eslint-backend.txt`, `docs/seguridad/evidencia/eslint-frontend.txt` (0 errores y 0 warnings con las reglas de proyecto).
