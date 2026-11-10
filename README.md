@@ -63,7 +63,7 @@ El análisis exhaustivo de seguridad se detalla en [docs/SEGURIDAD.md](docs/SEGU
 
 ---
 
-## Puesta en Marcha Local (5 Comandos)
+## Puesta en Marcha Local
 
 ```bash
 # 1. Configurar archivos de entorno
