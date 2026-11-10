@@ -39,7 +39,7 @@ Toda la evidencia cruda generada por las herramientas se encuentra preservada en
 | `SEC-DEP-03` | **Alta** | Frontend (`axios@1.7.9`, `react-router@7.1.5`) | Múltiples vulnerabilidades en runtime: bypass de cabeceras sensibles en `follow-redirects` ([GHSA-q3jh-wrc6-jgq8](https://github.com/advisories/GHSA-q3jh-wrc6-jgq8)) y redirección abierta / vulnerabilidades DoS en `react-router` ([GHSA-wrjc-x8rr-h8h6](https://github.com/advisories/GHSA-wrjc-x8rr-h8h6), [GHSA-chx6-hx7r-mcp5](https://github.com/advisories/GHSA-chx6-hx7r-mcp5)). | `docs/seguridad/evidencia/npm-audit-frontend-prod.txt` | **Cerrado** (Actualizado vía `npm audit fix`; 0 vulnerabilidades en producción) |
 | `SEC-DEP-04` | **Media** | Backend & Frontend (`package.json`) | Dependencias fijadas con rangos flexibles (`^`), versiones obsoletas en paquetes críticos (`@clerk/backend`, `express`, `express-rate-limit`, `jose`, `react-router-dom`) y paquete sin mantenimiento upstream (`cross-env`). | `docs/seguridad/evidencia/npm-outdated-backend.txt`, `npm-outdated-frontend.txt` | **Cerrado / Riesgo Aceptado** (`save-exact=true` en `.npmrc`, `@clerk/backend@3.27.0`, `express@4.22.3`; riesgo aceptado documentado para `uuid`/`js-beautify`) |
 | `SEC-SEC-01` | **Baja / Informativa** | Git History (`docs/CONTEXTO_PROYECTO.md:146`) | Cadena `CLERK_SECRET_KEY=sk_test_...` detectada por Gitleaks en commit `f07ef07345415ced7e05c92da4aa6f4a44889858`. Se verificó en los 83 commits que se trata literalmente del texto de ejemplo con puntos suspensivos y ninguna clave de Clerk con longitud real fue versionada. | `docs/seguridad/evidencia/gitleaks-report.json` | **No confirmado: placeholder** |
-| `SEC-SEC-02` | **Alta** | Git History (`database.sqlite`, `auth.services.js`) | Clave `JWT_SECRET` por defecto ('mi_clave_secreta_super_segura_dds_2026') en commit `20077a02`, y archivo binario `backend/database.sqlite` (con contraseñas hasheadas y datos reales de usuarios) presente en el historial histórico de git previo a su desvinculación en Fase 1 (`c8e094c6`). | `docs/seguridad/evidencia/trufflehog-report.json`, `git log` | **Abierto** |
+| `SEC-SEC-02` | **Alta** | Git History (`database.sqlite`, `auth.services.js`) | Clave de firma local por defecto en commit `20077a02` y binario `backend/database.sqlite` presente en commits históricos previos a su desvinculación en Fase 1 (`c8e094c6`). | `docs/seguridad/evidencia/trufflehog-report.json`, `git log` | **Mitigado / Documentado** (Base de datos SQLite desvinculada del árbol de trabajo; generación criptográfica de secretos en producción documentada en `docs/DEPLOY.md` y `docs/CHECKLIST_MANUAL.md`; guía de saneamiento de historial detallada en `docs/LIMPIEZA_HISTORIAL.md`; commit `427799e`) |
 | `SEC-AUTH-04` | **Baja** | Backend (`auth.services.js:8,27`) | `registrarUsuario` aceptaba el campo `rol` directamente del cuerpo de la función. | `backend/src/services/auth.services.js` | **Cerrado** (Rol forzado a `'usuario'`, ignorando cualquier parámetro entrante; commit `fded8bf`) |
 | `SEC-AUTH-05` | **Alta** | Backend (`auth.middleware.js:44-52`) | En el aprovisionamiento JIT (`sincronizarUsuarioClerk`), si el usuario no existía por `clerkId`, se vinculaba automáticamente por email a una cuenta local sin comprobar si el email estaba verificado en Clerk. | `backend/src/middleware/auth.middleware.js` | **Cerrado** (Exige `primaryEmailObj?.verification?.status === 'verified'`; responde 403 con mensaje en español si no está verificado sin mutar la BD; commit `45451e0`) |
 | `SEC-CFG-01` | **Alta** | Backend (`backend/src/app.js`) | Falta configuración de `app.set('trust proxy', ...)` detrás de Nginx: `req.ip` tomaba la IP interna de Nginx y compartía el limitador de login globalmente. | Inspección de `backend/src/app.js` y `frontend/nginx.conf` | **Cerrado** (Configurado `app.set('trust proxy', N)` con `TRUST_PROXY_HOPS=1`; validado con tests de contadores separados) |
@@ -48,14 +48,14 @@ Toda la evidencia cruda generada por las herramientas se encuentra preservada en
 | `SEC-CNT-01` | **Alta** | Contenedor (`frontend/Dockerfile`) | La etapa de producción de Nginx no especificaba directiva `USER` y se ejecutaba como `root`. | `docs/seguridad/evidencia/trivy-frontend-dockerfile.txt` | **Cerrado** (Migrado a `nginxinc/nginx-unprivileged:1.27-alpine`, ejecuta como `nginx` UID 101) |
 | `SEC-CNT-02` | **Media** | Imágenes Docker (`reservas-backend`, `reservas-frontend`) | Vulnerabilidades heredadas en paquetes base del sistema operativo Alpine Linux. | `docs/seguridad/evidencia/trivy-image-backend.txt`, `trivy-image-frontend.txt` | **Cerrado** (`apk upgrade --no-cache` en ambos Dockerfile; Trivy reporta 0 vulnerabilidades en OS) |
 | `SEC-SAST-01` | **Media** | Nginx (`frontend/nginx.conf:20`) | Uso de la variable `$host` en `proxy_set_header Host $host` susceptible a *Host Header Injection*. | `docs/seguridad/evidencia/semgrep-report.json` | **Cerrado** (Fijado `proxy_set_header Host backend;` en proxy inverso) |
-| `SEC-SAST-02` | **Baja** | CI/CD (`.github/workflows/ci.yml:45,48,76,79`) | Pasos de GitHub Actions (`actions/checkout`, `actions/setup-node`) utilizando etiquetas de versión mutables (`@v4`, `@v5`) en vez de fijar commit SHAs inmutables. | `docs/seguridad/evidencia/semgrep-report.json` | **Abierto** (Planificado fijar commit SHAs en futuro commit de mantenimiento de CI/CD) |
+| `SEC-SAST-02` | **Baja** | CI/CD (`.github/workflows/ci.yml`, `codeql.yml`) | Pasos de GitHub Actions (`actions/checkout`, `actions/setup-node`, etc.) utilizando etiquetas de versión mutables (`@v4`, `@v5`) en vez de fijar commit SHAs inmutables. | `docs/seguridad/evidencia/semgrep-report.json` | **Cerrado** (Fijados commit SHAs completos inmutables de 40 caracteres con comentarios aclaratorios de versión en `.github/workflows/ci.yml` y `codeql.yml`; commits `4f0f3da` y `d82c87b`) |
 | `SEC-SAST-03` | **Baja** | Backend (`backend/src/config/env.js:16`) | Acceso dinámico a variables de entorno (`process.env[variable]`) señalado por `eslint-plugin-security` (`detect-object-injection`). | `docs/seguridad/evidencia/eslint-security-backend.txt` | **Falso Positivo** (Itera array inmutable estático `obligatorias`; sin entrada no confiable ni vector de inyección) |
 | `SEC-AUTH-01` | **Media** | Frontend (`AuthContext.jsx:51`) | Token JWT de autenticación local almacenado en `localStorage`. Aunque el frontend no posee inyecciones HTML y la CSP es estricta, un XSS permitiría la extracción del token. | Inspección de `frontend/src/context/AuthContext.jsx` | **Riesgo Aceptado** (Mitigaciones activas: sin `'unsafe-inline'` en `script-src`; `style-src` sí lo permite por Clerk, 0 usos de `innerHTML`, expiración 2h; recomendación futura: cookies httpOnly) |
 | `SEC-AUTH-02` | **Media** | Backend (`auth.middleware.js:78`) | `jwt.verify(token, env.JWT_SECRET)` no fijaba algoritmos permitidos (`algorithms: ['HS256']`), ni issuer, ni validaba si el usuario local continuaba activo en la BD (`activo === true`) antes de autorizar la sesión. | Inspección de `backend/src/middleware/auth.middleware.js` | **Cerrado** (Fijado `HS256`, `issuer: 'reservas-api'`, consulta obligatoria de `activo === true` y rol en Postgres en cada petición; commits `ff107dc`, `81a53b8`) |
 | `SEC-AUTH-03` | **Media** | Backend (`auth.middleware.js:90`) | La verificación de tokens de Clerk mediante `verifyToken` no validaba el claim `authorizedParties` (`azp`), omitiendo restringir qué orígenes de cliente son válidos. | Inspección de `backend/src/middleware/auth.middleware.js` | **Cerrado** (Pasado `authorizedParties: env.CORS_ORIGINS` a `verifyToken`; commit `21069d1`) |
 | `SEC-VAL-01` | **Media** | Backend (`routes/*.routes.js`) | Ausencia de validación con esquema formal tipado (como Zod) para los parámetros de ruta `:id`, parámetros de query y cuerpos de creación/edición de reservas. | Inspección de `backend/src/routes/` | **Cerrado** (Integrado `zod@4.6.7` y middleware `validar`: login, id entero positivo, query params con límite y orden, cuerpos de creación y edición; commits `11427ef`, `0b4ed1c`, `bf28d0a`, `b1b42fc`) |
 | `SEC-TEST-01` | **Media** | Backend Tests (`globalSetup.cjs:17`) | `globalSetup` ejecutaba `DROP SCHEMA public CASCADE;` sobre `DATABASE_URL_TEST` sin verificar mediante una guarda de seguridad que el nombre de la base de datos terminara obligatoriamente en `_test` ni que fuera distinta a `DATABASE_URL`. | `backend/tests/setup/globalSetup.cjs` | **Cerrado** (Guarda de aborto por nombre/igualdad, `pg_advisory_lock(987654321)` sostenido hasta finalizar migraciones y terminación de conexiones; commits `0e6cff2`, `5241532`) |
-| `SEC-HIST-01` | **Baja** | Git History (commit `32838b48`) | Rutas personales absolutas del entorno local de desarrollo (`<ruta-local>/...`) versionadas en scripts auxiliares (`capturar-pantallas.mjs`) antes de su saneamiento en commit `0b1c7ac2`. | `git log` | **Abierto** |
+| `SEC-HIST-01` | **Baja** | Git History (commit `32838b48`) | Rutas personales absolutas del entorno local de desarrollo (`<ruta-local>/...`) versionadas en scripts auxiliares (`capturar-pantallas.mjs`) antes de su saneamiento en commit `0b1c7ac2`. | `git log` | **Mitigado / Documentado** (Árbol activo completamente limpio de rutas personales; procedimiento de reescritura de historial detallado en `docs/LIMPIEZA_HISTORIAL.md`; commit `427799e`) |
 | `SEC-INV-01` | **Baja** | Backend (`aulas.routes.js:8`) | `GET /api/aulas` no requería autenticación. | Inspección de `backend/src/routes/aulas.routes.js` | **Cerrado** (Exige autenticación mediante `verificarToken`; frontend solo accede desde páginas autenticadas; commit `19949d9`) |
 | `SEC-AUTH-06` | **Media** | Backend (`auth.middleware.js:77`) | Si `Usuario.findByPk` fallaba por error de base de datos durante autenticación JWT local, la excepción era capturada por el bloque externo y caía indebidamente a la verificación de Clerk devolviendo 401 en vez de 500. | `backend/src/middleware/auth.middleware.js` | **Cerrado** (Captura explícita de fallo en consulta a BD invocando `next(dbError)` para retornar status 500; commit `be3e397`) |
 | `SEC-AUTH-07` | **Media** | Frontend (`api/axios.js`, `AuthContext.jsx`) | Ante revocación o expiración de sesión (401 de la API), el frontend no cerraba de forma coordinada la sesión local, no invocaba `signOut` de Clerk ni notificaba al usuario evitando bucles de redirección. | `frontend/src/services/axios.js`, `frontend/src/context/AuthContext.jsx` | **Cerrado** (Interceptor global de respuesta que limpia estado, invoca `signOut`, setea mensaje en sessionStorage y redirige a `/login` sin bucles; commit `b66c9de`) |
@@ -124,10 +124,11 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
   - Archivo: `docs/CONTEXTO_PROYECTO.md:146` (Commit `f07ef07345415ced7e05c92da4aa6f4a44889858`).
   - Diagnóstico: Se constató en el historial completo que el texto introducido es literalmente la cadena de ejemplo `CLERK_SECRET_KEY=sk_test_...` con puntos suspensivos. No existe en el historial ninguna clave de Clerk de longitud real (`sk_test_[A-Za-z0-9]{20,}`). El estado se clasifica como **No confirmado: placeholder**.
 
-### 2.2. Secretos y Archivos Sensibles en el Historial Git
+### 2.2. Secretos y Archivos Sensibles en el Historial Git (`SEC-SEC-02`, `SEC-HIST-01`)
 - **Base de datos SQLite:** En commit `4935a92ac275cbbb5a993a386f6a0123b379c840` se incorporó el binario `backend/database.sqlite`. Dicho archivo permaneció versionado a lo largo de 11 commits hasta que fue removido del árbol en la Fase 1 (`c8e094c6f7faca9e4515c8e67c11edfe3c8a12ad`). El archivo contenía hashes reales de contraseñas de usuarios creados en la etapa previa.
-- **`JWT_SECRET` hardcodeado:** En el commit inicial `20077a029bf3cb4927b0e1688ee4a2647a69ba4e`, el archivo `backend/src/services/auth.services.js` contenía el valor `'mi_clave_secreta_super_segura_dds_2026'`.
+- **Clave de desarrollo hardcodeada:** En el commit inicial `20077a029bf3cb4927b0e1688ee4a2647a69ba4e`, el archivo `backend/src/services/auth.services.js` contenía una clave de firma JWT por defecto para desarrollo.
 - **Rutas personales en historial (`SEC-HIST-01`):** En el commit `32838b489221ec35e648e644e29fdc0ae8064719` quedaron registradas rutas personales absolutas (`<ruta-local>/...`) en scripts auxiliares de captura, antes de ser saneadas en el commit `0b1c7ac26d5048624e5f7848e6510b380984865c`.
+- **Estrategia y Guía de Saneamiento:** Dado que reescribir el historial de un repositorio compartido altera todos los commit SHAs y requiere `git push --force` (lo cual impacta a forks y colaboradores), se redactó la guía integral `docs/LIMPIEZA_HISTORIAL.md` con los procedimientos paso a paso para dos alternativas: (a) convertir el repositorio en privado (con análisis de disponibilidad de CodeQL/Secret Scanning en planes gratuitos), o (b) reescribir el historial con `git-filter-repo`. Asimismo, se elaboró `docs/CHECKLIST_MANUAL.md` para la rotación inmediata de credenciales en producción.
 
 ---
 
@@ -142,7 +143,7 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
     - `typescript.react.security.react-insecure-request` en `frontend/scripts/capturar-pantallas.mjs` y `verificar-csp-clerk.mjs` por peticiones no cifradas sobre `http://localhost` contra servidores locales de prueba.
   - **WARNING (5 hallazgos):**
     - 4 hallazgos `yaml.github-actions.security.github-actions-mutable-action-tag` en `.github/workflows/ci.yml:45,48,76,79` por uso de tags mutables (`actions/checkout@v4`, `actions/setup-node@v5`) en lugar de fijar commit SHAs inmutables (`SEC-SAST-02`).
-      - **Estado:** **Abierto**. Planificado para mitigar en un commit futuro de mantenimiento de infraestructura CI/CD, fijando los hashes SHA completos (ej. `actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11`) con comentarios aclaratorios del número de versión para prevenir ataques de suplantación en la cadena de suministro de GitHub Marketplace.
+      - **Estado:** **Cerrado** (Commits `4f0f3da` y `d82c87b`). Todas las acciones de terceros utilizadas en `.github/workflows/ci.yml` y `.github/workflows/codeql.yml` (`actions/checkout`, `actions/setup-node`, `aquasec/trivy-action`, `github/codeql-action`) fueron fijadas a sus commit SHAs inmutables completos de 40 caracteres oficiales, acompañadas de comentarios aclaratorios con el tag de versión de referencia para evitar ataques en la cadena de suministro de GitHub Marketplace.
     - 1 hallazgo `generic.nginx.security.request-host-used.request-host-used` en `frontend/nginx.conf:20` por uso de la variable `$host` en `proxy_set_header Host $host`. Cerrado en Fase 6b1 fijando el host estático interno `backend` (`SEC-SAST-01`).
   - **INFO:** 0 hallazgos.
 
@@ -353,4 +354,69 @@ Se ejecutó el contenedor oficial de OWASP ZAP (`ghcr.io/zaproxy/zaproxy:stable`
 ### 8.4. Verificación Automatizada de Ataques Reales y Contrato de Cliente
 - **Suite de Pruebas de Ataque (`backend/tests/seguridad.test.js` - `SEC-TEST-03`):** 26 tests en ejecución continua que simulan ataques reales de fuerza bruta (429), límites de memoria (413), JSON malformado (400), inyección SQL y XSS, suplantación horizontal IDOR, elevación de privilegios, manipulación de firmas y algoritmos en tokens JWT, mass assignment, condiciones de carrera de 20 reservas concurrentes en PostgreSQL con exactamente 1 creada, y verificación de ausencia total de `passwordHash` en respuestas.
 - **Suite de Contrato Frontend (`backend/tests/contrato-frontend.test.js` - `SEC-TEST-02`):** 15 tests que emulan la interacción exacta del cliente React, confirmando compatibilidad plena ante parámetros vacíos y tipos de datos string de formularios.
+
+---
+
+## 9. Riesgos Residuales Aceptados con Justificación
+
+A continuación se consolidan formalmente los riesgos de seguridad identificados a lo largo de las auditorías cuyo impacto se considera controlado o mitigado por defensas en profundidad, y que han sido aceptados con fundamento técnico y operacional:
+
+1. **Almacenamiento de Token JWT en `localStorage` (`SEC-AUTH-01`):**
+   - **Riesgo:** Si un atacante lograra ejecutar código JavaScript malicioso arbitrario en el navegador (XSS), podría leer `localStorage.getItem('token')` y exfiltrar el token JWT local.
+   - **Justificación y Mitigaciones:**
+     - La Content Security Policy (CSP) en Nginx prohíbe taxativamente la ejecución de scripts en línea (`script-src 'self' ...` sin `'unsafe-inline'`).
+     - El cliente React tiene estrictamente **0 usos de `innerHTML` o `dangerouslySetInnerHTML`**, previniendo vectores de inyección DOM.
+     - Los tokens locales tienen expiración corta (2 horas). Los usuarios que ingresan con Clerk mantienen la sesión en memoria y los tokens expiran en 60 segundos.
+     - **Recomendación para futuras versiones:** Migrar a cookies con banderas `httpOnly`, `Secure` y `SameSite=Strict`, implementando protección CSRF si se desacopla o reestructura el frontend hacia un patrón Backend-For-Frontend (BFF).
+
+2. **Dependencias Transitivas de `sequelize-cli` (`SEC-DEP-04`):**
+   - **Riesgo:** Paquetes obsoletos upstream o con advertencias moderadas en la cadena de dependencias de desarrollo (`uuid` en algoritmos v3/v5/v6, y `js-beautify` hacia `glob`/`minimatch`).
+   - **Justificación y Mitigaciones:**
+     - La aplicación no genera ni procesa UUIDs v3/v5/v6 a partir de entradas de usuarios no confiables; los modelos de datos utilizan exclusivamente identificadores enteros autoincrementales (`id SERIAL PRIMARY KEY`).
+     - `js-beautify` es una utilidad de formateo de código utilizada únicamente durante la generación y ejecución de migraciones en tiempo de despliegue mediante archivos locales confiables, sin intervención en el procesamiento de solicitudes HTTP en producción.
+     - Forzar una actualización mayor rompería la compatibilidad binaria del ORM Sequelize v6.
+
+3. **Uso de `'unsafe-inline'` en directiva `style-src` de CSP:**
+   - **Riesgo:** Permite inyección de estilos CSS en línea que podrían ser aprovechados para técnicas de superposición visual o exfiltración basada en estilos.
+   - **Justificación y Mitigaciones:**
+     - El componente oficial de autenticación `@clerk/clerk-react` inyecta dinámicamente hojas de estilo para renderizar sus modales y diálogos de inicio de sesión. Bloquear `'unsafe-inline'` en `style-src` descompone visual y funcionalmente la experiencia de autenticación de Clerk.
+     - El código propio de la aplicación no utiliza atributos `style="..."` (migrado en su totalidad a CSS Modules y tokens de diseño).
+     - La directiva `script-src` se mantiene rigurosamente blindada sin `'unsafe-inline'`, impidiendo ejecución de código ejecutable.
+
+4. **Omisión de cabecera `Cross-Origin-Embedder-Policy` (COEP):**
+   - **Riesgo:** Permite que la página cargue recursos de terceros que no declaren una política `Cross-Origin-Resource-Policy` explícita.
+   - **Justificación y Mitigaciones:**
+     - Habilitar COEP (`require-corp`) bloquea de inmediato los iframes y recursos dinámicos requeridos por Clerk y Cloudflare Turnstile (`challenges.cloudflare.com`) para la verificación de bots.
+     - La cabecera `Permissions-Policy` restringe de forma estricta el acceso a APIs de hardware del dispositivo (`camera=()`, `microphone=()`, `geolocation=()`).
+
+5. **Exclusión de Commits Históricos Específicos en Gitleaks (`.gitleaksignore`):**
+   - **Riesgo:** Un escáner automatizado podría omitir commits marcados como ignorados.
+   - **Justificación y Mitigaciones:**
+     - Se excluyeron exactamente 3 huellas históricas puntuales con justificación explícita: un marcador de posición de documentación (texto ilustrativo con puntos suspensivos en `docs/CONTEXTO_PROYECTO.md`), un token sintético en prueba unitaria de frontend (`tests/mocks/handlers.js`) y un test de manejo de errores de base de datos en `auth.middleware.js`.
+     - El workflow de CI en GitHub Actions ejecuta Gitleaks evaluando de forma continua cualquier nuevo commit que ingrese por Pull Request o Push, evitando que se introduzcan secretos reales en el código.
+
+---
+
+## 10. Lista de lo que NO se Verificó (Límites de Alcance de la Auditoría)
+
+Para mantener una evaluación transparente y rigurosa del alcance real de los controles de seguridad, se establecen explícitamente los aspectos que **no formaron parte del alcance de verificación técnica** en las Fases 6a, 6b, 6c y 6d:
+
+1. **Ataques de Denegación de Servicio (DDoS) Volumétricos Masivos:**
+   - Si bien la aplicación cuenta con limitadores de tasa por software en Express (`express-rate-limit` con partición por IP en `/api/auth/login`), limitación de tamaño de payload HTTP (`10kb`) y timeouts de conexión en Nginx, **no se verificó ni sometió a prueba la resistencia ante saturación masiva de ancho de banda (ataques DDoS L3/L4) ni ataques distribuidos L7 coordinados**.
+   - La defensa contra estos vectores debe resolverse en capas perimetrales de infraestructura (servicios de CDN/WAF como Cloudflare, AWS Shield o cortafuegos de red con mitigación de syn-flood).
+
+2. **Auditoría Física y de Entornos Locales de Desarrollo:**
+   - No se auditó la seguridad física, cifrado de discos (BitLocker/FileVault), control de acceso a estaciones de trabajo ni configuraciones del sistema operativo de los desarrolladores o administradores del proyecto.
+
+3. **Infraestructura Interna y Servicios en la Nube de Terceros (Clerk SaaS):**
+   - No se realizó evaluación técnica de penetración ni auditoría de infraestructura sobre los servidores, almacenamiento de credenciales ni APIs internas de Clerk. La confiabilidad de este componente descansa en los acuerdos de servicio y certificaciones de seguridad del proveedor (SOC 2 Type II, ISO 27001).
+
+4. **Pentesting Manual Externo Ofensivo (Red Team):**
+   - Las auditorías ejecutadas correspondieron a metodologías de análisis estático (SAST con Semgrep y CodeQL), escaneo de vulnerabilidades en dependencias (npm audit), escaneo de contenedores (Trivy), escaneo dinámico pasivo y de línea base (OWASP ZAP Baseline Scan), y suites automatizadas de pruebas de caja blanca / integración (`seguridad.test.js`).
+   - No se contrató un ejercicio independiente de *Red Team*, ingeniería social, ataques a la cadena de suministro de hardware ni explotación manual avanzada de día cero (*zero-day exploitation*).
+
+5. **Reescritura Efectiva del Historial Git Activo:**
+   - Los procedimientos de purga y reescritura de objetos en el historial (`git-filter-repo`) fueron exhaustivamente investigados, estructurados y documentados en `docs/LIMPIEZA_HISTORIAL.md`, pero **no fueron ejecutados sobre las ramas activas del repositorio remoto**.
+   - La ejecución efectiva de `push --force` se dejó supeditada a la decisión manual del propietario del repositorio conforme a las opciones detalladas en `docs/CHECKLIST_MANUAL.md`, para evitar invalidar clones locales existentes y romper el flujo de trabajo de colaboradores sin previa coordinación.
+
 

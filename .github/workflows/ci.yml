@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend:
-    name: Backend (Postgres + Migraciones + Lint + Tests)
+    name: Backend (Postgres + Migraciones + Lint + Audit + Tests)
     runs-on: ubuntu-latest
 
     services:
@@ -33,19 +33,19 @@ jobs:
     env:
       NODE_ENV: test
       JWT_SECRET: ci_jwt_secret_key_for_tests_only
-      CLERK_SECRET_KEY: sk_test_ci_placeholder
-      DATABASE_URL: postgres://reservas:reservas_dev_password@localhost:5432/reservas_dev
-      DATABASE_URL_TEST: postgres://reservas:reservas_dev_password@localhost:5432/reservas_test
+      CLERK_SECRET_KEY: test_ci_clerk_placeholder_key
+      DATABASE_URL: postgresql://reservas:reservas_dev_password@localhost:5432/reservas_dev
+      DATABASE_URL_TEST: postgresql://reservas:reservas_dev_password@localhost:5432/reservas_test
       WORK_HOUR_START: '08:00'
       WORK_HOUR_END: '22:00'
       CORS_ORIGINS: http://localhost:5173
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20
           cache: npm
@@ -53,6 +53,9 @@ jobs:
 
       - name: Install backend dependencies
         run: npm ci
+
+      - name: Audit backend production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run database migrations
         run: npm run migrate
@@ -64,7 +67,7 @@ jobs:
         run: npm test
 
   frontend:
-    name: Frontend (Lint + Tests)
+    name: Frontend (Lint + Audit + Tests + Build)
     runs-on: ubuntu-latest
 
     defaults:
@@ -73,10 +76,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20
           cache: npm
@@ -85,9 +88,59 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Audit frontend production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Run frontend linter
         run: npm run lint
 
       - name: Run frontend tests
         run: npm test
 
+      - name: Build frontend
+        run: npm run build
+
+  gitleaks:
+    name: Gitleaks (Detección de Secretos)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run Semgrep SAST
+        run: semgrep scan --config "p/javascript" --config "p/nodejs" --config "p/react" --config "p/owasp-top-ten" --error
+
+  trivy:
+    name: Trivy (Seguridad de Imágenes Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build backend container image
+        run: docker build -t reservas-backend:latest backend/
+
+      - name: Build frontend container image
+        run: docker build -t reservas-frontend:latest frontend/
+
+      - name: Scan backend image with Trivy
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.2 image --scanners vuln --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress reservas-backend:latest
+
+      - name: Scan frontend image with Trivy
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.2 image --scanners vuln --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress reservas-frontend:latest

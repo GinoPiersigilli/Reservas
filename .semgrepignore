@@ -1,0 +1,6 @@
+# Scripts auxiliares de desarrollo local (CDP para capturas y verificación)
+frontend/scripts/
+
+# Archivos de configuración de npm
+**/.npmrc
+
