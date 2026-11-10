@@ -149,6 +149,46 @@ describe('Auth routes, token verification & env validation', () => {
       expect(resDespues.body).toHaveProperty('error');
     });
 
+    it('responds with 500 when Usuario.findByPk fails with database error, without falling through to Clerk 401', async () => {
+      const passwordHash = await bcrypt.hash('pass123', 10);
+      const user = await Usuario.create({
+        nombre: 'Usuario DB Error',
+        email: 'dberror@example.com',
+        passwordHash,
+        rol: 'usuario',
+        activo: true
+      });
+
+      const token = jwt.sign(
+        { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const spy = jest.spyOn(Usuario, 'findByPk').mockRejectedValueOnce(new Error('PostgreSQL connection dropped'));
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).not.toBe('Token inválido o expirado');
+
+      spy.mockRestore();
+    });
+
+    it('falls through to Clerk verification when JWT is invalid and returns 401 if Clerk fails', async () => {
+      const tokenInvalido = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTk5fQ.invalidSignature';
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenInvalido}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+
     it('revokes admin access when downgraded to usuario without re-login', async () => {
       const passwordHash = await bcrypt.hash('pass123', 10);
       const admin = await Usuario.create({
