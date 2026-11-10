@@ -6,9 +6,9 @@
 > **Carrera:** Tecnicatura Universitaria en Programación / Analista Universitario en Sistemas  
 > **Autor:** Gino Piersigilli  
 > **Fecha de Auditoría:** 10 de noviembre de 2026  
-> **Rama Auditada:** `mejora/fase-8-portfolio` (Pull Request #47 abierto contra `main`, pendiente de integración)  
-> **Último Commit Auditado:** `441954e` (`fix(ci): dimensionar pool de conexiones y timeout especifico en prueba de concurrencia`)  
-> **Total de Commits Evaluados:** 158 commits alcanzables en `HEAD`  
+> **Rama Auditada:** `mejora/fase-8-portfolio` (actualizada en `origin`, lista para Pull Request contra `main`)  
+> **Último Commit Auditado:** `d3281bd` (`docs(auditoria): ajustar informe de cierre tecnico con revision critica de evidencias`)  
+> **Total de Commits Evaluados:** 159 commits alcanzables en `HEAD`  
 
 ---
 
@@ -164,4 +164,4 @@ A continuación se detallan los hallazgos identificados, confirmados o investiga
 
 ## Conclusión Técnica
 
-El sistema **Reservas** alcanza un nivel de madurez, integridad de datos, seguridad por capas y cobertura de pruebas óptimo para su presentación técnica y defensa académica. Las conclusiones aquí presentadas reflejan con rigurosidad las mediciones reproducibles obtenidas en la rama `mejora/fase-8-portfolio`. El Pull Request #47 permanece **abierto** contra la rama `main`, pendiente de revisión y merge definitivo por parte del equipo.
+El sistema **Reservas** alcanza un nivel de madurez, integridad de datos, seguridad por capas y cobertura de pruebas óptimo para su presentación técnica y defensa académica. Las conclusiones aquí presentadas reflejan con rigurosidad las mediciones reproducibles obtenidas en la rama `mejora/fase-8-portfolio`. La rama se encuentra sincronizada con `origin/mejora/fase-8-portfolio`, lista para la apertura formal y revisión del Pull Request contra la rama `main`.
