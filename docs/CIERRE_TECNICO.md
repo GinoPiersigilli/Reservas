@@ -61,6 +61,10 @@ A continuación se detallan los hallazgos identificados, confirmados o investiga
 3. **Consolidación de Arquitectura y Diseño:**
    - Fusión y síntesis de documentos de diseño en `docs/DISENO.md` (54 líneas) y arquitectura en `docs/ARQUITECTURA.md` (176 líneas), orientados formalmente a evaluadores técnicos.
    - Eliminación de scripts obsoletos (`migrar-sqlite-a-postgres.js`, `verificar-csp-clerk.mjs`) y unificación de evidencias activas en `docs/seguridad/evidencia/`.
+4. **Optimización del Pool de Conexiones y Resiliencia en Concurrencia (CI):**
+   - *Diagnóstico:* Sequelize utilizaba el valor por defecto (`pool.max: 5`). Ante la prueba de 20 solicitudes simultáneas en runners virtuales de CI (2 vCPUs), las peticiones se encolaban en Node.js, excediendo esporádicamente el timeout estándar de Jest (5000 ms) y bloqueando las pruebas posteriores.
+   - *Solución:* Se dimensionó el pool en `backend/src/config/database.js` (`max: 30` en test, `20` en prod/dev; `min: 2`; `acquire: 30000`) y se asignó un timeout específico de 15000 ms a la prueba de concurrencia en `tests/seguridad.test.js`.
+   - *Resultado:* Ejecución completa de las 10 suites de backend 100 % reproducible en ~22 s (tiempo reducido a más de la mitad respecto a CI).
 
 ---
 
