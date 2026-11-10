@@ -87,25 +87,34 @@ export const verificarToken = async (req, res, next) => {
   const token = authorization.substring(7);
 
   // Intentar con JWT local primero (usuarios de prueba)
+  let payload;
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET, {
+    payload = jwt.verify(token, env.JWT_SECRET, {
       algorithms: ['HS256'],
       issuer: 'reservas-api'
     });
+  } catch {
+    // Si jwt.verify falla (token de Clerk, expirado, firma inválida), se intenta con Clerk
+  }
 
-    const usuarioLocal = await Usuario.findByPk(payload.id);
-    if (!usuarioLocal || !usuarioLocal.activo) {
-      return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
+  if (payload) {
+    try {
+      const usuarioLocal = await Usuario.findByPk(payload.id);
+      if (!usuarioLocal || !usuarioLocal.activo) {
+        return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
+      }
+
+      req.usuario = {
+        id:     usuarioLocal.id,
+        nombre: usuarioLocal.nombre,
+        email:  usuarioLocal.email,
+        rol:    usuarioLocal.rol
+      };
+      return next();
+    } catch (dbError) {
+      return next(dbError);
     }
-
-    req.usuario = {
-      id:     usuarioLocal.id,
-      nombre: usuarioLocal.nombre,
-      email:  usuarioLocal.email,
-      rol:    usuarioLocal.rol
-    };
-    return next();
-  } catch {}
+  }
 
   // Intentar con Clerk verificando firma real y vinculando/creando usuario local en BD
   try {

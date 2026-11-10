@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { registrarGetToken } from '../services/axios.js';
+import { registrarGetToken, registrarOnUnauthorized } from '../services/axios.js';
 
 const AuthContext = createContext(null);
 
@@ -22,6 +22,26 @@ export const AuthProvider = ({ children }) => {
       registrarGetToken(null);
     }
   }, [user, usuarioLocal, getToken]);
+
+  useEffect(() => {
+    const handleUnauthorized = async () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('usuario');
+      setUsuarioLocal(null);
+      registrarGetToken(null);
+      if (user && typeof signOut === 'function') {
+        try {
+          await signOut();
+        } catch {
+          return;
+        }
+      }
+    };
+    registrarOnUnauthorized(handleUnauthorized);
+    return () => {
+      registrarOnUnauthorized(null);
+    };
+  }, [user, signOut]);
 
   const usuario = user ? {
     id:     user.id,

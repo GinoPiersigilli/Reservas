@@ -1,29 +1,20 @@
 > backend@1.0.0 test
 > cross-env NODE_ENV=test jest --config jest.config.cjs
 
-◇ injected env (6) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (6) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
 
 Sequelize CLI [Node: 26.3.0, CLI: 6.6.5, ORM: 6.37.8]
 
-◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
 Loaded configuration file "db\config.cjs".
 Using environment "test".
 == 001-baseline: migrating =======
-== 001-baseline: migrated (0.122s)
+== 001-baseline: migrated (0.109s)
 
 == 002-esquema-definitivo: migrating =======
-== 002-esquema-definitivo: migrated (0.249s)
+== 002-esquema-definitivo: migrated (0.257s)
 
-
-PASS tests/reservas.test.js (10.574 s)
-  ● Console
-
-    console.log
-      ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
-
-      at _log (node_modules/dotenv/lib/main.js:131:11)
-
-PASS tests/auth.test.js
+PASS tests/auth.test.js (6.396 s)
   ● Console
 
     console.log
@@ -36,11 +27,59 @@ PASS tests/auth.test.js
 
       at log (src/middleware/auth.middleware.js:63:13)
 
-PASS tests/clerk-verification.test.js
+PASS tests/reservas.test.js (8.173 s)
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/seguridad.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/contrato-frontend.test.js
   ● Console
 
     console.log
       ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/global-setup-guard.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/body-limit.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/esquema-constraint.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS tests/clerk-verification.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
 
       at _log (node_modules/dotenv/lib/main.js:131:11)
 
@@ -49,42 +88,18 @@ PASS tests/clerk-verification.test.js
 
       at log (src/middleware/auth.middleware.js:63:13)
 
-PASS tests/esquema-constraint.test.js
-  ● Console
-
-    console.log
-      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-
-      at _log (node_modules/dotenv/lib/main.js:131:11)
-
-PASS tests/body-limit.test.js
-  ● Console
-
-    console.log
-      ◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
-
-      at _log (node_modules/dotenv/lib/main.js:131:11)
-
 PASS tests/trust-proxy.test.js
   ● Console
 
     console.log
-      ◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+      ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
 
       at _log (node_modules/dotenv/lib/main.js:131:11)
 
 PASS tests/error-handling.test.js
-PASS tests/global-setup-guard.test.js
-  ● Console
 
-    console.log
-      ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
-
-      at _log (node_modules/dotenv/lib/main.js:131:11)
-
-
-Test Suites: 8 passed, 8 total
-Tests:       83 passed, 83 total
+Test Suites: 10 passed, 10 total
+Tests:       128 passed, 128 total
 Snapshots:   0 total
-Time:        20.914 s, estimated 25 s
+Time:        23.533 s, estimated 43 s
 Ran all test suites.

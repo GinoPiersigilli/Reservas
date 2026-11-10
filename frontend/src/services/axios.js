@@ -5,8 +5,12 @@ const api = axios.create({
 });
 
 let _tokenFn = null;
+let _onUnauthorizedFn = null;
 
 export const registrarGetToken = (fn) => { _tokenFn = fn; };
+export const registrarOnUnauthorized = (fn) => { _onUnauthorizedFn = fn; };
+
+export const MENSAJE_SESION_EXPIRADA = 'Su sesión expiró o fue desactivada. Ingrese nuevamente.';
 
 api.interceptors.request.use(async (config) => {
   try {
@@ -19,5 +23,45 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+    const method = (error.config?.method || '').toLowerCase();
+
+    const esLogin = url.includes('/auth/login') && method === 'post';
+
+    if (status === 401 && !esLogin) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('usuario');
+      registrarGetToken(null);
+
+      if (typeof _onUnauthorizedFn === 'function') {
+        try {
+          await _onUnauthorizedFn();
+        } catch {
+          // Ignorar errores en callback de cierre de sesión
+        }
+      }
+
+      try {
+        sessionStorage.setItem('auth_error', MENSAJE_SESION_EXPIRADA);
+      } catch {
+        // Ignorar fallo de sessionStorage si está deshabilitado
+      }
+
+      if (typeof window !== 'undefined' && window.location) {
+        const currentPath = window.location.pathname || '';
+        if (currentPath !== '/login') {
+          window.location.href = '/login';
+        }
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

@@ -33,11 +33,14 @@ function validarDatabaseUrlTest(testDbUrl, prodOrDevDbUrl) {
 
 const TEST_ADVISORY_LOCK_ID = 987654321;
 
-async function globalSetup() {
-  const testDbUrl = process.env.DATABASE_URL_TEST;
-  validarDatabaseUrlTest(testDbUrl, process.env.DATABASE_URL);
+async function globalSetup(options = {}) {
+  const testDbUrl = (options && options.testDbUrl) || process.env.DATABASE_URL_TEST;
+  validarDatabaseUrlTest(testDbUrl, (options && options.prodDbUrl) || process.env.DATABASE_URL);
 
-  const client = new Client({ connectionString: testDbUrl });
+  const ClientClass = (options && options.Client) || Client;
+  const execFn = (options && options.execSync) || execSync;
+
+  const client = new ClientClass({ connectionString: testDbUrl });
   await client.connect();
   try {
     // 1. Adquirir advisory lock exclusivo para evitar ejecuciones simultáneas de tests
@@ -53,20 +56,22 @@ async function globalSetup() {
 
     // 3. Recrear el esquema limpio
     await client.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+
+    // 4. Ejecutar migraciones bajo el advisory lock exclusivo
+    const backendRoot = path.resolve(__dirname, '..', '..');
+    execFn('npx sequelize-cli db:migrate --env test', {
+      cwd: backendRoot,
+      stdio: 'inherit',
+      env: { ...process.env, NODE_ENV: 'test' }
+    });
   } finally {
     try {
       await client.query('SELECT pg_advisory_unlock($1);', [TEST_ADVISORY_LOCK_ID]);
     } catch {}
     await client.end();
   }
-
-  const backendRoot = path.resolve(__dirname, '..', '..');
-  execSync('npx sequelize-cli db:migrate --env test', {
-    cwd: backendRoot,
-    stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'test' }
-  });
 }
 
 module.exports = globalSetup;
 module.exports.validarDatabaseUrlTest = validarDatabaseUrlTest;
+module.exports.TEST_ADVISORY_LOCK_ID = TEST_ADVISORY_LOCK_ID;
