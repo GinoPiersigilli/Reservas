@@ -50,7 +50,18 @@ export default function Login() {
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [erroresCampo, setErroresCampo] = useState({});
-  const [errorGeneral, setErrorGeneral] = useState(null);
+  const [errorGeneral, setErrorGeneral] = useState(() => {
+    try {
+      const authError = sessionStorage.getItem('auth_error');
+      if (authError) {
+        sessionStorage.removeItem('auth_error');
+        return authError;
+      }
+    } catch {
+      return location.state?.error || null;
+    }
+    return location.state?.error || null;
+  });
   const [cargando, setCargando] = useState(false);
 
   const handleChange = (evento) => {
