@@ -4,9 +4,13 @@ Este documento centraliza el estado de seguridad, los hallazgos de auditoría au
 
 ---
 
-## Resumen Ejecutivo de la Auditoría 6a
+## Resumen Ejecutivo de la Auditoría 6a y Endurecimiento 6b
 
 En la **Fase 6a** se llevó a cabo una auditoría automatizada y exhaustiva del sistema completo (backend, frontend, base de datos, dependencias, historial de control de versiones y contenedores Docker), ejecutando herramientas estándar de la industria bajo la regla de **solo medir y reportar sin aplicar modificaciones de código aún**.
+
+Posteriormente, en las **Fases 6b1 y 6b2**, se implementó el plan de mitigación y endurecimiento de seguridad mediante commits individuales verificados con tests automatizados:
+- **Fase 6b1 (Configuración e Infraestructura):** Corrección de vulnerabilidades en dependencias (`SEC-DEP-01` a `04`), configuración de `trust proxy` para proxies reversos (`SEC-CFG-01`), limitación de cuerpos HTTP a 10kb con respuesta 413 (`SEC-CFG-02`), manejo seguro de excepciones sin volcados de trazas en producción (`SEC-CFG-03`), ejecución de Nginx como usuario sin privilegios `nginx` UID 101 (`SEC-CNT-01`), actualización de parches del sistema operativo base en contenedores (`SEC-CNT-02`), y prevención de inyección de Host en proxy inverso (`SEC-SAST-01`).
+- **Fase 6b2 (Autenticación, Validación y Autorización):** Fijación estricta de algoritmo `HS256` e issuer `reservas-api` en JWT local, junto con la consulta en base de datos del estado (`activo === true`) y rol del usuario en cada petición (`SEC-AUTH-02`); validación de `authorizedParties` (`azp`) en tokens de Clerk (`SEC-AUTH-03`); bloqueo de asignación masiva de roles en `registrarUsuario` (`SEC-AUTH-04`); vinculación de cuentas Clerk a cuentas locales restringida a emails verificados (`SEC-AUTH-05`); salvaguarda contra destrucción de bases de datos de desarrollo/producción en tests y exclusión de carreras con advisory locks (`SEC-TEST-01`); validación tipada con esquemas Zod en todas las entradas críticas (`SEC-VAL-01`); protección de la ruta de aulas con autenticación (`SEC-INV-01`); documentación formal del riesgo aceptado de `localStorage` (`SEC-AUTH-01`); y catalogación de hallazgos SAST (`SEC-SAST-02`, `SEC-SAST-03`).
 
 Toda la evidencia cruda generada por las herramientas se encuentra preservada en el directorio `docs/seguridad/evidencia/`:
 - **Dependencias:** `npm audit` y `npm outdated` (en backend y frontend, diferenciando dependencias globales y exclusivas de producción con `--omit=dev`).
@@ -17,7 +21,7 @@ Toda la evidencia cruda generada por las herramientas se encuentra preservada en
 
 ---
 
-## Tabla Maestra de Hallazgos (Fase 6a)
+## Tabla Maestra de Hallazgos (Fase 6a / 6b)
 
 | ID | Severidad | Componente / Dónde | Hallazgo / Descripción | Evidencia | Estado |
 |---|---|---|---|---|---|
@@ -27,23 +31,23 @@ Toda la evidencia cruda generada por las herramientas se encuentra preservada en
 | `SEC-DEP-04` | **Media** | Backend & Frontend (`package.json`) | Dependencias fijadas con rangos flexibles (`^`), versiones obsoletas en paquetes críticos (`@clerk/backend`, `express`, `express-rate-limit`, `jose`, `react-router-dom`) y paquete sin mantenimiento upstream (`cross-env`). | `docs/seguridad/evidencia/npm-outdated-backend.txt`, `npm-outdated-frontend.txt` | **Cerrado / Riesgo Aceptado** (`save-exact=true` en `.npmrc`, `@clerk/backend@3.27.0`, `express@4.22.3`; riesgo aceptado documentado para `uuid`/`js-beautify`) |
 | `SEC-SEC-01` | **Baja / Informativa** | Git History (`docs/CONTEXTO_PROYECTO.md:146`) | Cadena `CLERK_SECRET_KEY=sk_test_...` detectada por Gitleaks en commit `f07ef07345415ced7e05c92da4aa6f4a44889858`. Se verificó en los 83 commits que se trata literalmente del texto de ejemplo con puntos suspensivos y ninguna clave de Clerk con longitud real fue versionada. | `docs/seguridad/evidencia/gitleaks-report.json` | **No confirmado: placeholder** |
 | `SEC-SEC-02` | **Alta** | Git History (`database.sqlite`, `auth.services.js`) | Clave `JWT_SECRET` por defecto ('mi_clave_secreta_super_segura_dds_2026') en commit `20077a02`, y archivo binario `backend/database.sqlite` (con contraseñas hasheadas y datos reales de usuarios) presente en el historial histórico de git previo a su desvinculación en Fase 1 (`c8e094c6`). | `docs/seguridad/evidencia/trufflehog-report.json`, `git log` | **Abierto** |
-| `SEC-AUTH-04` | **Baja** | Backend (`auth.services.js:8,27`) | `registrarUsuario` acepta el campo `rol` directamente del cuerpo de la función (`datos.rol || 'usuario'`). Defensa en profundidad: no es explotable hoy porque no existe ninguna ruta HTTP de registro (`auth.routes.js` solo expone `POST /login`) y la función solo se utiliza en `auth.test.js`; riesgo latente si algún día se expone una ruta pública sin saneamiento. | `backend/src/services/auth.services.js` | **Abierto** |
-| `SEC-AUTH-05` | **Alta** | Backend (`auth.middleware.js:44-52`) | En el aprovisionamiento JIT (`sincronizarUsuarioClerk`), si el usuario no existe por `clerkId`, se vincula automáticamente por email (`emailClerk`) a una cuenta local existente sin verificar que el email esté validado en Clerk (`verification.status === 'verified'`), posibilitando secuestro de cuenta (*Account Takeover*). | `backend/src/middleware/auth.middleware.js` | **Abierto** |
-| `SEC-CFG-01` | **Alta** | Backend (`backend/src/app.js`) | Falta configuración de `app.set('trust proxy', ...)` detrás de Nginx: `req.ip` toma la IP interna del contenedor de Nginx para todas las peticiones entrantes, provocando que el limitador de tasa (`express-rate-limit` en `/api/auth/login`) se comparta globalmente entre todos los usuarios. | Inspección de `backend/src/app.js` y `frontend/nginx.conf` | **Cerrado** (Configurado `app.set('trust proxy', N)` con `TRUST_PROXY_HOPS=1`; validado con tests de contadores separados) |
-| `SEC-CFG-02` | **Media** | Backend (`backend/src/app.js:22`) | `app.use(express.json())` no define límite explícito de tamaño de payload (ej. `{ limit: '10kb' }`), permitiendo peticiones con cuerpos masivos que saturen la memoria del proceso Node.js. | Inspección de `backend/src/app.js:22` | **Cerrado** (Configurado `{ limit: '10kb' }` en `json` y `urlencoded`; respuesta 413 JSON en español) |
-| `SEC-CFG-03` | **Media** | Backend (`error.middleware.js:5-7,56`) | En entornos de producción (`NODE_ENV === 'production'`) se ejecuta `console.error(err.stack)` volcando trazas completas a la salida de errores, y `err.message` se devuelve sin filtrar en excepciones no controladas. | Inspección de `backend/src/middleware/error.middleware.js` | **Cerrado** (En producción no loguea stack ni body; responde 500 genérico con correlationId y sanitiza credenciales) |
-| `SEC-CNT-01` | **Alta** | Contenedor (`frontend/Dockerfile`) | La etapa de producción de Nginx no especifica directiva `USER` y se ejecuta por defecto con el superusuario `root`. Misconfiguración detectada por Trivy (`DS-0002`). | `docs/seguridad/evidencia/trivy-frontend-dockerfile.txt` | **Cerrado** (Migrado a `nginxinc/nginx-unprivileged:1.27-alpine`, ejecuta como `nginx` UID 101) |
-| `SEC-CNT-02` | **Media** | Imágenes Docker (`reservas-backend`, `reservas-frontend`) | Vulnerabilidades heredadas en paquetes base del sistema operativo Alpine Linux (`busybox`, `libcrypto3`, `zlib`, `xz-libs`). | `docs/seguridad/evidencia/trivy-image-backend.txt`, `trivy-image-frontend.txt` | **Cerrado** (`apk upgrade --no-cache` en ambos Dockerfile; Trivy reporta 0 vulnerabilidades en OS) |
-| `SEC-SAST-01` | **Media** | Nginx (`frontend/nginx.conf:20`) | Uso de la variable `$host` en `proxy_set_header Host $host` sin validación estricta de dominios permitidos, susceptible a *Host Header Injection / Spoofing*. Detectado por Semgrep (`generic.nginx.security.request-host-used`). | `docs/seguridad/evidencia/semgrep-report.json` | **Cerrado** (Fijado `proxy_set_header Host backend;` en proxy inverso) |
-| `SEC-SAST-02` | **Baja** | CI/CD (`.github/workflows/ci.yml:45,48,76,79`) | Pasos de GitHub Actions (`actions/checkout`, `actions/setup-node`) utilizando etiquetas de versión mutables (`@v4`, `@v5`) en vez de fijar el commit SHA inmutable. Detectado por Semgrep. | `docs/seguridad/evidencia/semgrep-report.json` | **Abierto** |
-| `SEC-SAST-03` | **Baja** | Backend (`backend/src/config/env.js:16`) | Acceso dinámico a variables de entorno (`process.env[variable]`) señalado por `eslint-plugin-security` (`detect-object-injection`). | `docs/seguridad/evidencia/eslint-security-backend.txt` | **Abierto** |
-| `SEC-AUTH-01` | **Media** | Frontend (`AuthContext.jsx:51`) | Token JWT de autenticación local almacenado en `localStorage`. Aunque el frontend no posee inyecciones HTML y la CSP es estricta, un XSS permitiría la extracción del token. | Inspección de `frontend/src/context/AuthContext.jsx` | **Abierto** |
-| `SEC-AUTH-02` | **Media** | Backend (`auth.middleware.js:78`) | `jwt.verify(token, env.JWT_SECRET)` no fija explícitamente los algoritmos permitidos (`algorithms: ['HS256']`), y no valida si el usuario local continúa activo en la BD (`activo === true`) antes de autorizar la sesión. | Inspección de `backend/src/middleware/auth.middleware.js` | **Abierto** |
-| `SEC-AUTH-03` | **Media** | Backend (`auth.middleware.js:90`) | La verificación de tokens de Clerk mediante `verifyToken` no valida el claim `authorizedParties` (`azp`), omitiendo restringir qué orígenes de cliente son válidos. | Inspección de `backend/src/middleware/auth.middleware.js` | **Abierto** |
-| `SEC-VAL-01` | **Media** | Backend (`routes/*.routes.js`) | Ausencia de validación con esquema formal tipado (como Zod o Joi) para los parámetros de ruta `:id` (`/reservas/:id`, `/aulas/:id/disponibilidad`) y parámetros de query (`/reservas`, `/aulas`). | Inspección de `backend/src/routes/` | **Abierto** |
-| `SEC-TEST-01` | **Media** | Backend Tests (`globalSetup.cjs:17`) | `globalSetup` ejecuta `DROP SCHEMA public CASCADE;` sobre `DATABASE_URL_TEST` sin verificar mediante una guarda de seguridad que el nombre de la base de datos contenga obligatoriamente `_test` o `test`, arriesgando destrucción irreversible de datos en desarrollo o producción ante error de configuración. | `backend/tests/setup/globalSetup.cjs` | **Abierto** |
-| `SEC-HIST-01` | **Baja** | Git History (commit `32838b48`) | Rutas personales absolutas del entorno local de desarrollo (`c:\Users\<usuario>\...`) versionadas en scripts auxiliares (`capturar-pantallas.mjs`) antes de su saneamiento en commit `0b1c7ac2`. | `git log` | **Abierto** |
-| `SEC-INV-01` | **Baja** | Backend (`aulas.routes.js:8`) | `GET /api/aulas` no requiere autenticación (es público para listar aulas activas). Confirmado y documentado en el inventario como decisión de diseño que requiere validación. | Inspección de `backend/src/routes/aulas.routes.js` | **Abierto** |
+| `SEC-AUTH-04` | **Baja** | Backend (`auth.services.js:8,27`) | `registrarUsuario` aceptaba el campo `rol` directamente del cuerpo de la función. | `backend/src/services/auth.services.js` | **Cerrado** (Rol forzado a `'usuario'`, ignorando cualquier parámetro entrante; commit `fded8bf`) |
+| `SEC-AUTH-05` | **Alta** | Backend (`auth.middleware.js:44-52`) | En el aprovisionamiento JIT (`sincronizarUsuarioClerk`), si el usuario no existía por `clerkId`, se vinculaba automáticamente por email a una cuenta local sin comprobar si el email estaba verificado en Clerk. | `backend/src/middleware/auth.middleware.js` | **Cerrado** (Exige `primaryEmailObj?.verification?.status === 'verified'`; responde 403 con mensaje en español si no está verificado sin mutar la BD; commit `45451e0`) |
+| `SEC-CFG-01` | **Alta** | Backend (`backend/src/app.js`) | Falta configuración de `app.set('trust proxy', ...)` detrás de Nginx: `req.ip` tomaba la IP interna de Nginx y compartía el limitador de login globalmente. | Inspección de `backend/src/app.js` y `frontend/nginx.conf` | **Cerrado** (Configurado `app.set('trust proxy', N)` con `TRUST_PROXY_HOPS=1`; validado con tests de contadores separados) |
+| `SEC-CFG-02` | **Media** | Backend (`backend/src/app.js:22`) | `app.use(express.json())` no definía límite explícito de payload, permitiendo saturación de memoria DoS. | Inspección de `backend/src/app.js:22` | **Cerrado** (Configurado `{ limit: '10kb' }` en `json` y `urlencoded`; respuesta 413 JSON en español) |
+| `SEC-CFG-03` | **Media** | Backend (`error.middleware.js:5-7,56`) | En producción se ejecutaba `console.error(err.stack)` y `err.message` se devolvía sin filtrar en excepciones no controladas. | Inspección de `backend/src/middleware/error.middleware.js` | **Cerrado** (En producción no loguea stack ni body; responde 500 genérico con correlationId y sanitiza credenciales) |
+| `SEC-CNT-01` | **Alta** | Contenedor (`frontend/Dockerfile`) | La etapa de producción de Nginx no especificaba directiva `USER` y se ejecutaba como `root`. | `docs/seguridad/evidencia/trivy-frontend-dockerfile.txt` | **Cerrado** (Migrado a `nginxinc/nginx-unprivileged:1.27-alpine`, ejecuta como `nginx` UID 101) |
+| `SEC-CNT-02` | **Media** | Imágenes Docker (`reservas-backend`, `reservas-frontend`) | Vulnerabilidades heredadas en paquetes base del sistema operativo Alpine Linux. | `docs/seguridad/evidencia/trivy-image-backend.txt`, `trivy-image-frontend.txt` | **Cerrado** (`apk upgrade --no-cache` en ambos Dockerfile; Trivy reporta 0 vulnerabilidades en OS) |
+| `SEC-SAST-01` | **Media** | Nginx (`frontend/nginx.conf:20`) | Uso de la variable `$host` en `proxy_set_header Host $host` susceptible a *Host Header Injection*. | `docs/seguridad/evidencia/semgrep-report.json` | **Cerrado** (Fijado `proxy_set_header Host backend;` en proxy inverso) |
+| `SEC-SAST-02` | **Baja** | CI/CD (`.github/workflows/ci.yml:45,48,76,79`) | Pasos de GitHub Actions (`actions/checkout`, `actions/setup-node`) utilizando etiquetas de versión mutables (`@v4`, `@v5`) en vez de fijar commit SHAs inmutables. | `docs/seguridad/evidencia/semgrep-report.json` | **Abierto** (Planificado fijar commit SHAs en futuro commit de mantenimiento de CI/CD) |
+| `SEC-SAST-03` | **Baja** | Backend (`backend/src/config/env.js:16`) | Acceso dinámico a variables de entorno (`process.env[variable]`) señalado por `eslint-plugin-security` (`detect-object-injection`). | `docs/seguridad/evidencia/eslint-security-backend.txt` | **Falso Positivo** (Itera array inmutable estático `obligatorias`; sin entrada no confiable ni vector de inyección) |
+| `SEC-AUTH-01` | **Media** | Frontend (`AuthContext.jsx:51`) | Token JWT de autenticación local almacenado en `localStorage`. Aunque el frontend no posee inyecciones HTML y la CSP es estricta, un XSS permitiría la extracción del token. | Inspección de `frontend/src/context/AuthContext.jsx` | **Riesgo Aceptado** (Mitigaciones activas: CSP estricta sin `'unsafe-inline'`, 0 usos de `innerHTML`, expiración 2h; recomendación futura: cookies httpOnly) |
+| `SEC-AUTH-02` | **Media** | Backend (`auth.middleware.js:78`) | `jwt.verify(token, env.JWT_SECRET)` no fijaba algoritmos permitidos (`algorithms: ['HS256']`), ni issuer, ni validaba si el usuario local continuaba activo en la BD (`activo === true`) antes de autorizar la sesión. | Inspección de `backend/src/middleware/auth.middleware.js` | **Cerrado** (Fijado `HS256`, `issuer: 'reservas-api'`, consulta obligatoria de `activo === true` y rol en Postgres en cada petición; commits `ff107dc`, `81a53b8`) |
+| `SEC-AUTH-03` | **Media** | Backend (`auth.middleware.js:90`) | La verificación de tokens de Clerk mediante `verifyToken` no validaba el claim `authorizedParties` (`azp`), omitiendo restringir qué orígenes de cliente son válidos. | Inspección de `backend/src/middleware/auth.middleware.js` | **Cerrado** (Pasado `authorizedParties: env.CORS_ORIGINS` a `verifyToken`; commit `21069d1`) |
+| `SEC-VAL-01` | **Media** | Backend (`routes/*.routes.js`) | Ausencia de validación con esquema formal tipado (como Zod) para los parámetros de ruta `:id`, parámetros de query y cuerpos de creación/edición de reservas. | Inspección de `backend/src/routes/` | **Cerrado** (Integrado `zod@4.6.7` y middleware `validar`: login, id entero positivo, query params con límite y orden, cuerpos de creación y edición; commits `11427ef`, `0b4ed1c`, `bf28d0a`, `b1b42fc`) |
+| `SEC-TEST-01` | **Media** | Backend Tests (`globalSetup.cjs:17`) | `globalSetup` ejecutaba `DROP SCHEMA public CASCADE;` sobre `DATABASE_URL_TEST` sin verificar mediante una guarda de seguridad que el nombre de la base de datos terminara obligatoriamente en `_test` ni que fuera distinta a `DATABASE_URL`. | `backend/tests/setup/globalSetup.cjs` | **Cerrado** (Guarda de aborto por nombre/igualdad, `pg_advisory_lock(987654321)` y terminación de conexiones concurrentes; commit `0e6cff2`) |
+| `SEC-HIST-01` | **Baja** | Git History (commit `32838b48`) | Rutas personales absolutas del entorno local de desarrollo (`<ruta-local>/...`) versionadas en scripts auxiliares (`capturar-pantallas.mjs`) antes de su saneamiento en commit `0b1c7ac2`. | `git log` | **Abierto** |
+| `SEC-INV-01` | **Baja** | Backend (`aulas.routes.js:8`) | `GET /api/aulas` no requería autenticación. | Inspección de `backend/src/routes/aulas.routes.js` | **Cerrado** (Exige autenticación mediante `verificarToken`; frontend solo accede desde páginas autenticadas; commit `19949d9`) |
 
 ---
 
@@ -108,7 +112,7 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
 ### 2.2. Secretos y Archivos Sensibles en el Historial Git
 - **Base de datos SQLite:** En commit `4935a92ac275cbbb5a993a386f6a0123b379c840` se incorporó el binario `backend/database.sqlite`. Dicho archivo permaneció versionado a lo largo de 11 commits hasta que fue removido del árbol en la Fase 1 (`c8e094c6f7faca9e4515c8e67c11edfe3c8a12ad`). El archivo contenía hashes reales de contraseñas de usuarios creados en la etapa previa.
 - **`JWT_SECRET` hardcodeado:** En el commit inicial `20077a029bf3cb4927b0e1688ee4a2647a69ba4e`, el archivo `backend/src/services/auth.services.js` contenía el valor `'mi_clave_secreta_super_segura_dds_2026'`.
-- **Rutas personales en historial (`SEC-HIST-01`):** En el commit `32838b489221ec35e648e644e29fdc0ae8064719` quedaron registradas rutas personales absolutas (`c:\Users\<usuario>\...`) en scripts auxiliares de captura, antes de ser saneadas en el commit `0b1c7ac26d5048624e5f7848e6510b380984865c`.
+- **Rutas personales en historial (`SEC-HIST-01`):** En el commit `32838b489221ec35e648e644e29fdc0ae8064719` quedaron registradas rutas personales absolutas (`<ruta-local>/...`) en scripts auxiliares de captura, antes de ser saneadas en el commit `0b1c7ac26d5048624e5f7848e6510b380984865c`.
 
 ---
 
@@ -122,8 +126,9 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
   - **ERROR (2 hallazgos):**
     - `typescript.react.security.react-insecure-request` en `frontend/scripts/capturar-pantallas.mjs` y `verificar-csp-clerk.mjs` por peticiones no cifradas sobre `http://localhost` contra servidores locales de prueba.
   - **WARNING (5 hallazgos):**
-    - 4 hallazgos `yaml.github-actions.security.github-actions-mutable-action-tag` en `.github/workflows/ci.yml:45,48,76,79` por uso de tags mutables (`actions/checkout@v4`, `actions/setup-node@v5`) en lugar de fijar commit SHAs inmutables.
-    - 1 hallazgo `generic.nginx.security.request-host-used.request-host-used` en `frontend/nginx.conf:20` por uso de la variable `$host` en `proxy_set_header Host $host` sin validación explícita de dominios permitidos.
+    - 4 hallazgos `yaml.github-actions.security.github-actions-mutable-action-tag` en `.github/workflows/ci.yml:45,48,76,79` por uso de tags mutables (`actions/checkout@v4`, `actions/setup-node@v5`) en lugar de fijar commit SHAs inmutables (`SEC-SAST-02`).
+      - **Estado:** **Abierto**. Planificado para mitigar en un commit futuro de mantenimiento de infraestructura CI/CD, fijando los hashes SHA completos (ej. `actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11`) con comentarios aclaratorios del número de versión para prevenir ataques de suplantación en la cadena de suministro de GitHub Marketplace.
+    - 1 hallazgo `generic.nginx.security.request-host-used.request-host-used` en `frontend/nginx.conf:20` por uso de la variable `$host` en `proxy_set_header Host $host`. Cerrado en Fase 6b1 fijando el host estático interno `backend` (`SEC-SAST-01`).
   - **INFO:** 0 hallazgos.
 
 ### 3.2. Resumen de Hallazgos ESLint y `eslint-plugin-security`
@@ -132,8 +137,21 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
 - **Distribución por Severidad:**
   - **ERROR de seguridad:** 0 errores.
   - **WARNING de seguridad (5 hallazgos):**
-    - 4 advertencias `security/detect-object-injection`: 2 en `backend/src/config/env.js:16` por acceso dinámico a `process.env[variable]`, y 2 en `backend/scripts/legacy/migrar-sqlite-a-postgres.js:169-170`.
-    - 1 advertencia `security/detect-non-literal-fs-filename`: en `backend/scripts/legacy/migrar-sqlite-a-postgres.js:87` por llamada a `fs.existsSync` con argumento dinámico proveniente de rutas de backup.
+    - 4 advertencias `security/detect-object-injection`: 2 en `backend/src/config/env.js:16` por acceso dinámico a `process.env[variable]` (`SEC-SAST-03`), y 2 en `backend/scripts/legacy/migrar-sqlite-a-postgres.js:169-170`.
+      - **Justificación de Falso Positivo (`SEC-SAST-03`):** En `backend/src/config/env.js:16`, el código ejecuta:
+        ```javascript
+        const obligatorias = [
+          'JWT_SECRET',
+          'DATABASE_URL',
+          'CLERK_SECRET_KEY',
+          'FRONTEND_URL'
+        ];
+        for (const variable of obligatorias) {
+          if (!process.env[variable]) { ... }
+        }
+        ```
+        La variable iterada proviene exclusivamente de una lista blanca fija, cerrada e inmutable declarada en el código fuente. Ningún valor procede de entradas de red, parámetros HTTP ni fuentes no confiables controladas por un atacante. Por consiguiente, no existe posibilidad de *Prototype Pollution* ni manipulación de propiedades de objetos. Queda clasificado como **Falso Positivo**.
+    - 1 advertencia `security/detect-non-literal-fs-filename`: en `backend/scripts/legacy/migrar-sqlite-a-postgres.js:87` por llamada a `fs.existsSync` con argumento dinámico proveniente de rutas de backup en script administrativo fuera del ciclo de vida de la aplicación web.
 
 ---
 
@@ -175,46 +193,79 @@ Inventario exhaustivo de todos los endpoints registrados en Express, indicando m
 |---|---|---|---|---|---|---|
 | `GET` | `/` | Ninguno | Público | Ninguna | N/A | Endpoint informativo raíz. |
 | `GET` | `/api/health` | Ninguno | Público (Healthcheck) | Ninguna | N/A | Verifica estado de conexión a PostgreSQL. |
-| `POST` | `/api/auth/login` | Ninguno (Público) | Anónimo | `validarLogin` (campos presentes y no vacíos) + `loginLimiter` (10 intentos / 15 min) | N/A | Requiere mitigación de `trust proxy` y protección contra enumeración de usuarios. |
-| `GET` | `/api/aulas` | **Ninguno** | Público | Ninguna | N/A | Lista aulas activas. No expone datos de usuarios. |
-| `GET` | `/api/aulas/:id/disponibilidad` | `verificarToken` | `admin`, `usuario` | Validación manual en servicio (`id` entero > 0, fecha YYYY-MM-DD) | No aplica (datos agregados de disponibilidad horaria) | Endpoint técnico. Solo devuelve rangos horarios y estado sin datos de solicitantes. |
+| `POST` | `/api/auth/login` | Ninguno (Público) | Anónimo | `validar(loginSchema)` (email válido y password obligatorio) + `loginLimiter` (10 intentos / 15 min) | N/A | Protegido con límite de tasa por IP real tras `trust proxy`. |
+| `GET` | `/api/aulas` | `verificarToken` | `admin`, `usuario` | Ninguna | N/A | Lista aulas activas protegida por token JWT / Clerk (`SEC-INV-01`). |
+| `GET` | `/api/aulas/:id/disponibilidad` | `verificarToken` | `admin`, `usuario` | `validar(idParamSchema)` (`id` entero positivo) + validación de fecha | No aplica (datos agregados de disponibilidad horaria) | Endpoint técnico. Solo devuelve rangos horarios y estado sin datos de solicitantes. |
 | `GET` | `/api/reservas/resumen` | `verificarToken`, `soloAdmin` | `admin` | Ninguna | Solo admin | Métricas globales de reservas. |
-| `GET` | `/api/reservas` | `verificarToken` | `admin`, `usuario` | Sanitización de `limit` (max 100), `page` y lista blanca de `sortBy` | **Sí (Garantizado)**: Usuarios comunes filtrados estrictamente por `where.usuarioId = req.usuario.id`. | Admin recibe datos del solicitante; usuarios comunes solo sus propias reservas sin datos personales de terceros. |
-| `POST` | `/api/reservas` | `verificarToken` | `admin`, `usuario` | `validarCrearReserva` (horarios laborales, fechas futuras, enteros) | **Sí (Garantizado)**: El servidor sobreescribe `datosReserva.usuarioId = req.usuario.id`. | No permite asignación masiva de usuario ni estado. |
-| `GET` | `/api/reservas/:id` | `verificarToken` | `admin`, `usuario` | Sin validación de esquema en `:id` | **Sí (Garantizado)**: Si `rol !== 'admin'` y `reserva.usuarioId !== req.usuario.id`, devuelve `404`. | Protegido contra IDOR. |
-| `GET` | `/api/reservas/:id/historial` | `verificarToken` | `admin`, `usuario` | Sin validación de esquema en `:id` | **Sí (Garantizado)**: Invoca internamente `obtenerReservaPorId` exigiendo propiedad o rol admin. | Historial auditado con control estricto de propiedad. |
-| `PUT` | `/api/reservas/:id` | `verificarToken`, `soloAdmin` | `admin` | `validarEditarReserva` + validaciones de negocio | Solo admin | Edición integral de reserva reservada a administradores. |
-| `PATCH` | `/api/reservas/:id/aprobar` | `verificarToken`, `soloAdmin` | `admin` | Sin validación de esquema en `:id` | Solo admin | Aprobación restringida a rol administrador. |
-| `PATCH` | `/api/reservas/:id/rechazar` | `verificarToken`, `soloAdmin` | `admin` | Sin validación de esquema en `:id` | Solo admin | Rechazo restringido a rol administrador. |
-| `PATCH` | `/api/reservas/:id/cancelar` | `verificarToken` | `admin`, `usuario` | Sin validación de esquema en `:id` | **Sí (Garantizado)**: Validación explícita `esAdmin || String(reserva.usuarioId) === String(usuario.id)`. Devuelve `403` si no es dueño. | Cancelación lógica controlada. |
+| `GET` | `/api/reservas` | `verificarToken` | `admin`, `usuario` | `validar(queryReservasSchema)` (`limit` max 100, `page` > 0, `sortBy` lista blanca, `order` ASC/DESC) | **Sí (Garantizado)**: Usuarios comunes filtrados estrictamente por `where.usuarioId = req.usuario.id`. | Admin recibe datos del solicitante; usuarios comunes solo sus propias reservas sin datos personales de terceros. |
+| `POST` | `/api/reservas` | `verificarToken` | `admin`, `usuario` | `validar(crearReservaBodySchema)` (fecha, turnos, aulaId, motivo) + reglas de negocio | **Sí (Garantizado)**: El servidor sobreescribe `datosReserva.usuarioId = req.usuario.id`. | No permite asignación masiva de usuario ni estado. |
+| `GET` | `/api/reservas/:id` | `verificarToken` | `admin`, `usuario` | `validar(idParamSchema)` (`id` entero positivo) | **Sí (Garantizado)**: Si `rol !== 'admin'` y `reserva.usuarioId !== req.usuario.id`, devuelve `404`. | Protegido contra IDOR. |
+| `GET` | `/api/reservas/:id/historial` | `verificarToken` | `admin`, `usuario` | `validar(idParamSchema)` (`id` entero positivo) | **Sí (Garantizado)**: Invoca internamente `obtenerReservaPorId` exigiendo propiedad o rol admin. | Historial auditado con control estricto de propiedad. |
+| `PUT` | `/api/reservas/:id` | `verificarToken`, `soloAdmin` | `admin` | `validar(idParamSchema)` + `validar(editarReservaBodySchema)` + validaciones de negocio | Solo admin | Edición integral de reserva reservada a administradores. |
+| `PATCH` | `/api/reservas/:id/aprobar` | `verificarToken`, `soloAdmin` | `admin` | `validar(idParamSchema)` (`id` entero positivo) | Solo admin | Aprobación restringida a rol administrador. |
+| `PATCH` | `/api/reservas/:id/rechazar` | `verificarToken`, `soloAdmin` | `admin` | `validar(idParamSchema)` (`id` entero positivo) | Solo admin | Rechazo restringido a rol administrador. |
+| `PATCH` | `/api/reservas/:id/cancelar` | `verificarToken` | `admin`, `usuario` | `validar(idParamSchema)` (`id` entero positivo) | **Sí (Garantizado)**: Validación explícita `esAdmin || String(reserva.usuarioId) === String(usuario.id)`. Devuelve `403` si no es dueño. | Cancelación lógica controlada. |
 
 ---
 
 ## 6. Verificación de Puntos Previos a las Mejoras
 
-Revisión punto por punto del estado de los problemas identificados:
+Revisión punto por punto del estado y resolución de los problemas identificados:
 
-1. **Token JWT guardado en `localStorage` (un XSS permitiría robarlo):**
-   - **Estado actual:** El frontend almacena el token JWT de usuarios locales en `localStorage` (`AuthContext.jsx:51`). Para usuarios autenticados con Google (Clerk), la sesión reside en memoria y se obtiene dinámicamente mediante `getToken()`.
-   - **Diagnóstico:** Permanece como riesgo residual documentado. En Fase 6b se evaluará migración a cookies HTTP-only o fortalecimiento estricto de CSP contra XSS.
-2. **`jwt.verify` sin fijar algoritmos permitidos; secreto con valor por defecto en el código:**
-   - **Estado actual:** El valor por defecto hardcodeado fue eliminado del código y es validado en el arranque por `backend/src/config/env.js`. Sin embargo, `auth.middleware.js:78` aún invoca `jwt.verify(token, env.JWT_SECRET)` sin fijar explícitamente `algorithms: ['HS256']`.
-3. **`express.json()` sin límite de tamaño:**
-   - **Estado actual:** Resuelto en Fase 6b1 (`SEC-CFG-02`). Configurado `express.json({ limit: '10kb' })` y `express.urlencoded({ extended: true, limit: '10kb' })` en `backend/src/app.js`. El manejador de errores responde `413 Payload Too Large` con mensaje JSON en español.
-4. **`console.error(err.stack)` volcando trazas completas:**
-   - **Estado actual:** Resuelto en Fase 6b1 (`SEC-CFG-03`). En producción (`NODE_ENV=production`) no se registra `err.stack` ni `req.body`; se genera un `correlationId` aleatorio (UUIDv4), se sanitizan contraseñas y tokens, y se devuelve respuesta `500` genérica `{ error: "Error interno del servidor", correlationId }`.
-5. **Dependencias con rangos `^` y sin escaneo:**
-   - **Estado actual:** Resuelto en Fase 6b1 (`SEC-DEP-01` a `04`). Se configuró `save-exact=true` en `.npmrc` de backend y frontend; se actualizaron paquetes parcheados vía `npm audit fix` (eliminando vulnerabilidades de `proxy-addr`, `body-parser`, `axios`, `react-router`), se fijó `@clerk/backend@3.27.0` y `express@4.22.3`. Se documentó el riesgo aceptado de `uuid` y `js-beautify`. CI y Dockerfiles usan `npm ci`.
-6. **Verificación del token de Clerk sin validar firma:**
-   - **Estado actual:** Resuelto parcialmente en Fase 1 mediante `verifyToken` de `@clerk/backend` que valida firma y expiración. Falta validar el claim de audiencia/partes autorizadas (`azp`).
+1. **Token JWT guardado en `localStorage` (un XSS permitiría robarlo) — `SEC-AUTH-01`:**
+   - **Estado:** **Riesgo Aceptado**.
+   - **Vector de ataque:** *Cross-Site Scripting* (XSS). Si un script malicioso lograra ejecutarse en el contexto del navegador, tendría acceso a `localStorage.getItem('token')` y podría exfiltrar el token local.
+   - **Mitigaciones activas en el sistema:**
+     1. **Content Security Policy (CSP) estricta sin `'unsafe-inline'` para scripts:** La directiva `script-src` en Nginx (`frontend/nginx.conf`) restringe la ejecución de scripts exclusivamente a `'self'` y a los endpoints autorizados de Clerk y Cloudflare Turnstile. Se bloquea cualquier script embebido o inyección de scripts externos.
+     2. **Cero inyecciones HTML en frontend:** El código del cliente React fue auditado rigurosamente y posee estrictamente **0 usos de `innerHTML` y 0 usos de `dangerouslySetInnerHTML`**, minimizando la superficie de vulnerabilidades XSS basadas en DOM.
+     3. **Expiración de tokens reducida:** El token JWT local posee una vida útil acotada de 2 horas (`expiresIn: '2h'`). Para usuarios autenticados mediante Google/Clerk, la sesión no se guarda en `localStorage` sino que reside en memoria y se refresca automáticamente con tokens de 60 segundos de Clerk.
+   - **Recomendación futura:** Migrar a cookies `httpOnly` con flags `SameSite=Strict` y `Secure`, acompañadas de protección CSRF (tokens de sincronización o doble submit cookie), si en el futuro la arquitectura evoluciona hacia un esquema monolítico o *Backend For Frontend* (BFF).
+
+2. **`jwt.verify` sin fijar algoritmos permitidos; estado de usuario desactualizado — `SEC-AUTH-02`:**
+   - **Estado:** **Cerrado** (Commits `ff107dc`, `81a53b8`).
+   - `jwt.sign` fija explícitamente `algorithm: 'HS256'` e `issuer: 'reservas-api'`.
+   - `jwt.verify` exige `algorithms: ['HS256']` e `issuer: 'reservas-api'`, bloqueando ataques de manipulación de cabeceras (`alg: 'none'` o firmas con clave asimétrica/HS512).
+   - En cada petición autenticada con JWT local, el middleware `verificarToken` consulta la base de datos PostgreSQL (`Usuario.findByPk`) y comprueba `usuario.activo === true`. Si el usuario no existe o fue desactivado, se responde `401 Unauthorized` de inmediato sin esperar a que expire el token. Asimismo, el rol se toma directamente del registro actualizado en la base de datos y no del token, garantizando revocación inmediata de permisos de administrador.
+
+3. **`express.json()` sin límite de tamaño — `SEC-CFG-02`:**
+   - **Estado:** **Cerrado** (Fase 6b1). Configurado `express.json({ limit: '10kb' })` y `express.urlencoded({ extended: true, limit: '10kb' })`. Manejador responde `413 Payload Too Large` con mensaje JSON en español ante excesos de tamaño.
+
+4. **`console.error(err.stack)` volcando trazas completas — `SEC-CFG-03`:**
+   - **Estado:** **Cerrado** (Fase 6b1). En producción no se vuelca `err.stack` ni `req.body`; se genera un `correlationId` aleatorio (UUIDv4), se sanitizan credenciales y se devuelve respuesta genérica `500` con el identificador de correlación.
+
+5. **Dependencias con rangos `^` y sin escaneo — `SEC-DEP-01` a `04`:**
+   - **Estado:** **Cerrado / Riesgo Aceptado** (Fase 6b1). Configurado `save-exact=true` en `.npmrc` de backend y frontend; paquetes vulnerables corregidos con `npm audit fix` sin `--force` (0 vulnerabilidades en producción de frontend); fijadas versiones seguras de `@clerk/backend@3.27.0` y `express@4.22.3`. Documentado riesgo aceptado de `uuid` y `js-beautify`. CI y Dockerfiles emplean `npm ci`.
+
+6. **Verificación del token de Clerk sin validar firma ni audiencia — `SEC-AUTH-03`:**
+   - **Estado:** **Cerrado** (Commit `21069d1`).
+   - Se pasa explícitamente el parámetro `authorizedParties: env.CORS_ORIGINS` a la función `verifyToken` de `@clerk/backend`, validando que el claim `azp` coincida con los orígenes permitidos. Tokens sin `azp` o con orígenes no autorizados son rechazados con `401 Unauthorized`.
+
 7. **Reservas e historial visibles para cualquier usuario autenticado:**
-   - **Estado actual:** Resuelto en Fases 1 a 3. El inventario confirma que `listarReservas`, `obtenerReservaPorId`, `obtenerHistorialDeReserva` y `cancelarReserva` aplican aislamiento estricto por `usuarioId` y ocultan datos de solicitantes a usuarios no administradores.
-8. **Asignación masiva en registro (`SEC-AUTH-04`):**
-   - **Estado actual:** Identificado en `backend/src/services/auth.services.js:27`: `registrarUsuario` acepta `rol` de los datos enviados. Catalogado como severidad **Baja** ("defensa en profundidad"): no explotable hoy; riesgo si algún día se expone una ruta de registro (actualmente `auth.routes.js` solo tiene `POST /login` y solo lo usa `auth.test.js`).
-9. **Vinculación por email no verificado en Clerk (`SEC-AUTH-05`):**
-   - **Estado actual:** Identificado en `backend/src/middleware/auth.middleware.js:44-52`: el aprovisionamiento JIT vincula a usuario local existente por correo sin comprobar el flag `emailAddresses[0].verification.status === 'verified'`.
-10. **Seguridad en tests (`SEC-TEST-01`):**
-    - **Estado actual:** Identificado en `backend/tests/setup/globalSetup.cjs:17`: `DROP SCHEMA public CASCADE;` se ejecuta ciegamente sin comprobar que la base de datos sea de test.
+   - **Estado:** **Cerrado** (Fases 1 a 3). Aislamiento estricto por `usuarioId` y censura de datos del solicitante para usuarios comunes.
+
+8. **Asignación masiva en registro — `SEC-AUTH-04`:**
+   - **Estado:** **Cerrado** (Commit `fded8bf`).
+   - `registrarUsuario` en `backend/src/services/auth.services.js` ignora cualquier campo `rol` provisto en el objeto de entrada y fuerza invariablemente `'usuario'`, impidiendo asignación indebida de privilegios.
+
+9. **Vinculación por email no verificado en Clerk — `SEC-AUTH-05`:**
+   - **Estado:** **Cerrado** (Commit `45451e0`).
+   - En el aprovisionamiento JIT (`sincronizarUsuarioClerk`), la vinculación con cuentas locales por email solo se efectúa si el correo principal posee `verification.status === 'verified'`. Si no está verificado en Clerk, se rechaza la solicitud con `403 Forbidden` (`"El correo de la cuenta de Clerk no se encuentra verificado."`), sin realizar mutaciones en la base de datos, y se emite un registro de auditoría en consola sin datos sensibles (`console.log('[AUTH] Cuenta local vinculada a cuenta Clerk (usuarioId: ...)')`).
+
+10. **Seguridad en tests y guardas de base de datos — `SEC-TEST-01`:**
+    - **Estado:** **Cerrado** (Commit `0e6cff2`).
+    - En `backend/tests/setup/globalSetup.cjs`, se incorporó la función de guarda `validarDatabaseUrlTest` que aborta el proceso si `DATABASE_URL_TEST` no termina en `_test` o si es idéntica a `DATABASE_URL`. Asimismo, se implementó `pg_advisory_lock(987654321)` para prevenir carreras de destrucción entre suites concurrentes y se finalizan conexiones activas con `pg_terminate_backend` antes de ejecutar `DROP SCHEMA public CASCADE;`.
+
+11. **Validación tipada de entradas con esquemas Zod — `SEC-VAL-01`:**
+    - **Estado:** **Cerrado** (Commits `11427ef`, `0b4ed1c`, `bf28d0a`, `b1b42fc`).
+    - Se integró `zod@4.6.7` con versión exacta y el middleware genérico `validar(schema)` en `backend/src/middleware/validacion.middleware.js`, estandarizando respuestas 400 y mensajes en español ante inconsistencias de validación:
+      - `loginSchema`: validación de email con formato válido y password obligatorio.
+      - `idParamSchema`: validación de parámetro de ruta `:id` como entero positivo para `/reservas/:id`, `/reservas/:id/historial`, `PUT /reservas/:id`, `/aprobar`, `/rechazar`, `/cancelar`, y `/aulas/:id/disponibilidad`.
+      - `queryReservasSchema`: validación de `page` y `limit` enteros positivos (límite máximo 100), `sortBy` sobre lista blanca cerrada, y `order` ('ASC'|'DESC').
+      - `crearReservaBodySchema` y `editarReservaBodySchema`: fechas en formato YYYY-MM-DD, turnos laborales válidos ('manana', 'tarde', 'noche'), `aulaId` entero positivo y motivo no vacío.
+
+12. **Aulas públicas protegidas — `SEC-INV-01`:**
+    - **Estado:** **Cerrado** (Commit `19949d9`).
+    - Se constató que en el frontend las aulas solo se consumen dentro de rutas autenticadas. Se incorporó `verificarToken` a `GET /api/aulas`, impidiendo consultas no autenticadas al inventario de aulas.
 
 ---
 

@@ -72,6 +72,115 @@ describe('Auth routes, token verification & env validation', () => {
     expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
   });
 
+  describe('SEC-AUTH-02: restricciones criptográficas de JWT local', () => {
+    it('rejects token with algorithm "none" with 401', async () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ id: 1, rol: 'usuario', email: 'user@test.com', iss: 'reservas-api' })).toString('base64url');
+      const tokenNone = `${header}.${payload}.`;
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenNone}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+
+    it('rejects token signed with HS512 with 401', async () => {
+      const tokenHS512 = jwt.sign(
+        { id: 1, rol: 'usuario', email: 'user@test.com' },
+        env.JWT_SECRET,
+        { algorithm: 'HS512', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenHS512}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+
+    it('rejects token without issuer with 401', async () => {
+      const tokenSinIssuer = jwt.sign(
+        { id: 1, rol: 'usuario', email: 'user@test.com' },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', expiresIn: '2h' }
+      );
+
+      const response = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${tokenSinIssuer}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error', 'Token inválido o expirado');
+    });
+  });
+
+  describe('SEC-AUTH-02: estado del usuario en cada petición (BD)', () => {
+    it('blocks deactivated user with 401 without token expiring', async () => {
+      const passwordHash = await bcrypt.hash('pass123', 10);
+      const user = await Usuario.create({
+        nombre: 'Usuario Activo',
+        email: 'activo-test@example.com',
+        passwordHash,
+        rol: 'usuario',
+        activo: true
+      });
+
+      const token = jwt.sign(
+        { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const resAntes = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${token}`);
+      expect(resAntes.status).toBe(200);
+
+      // Desactivamos el usuario en la BD
+      await user.update({ activo: false });
+
+      const resDespues = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', `Bearer ${token}`);
+      expect(resDespues.status).toBe(401);
+      expect(resDespues.body).toHaveProperty('error');
+    });
+
+    it('revokes admin access when downgraded to usuario without re-login', async () => {
+      const passwordHash = await bcrypt.hash('pass123', 10);
+      const admin = await Usuario.create({
+        nombre: 'Admin Downgrade',
+        email: 'admin-downgrade@example.com',
+        passwordHash,
+        rol: 'admin',
+        activo: true
+      });
+
+      const tokenAdmin = jwt.sign(
+        { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const resAntes = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${tokenAdmin}`);
+      expect(resAntes.status).toBe(200);
+
+      // Degradar a usuario en la BD
+      await admin.update({ rol: 'usuario' });
+
+      const resDespues = await request(app)
+        .get('/api/reservas/resumen')
+        .set('Authorization', `Bearer ${tokenAdmin}`);
+      expect(resDespues.status).toBe(403);
+      expect(resDespues.body).toHaveProperty('error', 'Acceso denegado: se requiere rol admin');
+    });
+  });
+
   it('aborts startup when JWT_SECRET is missing in development or production', async () => {
     expect(() => validarEnv({ NODE_ENV: 'development', JWT_SECRET: '' })).toThrow(/JWT_SECRET/);
     expect(() => validarEnv({ NODE_ENV: 'production', CLERK_SECRET_KEY: 'sk_test_123' })).toThrow(/JWT_SECRET/);
@@ -113,7 +222,7 @@ describe('Auth routes, token verification & env validation', () => {
       id: 'user_nuevo456',
       firstName: 'Ana',
       lastName: 'Gómez',
-      emailAddresses: [{ emailAddress: 'ana.gomez@utnfrc.edu.ar' }],
+      emailAddresses: [{ emailAddress: 'ana.gomez@utnfrc.edu.ar', verification: { status: 'verified' } }],
       publicMetadata: { rol: 'admin' }
     });
 
@@ -136,7 +245,7 @@ describe('Auth routes, token verification & env validation', () => {
       id: 'user_clerk_vincular_email',
       firstName: 'Usuario',
       lastName: 'Preexistente',
-      emailAddresses: [{ emailAddress: 'preexistente@utnfrc.edu.ar' }],
+      emailAddresses: [{ emailAddress: 'preexistente@utnfrc.edu.ar', verification: { status: 'verified' } }],
       publicMetadata: { rol: 'admin' }
     });
 
@@ -167,11 +276,32 @@ describe('Auth routes, token verification & env validation', () => {
     expect(resInactivo.status).toBe(401);
   });
 
-  it('registers a new user with registrarUsuario and rejects duplicate email', async () => {
+  describe('SEC-VAL-01: validación de esquema con Zod en login', () => {
+    it('rejects login with invalid email format with 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'correo-invalido-sin-arroba', password: 'password123' });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', 'El formato del email es inválido');
+    });
+
+    it('rejects login with empty strings with 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: '   ', password: '' });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', 'Email y contraseña son obligatorios');
+    });
+  });
+
+  it('registers a new user with registrarUsuario, forces rol usuario ignoring input rol, and rejects duplicate email', async () => {
     const creado = await registrarUsuario({
       nombre: 'Nuevo Usuario',
       email: 'nuevo@utnfrc.edu.ar',
-      password: 'password123'
+      password: 'password123',
+      rol: 'admin'
     });
 
     expect(creado).toHaveProperty('id');

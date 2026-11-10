@@ -43,9 +43,9 @@ beforeEach(async () => {
   usuario = await Usuario.create({ nombre: 'User Test A', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
   otroUsuario = await Usuario.create({ nombre: 'User Test B', email: 'userb@test.com', passwordHash, rol: 'usuario', activo: true });
 
-  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h' });
-  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
-  otroUsuarioToken = jwt.sign({ id: otroUsuario.id, nombre: otroUsuario.nombre, email: otroUsuario.email, rol: otroUsuario.rol }, env.JWT_SECRET, { expiresIn: '2h' });
+  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
+  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
+  otroUsuarioToken = jwt.sign({ id: otroUsuario.id, nombre: otroUsuario.nombre, email: otroUsuario.email, rol: otroUsuario.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
 
   aula = await Aula.create({ nombre: 'Aula de Prueba', ubicacion: 'Piso 1', capacidad: 20, recursos: 'pizarra', activa: true });
 
@@ -166,9 +166,9 @@ describe('Reservas API', () => {
     expect(responseOtroUsuario.body).toHaveProperty('error', 'No tienes permiso para cancelar esta reserva');
 
     const tokenRolDesconocido = jwt.sign(
-      { id: 99999, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
+      { id: usuario.id, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
       env.JWT_SECRET,
-      { expiresIn: '2h' }
+      { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
     );
 
     const responseRolDesconocido = await request(app)
@@ -198,6 +198,183 @@ describe('Reservas API', () => {
 
     expect(response.status).toBe(404);
     expect(response.body).toHaveProperty('error', 'La reserva no existe');
+  });
+
+  describe('SEC-VAL-01: validación de parámetros de ruta :id con Zod', () => {
+    it('rejects non-integer id with 400 on GET /api/reservas/:id', async () => {
+      const response = await request(app)
+        .get('/api/reservas/invalido')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+    });
+
+    it('rejects non-positive id <= 0 with 400 on GET /api/reservas/:id', async () => {
+      const resCero = await request(app)
+        .get('/api/reservas/0')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(resCero.status).toBe(400);
+      expect(resCero.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+
+      const resNegativo = await request(app)
+        .get('/api/reservas/-4')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(resNegativo.status).toBe(400);
+      expect(resNegativo.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+    });
+
+    it('rejects invalid id with 400 on GET /api/aulas/:id/disponibilidad', async () => {
+      const response = await request(app)
+        .get('/api/aulas/no-es-numero/disponibilidad?fecha=2026-11-20')
+        .set('Authorization', `Bearer ${usuarioToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El id debe ser un número entero mayor a 0');
+    });
+  });
+
+  describe('SEC-VAL-01: validación de query params en GET /api/reservas con Zod', () => {
+    it('rejects invalid fecha format in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=2026-13-45')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La fecha debe tener un formato válido YYYY-MM-DD');
+    });
+
+    it('rejects invalid estado in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?estado=estado_inexistente')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El estado no es válido');
+    });
+
+    it('rejects invalid page in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?page=0')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La página debe ser un número entero mayor a 0');
+    });
+
+    it('rejects invalid aulaId in query with 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?aulaId=no-es-numero')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El aulaId debe ser un número entero válido');
+    });
+  });
+
+  describe('Compatibilidad de contrato con frontend: GET /api/reservas con parámetros vacíos o inválidos', () => {
+    it('responde 200 para admin con exactamente los parámetros del frontend con filtros vacíos', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=&estado=&aulaId=&q=&page=1&limit=10&sortBy=createdAt&order=DESC')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('datos');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.pagina).toBe(1);
+    });
+
+    it('responde 200 para usuario con exactamente los parámetros del frontend con filtros vacíos', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=&estado=&aulaId=&q=&page=1&limit=10&sortBy=createdAt&order=DESC')
+        .set('Authorization', `Bearer ${usuarioToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('datos');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.pagina).toBe(1);
+    });
+
+    it('responde 200 con cada filtro individual con valor', async () => {
+      const resFecha = await request(app)
+        .get(`/api/reservas?fecha=${fechaFutura(1)}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resFecha.status).toBe(200);
+
+      const resEstado = await request(app)
+        .get('/api/reservas?estado=pendiente')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resEstado.status).toBe(200);
+
+      const resAula = await request(app)
+        .get(`/api/reservas?aulaId=${aula.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resAula.status).toBe(200);
+
+      const resQ = await request(app)
+        .get('/api/reservas?q=consulta')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resQ.status).toBe(200);
+    });
+
+    it('responde 200 con los valores por defecto ante sortBy y order inválidos, no 400', async () => {
+      const response = await request(app)
+        .get('/api/reservas?sortBy=columnaInexistente&order=direccionInvalida')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('datos');
+    });
+
+    it('responde 400 con fecha mal formada', async () => {
+      const response = await request(app)
+        .get('/api/reservas?fecha=2026-13-45')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La fecha debe tener un formato válido YYYY-MM-DD');
+    });
+  });
+
+  describe('SEC-VAL-01: validación de cuerpo en POST y PUT /api/reservas con Zod', () => {
+    it('rejects POST /api/reservas with float cantidadPersonas with 400', async () => {
+      const response = await request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`)
+        .send({
+          aulaId: aula.id,
+          fecha: fechaFutura(3),
+          horaInicio: '10:00',
+          horaFin: '12:00',
+          cantidadPersonas: 15.5,
+          motivo: 'Reunion con float'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'La cantidad de personas debe ser un número entero mayor a 0');
+    });
+
+    it('rejects PUT /api/reservas/:id with non-positive aulaId with 400', async () => {
+      const response = await request(app)
+        .put(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ aulaId: 0 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El aulaId debe ser un número entero válido');
+    });
+
+    it('rejects PUT /api/reservas/:id with motivo exceeding 255 characters with 400', async () => {
+      const response = await request(app)
+        .put(`/api/reservas/${reservaPendiente.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ motivo: 'A'.repeat(256) });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'El motivo no puede superar los 255 caracteres');
+    });
   });
 
   it('should create a valid reservation', async () => {
@@ -508,7 +685,7 @@ describe('Reservas API', () => {
       const tokenAdmin22hs = jwt.sign(
         { id: 1, nombre: 'Admin Test', email: 'admin@test.com', rol: 'admin' },
         env.JWT_SECRET,
-        { expiresIn: '2h' }
+        { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
       );
 
       const reservaNocturnaHoy = await Reserva.create({
@@ -783,7 +960,7 @@ describe('Reservas API', () => {
   // TESTS FASE 4 — COBERTURA DE REGLAS DE NEGOCIO
   // ==========================================
 
-  it('should list only active classrooms on public GET /api/aulas without requiring token', async () => {
+  it('should require authentication on GET /api/aulas (SEC-INV-01) and list only active classrooms', async () => {
     await Aula.create({
       nombre: 'Aula Inactiva X',
       ubicacion: 'Subsuelo',
@@ -792,11 +969,17 @@ describe('Reservas API', () => {
       activa: false
     });
 
-    const response = await request(app).get('/api/aulas');
-    expect(response.status).toBe(200);
-    expect(Array.isArray(response.body)).toBe(true);
-    expect(response.body.some((a) => a.id === aula.id)).toBe(true);
-    expect(response.body.every((a) => a.activa === true)).toBe(true);
+    const responseSinToken = await request(app).get('/api/aulas');
+    expect(responseSinToken.status).toBe(401);
+    expect(responseSinToken.body).toHaveProperty('error', 'Token no informado');
+
+    const responseConToken = await request(app)
+      .get('/api/aulas')
+      .set('Authorization', `Bearer ${usuarioToken}`);
+    expect(responseConToken.status).toBe(200);
+    expect(Array.isArray(responseConToken.body)).toBe(true);
+    expect(responseConToken.body.some((a) => a.id === aula.id)).toBe(true);
+    expect(responseConToken.body.every((a) => a.activa === true)).toBe(true);
   });
 
   it('should validate all creation business rules (missing fields, non-existent/inactive aula, working hours, start<end, history)', async () => {
