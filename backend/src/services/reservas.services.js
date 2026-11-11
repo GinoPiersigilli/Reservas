@@ -7,7 +7,7 @@ import Usuario from '../models/usuario.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
 import env from '../config/env.js';
-import { hoyArgentina, horaActualArgentina } from '../utils/fecha.js';
+import { hoyArgentina, horaActualArgentina, esHorarioPasado } from '../utils/fecha.js';
 
 const WORK_HOUR_START = env.WORK_HOUR_START;
 const WORK_HOUR_END = env.WORK_HOUR_END;
@@ -31,6 +31,12 @@ export const crearNuevaReserva = async (datosReserva) => {
 
   if (horaInicio < WORK_HOUR_START || horaFin > WORK_HOUR_END) {
     const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
+    error.status = 400;
+    throw error;
+  }
+
+  if (esHorarioPasado(fecha, horaInicio)) {
+    const error = new Error('No se pueden realizar reservas en horarios que ya han transcurrido');
     error.status = 400;
     throw error;
   }
@@ -393,6 +399,12 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
       // Validar horario laboral mediante configuración
       if (nuevaInicio < WORK_HOUR_START || nuevaFin > WORK_HOUR_END) {
         const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
+        error.status = 400;
+        throw error;
+      }
+
+      if (esHorarioPasado(nuevaFecha, nuevaInicio)) {
+        const error = new Error('No se pueden realizar reservas en horarios que ya han transcurrido');
         error.status = 400;
         throw error;
       }
