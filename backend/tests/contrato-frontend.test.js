@@ -138,6 +138,9 @@ describe('Contrato Frontend-Backend: Replicación exacta de peticiones del clien
       expect(res.body).toHaveProperty('porEstado');
       expect(res.body).toHaveProperty('porAula');
       expect(res.body).toHaveProperty('proximasHoy');
+      expect(res.body).toHaveProperty('distribucionEstados');
+      expect(res.body).toHaveProperty('tasaOcupacionAulas');
+      expect(res.body).toHaveProperty('aulasMayorDemanda');
     });
 
     it('responde 200 en la consulta de pendientes que ejecuta Resumen.jsx', async () => {

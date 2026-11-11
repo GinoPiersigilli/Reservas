@@ -499,7 +499,7 @@ export const obtenerResumen = async (usuario) => {
     ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }]
     : [];
 
-  const [porEstado, porAula, proximasHoy] = await Promise.all([
+  const [porEstado, porAula, proximasHoy, todasAulas] = await Promise.all([
     // Total por estado
     Reserva.findAll({
       attributes: ['estado', [sequelize.fn('COUNT', sequelize.col('id')), 'total']],
@@ -522,8 +522,99 @@ export const obtenerResumen = async (usuario) => {
       include: includeProximas,
       order: [['horaInicio', 'ASC']],
       limit: 10
+    }),
+    // Aulas activas para análisis de ocupación
+    Aula.findAll({
+      where: { activa: true },
+      attributes: ['id', 'nombre', 'capacidad', 'ubicacion'],
+      order: [['nombre', 'ASC']]
     })
   ]);
 
-  return { porEstado, porAula, proximasHoy };
+  // 1. Distribución de estados con porcentajes
+  const totalReservas = porEstado.reduce(
+    (acc, curr) => acc + (parseInt(curr.dataValues?.total || curr.total, 10) || 0),
+    0
+  );
+  const mapaEstados = new Map(
+    porEstado.map((item) => [item.estado, parseInt(item.dataValues?.total || item.total, 10) || 0])
+  );
+  const estadosPosibles = ['aprobada', 'pendiente', 'rechazada', 'cancelada'];
+  const distribucionEstados = estadosPosibles.map((est) => {
+    const cantidad = mapaEstados.get(est) || 0;
+    const porcentaje = totalReservas > 0 ? Math.round((cantidad / totalReservas) * 100) : 0;
+    return {
+      estado: est,
+      cantidad,
+      porcentaje
+    };
+  });
+
+  // 2. Tasa de ocupación por aula en el mes actual
+  const inicioMes = `${fechaHoy.slice(0, 7)}-01`;
+  const [anioHoy, mesHoy] = fechaHoy.split('-').map(Number);
+  const ultimoDiaMes = new Date(Date.UTC(anioHoy, mesHoy, 0)).getUTCDate();
+  const finMes = `${fechaHoy.slice(0, 7)}-${String(ultimoDiaMes).padStart(2, '0')}`;
+
+  const reservasMes = await Reserva.findAll({
+    where: {
+      estado: { [Op.in]: ['pendiente', 'aprobada'] },
+      fecha: { [Op.between]: [inicioMes, finMes] }
+    },
+    attributes: ['aulaId', 'horaInicio', 'horaFin']
+  });
+
+  const calcularHoras = (hInicio, hFin) => {
+    const [hI, mI] = String(hInicio).split(':').map(Number);
+    const [hF, mF] = String(hFin).split(':').map(Number);
+    return Math.max(0, (hF * 60 + mF - (hI * 60 + mI)) / 60);
+  };
+
+  const horasOcupadasPorAula = new Map();
+  reservasMes.forEach((r) => {
+    const duracion = calcularHoras(r.horaInicio, r.horaFin);
+    const prev = horasOcupadasPorAula.get(r.aulaId) || 0;
+    horasOcupadasPorAula.set(r.aulaId, prev + duracion);
+  });
+
+  // Horas operativas disponibles en el mes (14 hs diarias operativas entre 08:00 y 22:00)
+  const horasOperativasMes = ultimoDiaMes * 14;
+
+  const tasaOcupacionAulas = todasAulas.map((a) => {
+    const horasOcupadas = horasOcupadasPorAula.get(a.id) || 0;
+    const tasa = horasOperativasMes > 0
+      ? Math.min(100, Math.round((horasOcupadas / horasOperativasMes) * 100))
+      : 0;
+    return {
+      aulaId: a.id,
+      nombre: a.nombre,
+      capacidad: a.capacidad,
+      ubicacion: a.ubicacion,
+      horasOcupadas: Number(horasOcupadas.toFixed(1)),
+      horasDisponibles: horasOperativasMes,
+      tasaOcupacion: tasa
+    };
+  });
+
+  // 3. Aulas de mayor demanda
+  const mapaTotalReservasAula = new Map(
+    porAula.map((item) => [item.aulaId, parseInt(item.dataValues?.total || item.total, 10) || 0])
+  );
+  const aulasMayorDemanda = [...tasaOcupacionAulas]
+    .map((item) => ({
+      ...item,
+      totalReservas: mapaTotalReservasAula.get(item.aulaId) || 0
+    }))
+    .sort((a, b) => b.horasOcupadas - a.horasOcupadas || b.totalReservas - a.totalReservas)
+    .slice(0, 5);
+
+  return {
+    porEstado,
+    porAula,
+    proximasHoy,
+    distribucionEstados,
+    tasaOcupacionAulas,
+    aulasMayorDemanda,
+    totalReservas
+  };
 };

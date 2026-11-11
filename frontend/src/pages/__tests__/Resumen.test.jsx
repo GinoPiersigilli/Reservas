@@ -31,7 +31,34 @@ const resumenMock = {
       motivo: 'Clase de consulta',
       estado: 'aprobada'
     }
-  ]
+  ],
+  distribucionEstados: [
+    { estado: 'aprobada', cantidad: 14, porcentaje: 70 },
+    { estado: 'pendiente', cantidad: 2, porcentaje: 10 },
+    { estado: 'rechazada', cantidad: 3, porcentaje: 15 },
+    { estado: 'cancelada', cantidad: 1, porcentaje: 5 }
+  ],
+  tasaOcupacionAulas: [
+    {
+      aulaId: 101,
+      nombre: 'Aula 101',
+      capacidad: 30,
+      ubicacion: 'Planta Baja',
+      horasOcupadas: 18.5,
+      horasDisponibles: 420,
+      tasaOcupacion: 45
+    }
+  ],
+  aulasMayorDemanda: [
+    {
+      aulaId: 101,
+      nombre: 'Aula 101',
+      capacidad: 30,
+      horasOcupadas: 18.5,
+      totalReservas: 9
+    }
+  ],
+  totalReservas: 20
 };
 
 const pendientesMock = [
@@ -101,6 +128,26 @@ describe('Resumen (Panel de administración)', () => {
     await waitFor(() => {
       expect(reservasService.aprobarReserva).toHaveBeenCalledWith(24);
     });
+  });
+
+  it('renders business analytics and classroom occupancy metrics correctly', async () => {
+    render(
+      <MemoryRouter>
+        <Resumen />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: /Métricas de gestión y ocupación mensual/i })
+    ).toBeInTheDocument();
+
+    const seccionMetricas = screen.getByRole('region', {
+      name: /Métricas de gestión y ocupación mensual/i
+    });
+    expect(within(seccionMetricas).getByText('Aula 101')).toBeInTheDocument();
+    expect(within(seccionMetricas).getByRole('progressbar')).toHaveAttribute('value', '45');
+    expect(within(seccionMetricas).getByText(/18.5 hs reservadas/i)).toBeInTheDocument();
+    expect(screen.getByText(/\(70%\)/i)).toBeInTheDocument();
   });
 });
 
