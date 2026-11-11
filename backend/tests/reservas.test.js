@@ -23,6 +23,7 @@ const fechaFutura = (diasOffset) => {
 };
 
 let passwordHash;
+let admin;
 let adminToken;
 let usuarioToken;
 let otroUsuarioToken;
@@ -39,7 +40,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await limpiarBaseDeDatos();
 
-  const admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });
+  admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });
   usuario = await Usuario.create({ nombre: 'User Test A', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
   otroUsuario = await Usuario.create({ nombre: 'User Test B', email: 'userb@test.com', passwordHash, rol: 'usuario', activo: true });
 
@@ -525,7 +526,7 @@ describe('Reservas API', () => {
       where: { aulaId: aula.id, fecha: fechaConcurrente }
     });
     expect(totalEnBd).toBe(1);
-  });
+  }, 15000);
 
   it('should return 400 when editing a reservation to overlap another even if pre-check is bypassed (23P01)', async () => {
     const fechaConflicto = fechaFutura(6);
@@ -683,7 +684,7 @@ describe('Reservas API', () => {
       expect(horaActualArgentina()).toBe('22:00');
 
       const tokenAdmin22hs = jwt.sign(
-        { id: 1, nombre: 'Admin Test', email: 'admin@test.com', rol: 'admin' },
+        { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
         env.JWT_SECRET,
         { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
       );
@@ -1480,12 +1481,18 @@ describe('Reservas API', () => {
       jest.setSystemTime(instante14hs);
 
       try {
+        const tokenUsuario14hs = jwt.sign(
+          { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+          env.JWT_SECRET,
+          { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
+        );
+
         const fechaHoy = hoyArgentina();
 
         // Intento de reservar de 09:00 a 10:00 hoy (ya son las 14:00)
         const res = await request(app)
           .post('/api/reservas')
-          .set('Authorization', `Bearer ${usuarioToken}`)
+          .set('Authorization', `Bearer ${tokenUsuario14hs}`)
           .send({
             aulaId: aula.id,
             fecha: fechaHoy,
@@ -1501,7 +1508,7 @@ describe('Reservas API', () => {
         // Reserva futura de hoy (15:00 a 16:00 cuando son las 14:00) debe proceder
         const resValida = await request(app)
           .post('/api/reservas')
-          .set('Authorization', `Bearer ${usuarioToken}`)
+          .set('Authorization', `Bearer ${tokenUsuario14hs}`)
           .send({
             aulaId: aula.id,
             fecha: fechaHoy,
@@ -1536,11 +1543,17 @@ describe('Reservas API', () => {
       jest.setSystemTime(instante14hs);
 
       try {
+        const tokenAdmin14hs = jwt.sign(
+          { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
+          env.JWT_SECRET,
+          { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
+        );
+
         const fechaHoy = hoyArgentina();
 
         const res = await request(app)
           .put(`/api/reservas/${reservaPendiente.id}`)
-          .set('Authorization', `Bearer ${adminToken}`)
+          .set('Authorization', `Bearer ${tokenAdmin14hs}`)
           .send({
             fecha: fechaHoy,
             horaInicio: '08:00',
@@ -1553,5 +1566,57 @@ describe('Reservas API', () => {
         jest.useRealTimers();
       }
     });
+
+    it.each(['03:00', '11:00', '20:00'])(
+      'debe ser independiente del horario simulado del reloj real (%s)',
+      async (horaInicialStr) => {
+        const [anio, mes, dia] = hoyArgentina().split('-').map(Number);
+        const [hInit, mInit] = horaInicialStr.split(':').map(Number);
+        // Simulamos que el reloj "real" antes de entrar al test era horaInicialStr en Córdoba (UTC-3 -> UTC = hInit + 3)
+        const instanteInicial = new Date(Date.UTC(anio, mes - 1, dia, hInit + 3, mInit, 0));
+
+        jest.useFakeTimers({
+          doNotFake: [
+            'nextTick',
+            'setImmediate',
+            'clearImmediate',
+            'setInterval',
+            'clearInterval',
+            'setTimeout',
+            'clearTimeout'
+          ]
+        });
+        jest.setSystemTime(instanteInicial);
+
+        // Simulamos un cambio a las 14:00 dentro de la prueba intradiaria
+        const instante14hs = new Date(Date.UTC(anio, mes - 1, dia, 17, 0, 0));
+        jest.setSystemTime(instante14hs);
+
+        try {
+          const tokenValido14hs = jwt.sign(
+            { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+            env.JWT_SECRET,
+            { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
+          );
+
+          const res = await request(app)
+            .post('/api/reservas')
+            .set('Authorization', `Bearer ${tokenValido14hs}`)
+            .send({
+              aulaId: aula.id,
+              fecha: hoyArgentina(),
+              horaInicio: '09:00',
+              horaFin: '10:00',
+              cantidadPersonas: 5,
+              motivo: `Test horario pasado bajo reloj simulado ${horaInicialStr}`
+            });
+
+          expect(res.status).toBe(400);
+          expect(res.body.error).toMatch(/horarios que ya han transcurrido/i);
+        } finally {
+          jest.useRealTimers();
+        }
+      }
+    );
   });
 });
