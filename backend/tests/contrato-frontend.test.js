@@ -347,4 +347,67 @@ describe('Contrato Frontend-Backend: Replicación exacta de peticiones del clien
       expect(Array.isArray(res.body)).toBe(true);
     });
   });
+
+  describe('7. ABM de Aulas para Administradores (Aulas.jsx / aula.service.js)', () => {
+    it('GET /api/aulas?incluirInactivas=true responde 200 con todas las aulas para admin', async () => {
+      await Aula.create({
+        nombre: 'Aula de Prueba Inactiva',
+        ubicacion: 'Subsuelo',
+        capacidad: 15,
+        activa: false
+      });
+
+      const res = await request(app)
+        .get('/api/aulas?incluirInactivas=true')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.some((a) => a.activa === false)).toBe(true);
+    });
+
+    it('POST, PUT, PATCH desactivar y reactivar siguen el contrato del servicio frontend', async () => {
+      // 1. POST
+      const resPost = await request(app)
+        .post('/api/aulas')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nombre: 'Laboratorio de Software Libre',
+          ubicacion: 'Pabellón Informática - Piso 1',
+          capacidad: 35,
+          recursos: 'PCs Linux, Proyector'
+        });
+      expect(resPost.status).toBe(201);
+      const nuevaId = resPost.body.id;
+
+      // 2. PUT
+      const resPut = await request(app)
+        .put(`/api/aulas/${nuevaId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          capacidad: 40,
+          recursos: 'PCs Linux, Proyector, Pizarra'
+        });
+      expect(resPut.status).toBe(200);
+      expect(resPut.body.capacidad).toBe(40);
+
+      // 3. PATCH desactivar
+      const resDesact = await request(app)
+        .patch(`/api/aulas/${nuevaId}/desactivar`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          cancelarReservasFuturas: false
+        });
+      expect(resDesact.status).toBe(200);
+      expect(resDesact.body.aula.activa).toBe(false);
+
+      // 4. PATCH reactivar
+      const resReact = await request(app)
+        .patch(`/api/aulas/${nuevaId}/reactivar`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
+      expect(resReact.status).toBe(200);
+      expect(resReact.body.activa).toBe(true);
+    });
+  });
 });

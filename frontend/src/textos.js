@@ -18,6 +18,7 @@ export const TEXTOS = {
     reservasUsuario: 'Mis reservas',
     nuevaReserva: 'Nueva reserva',
     panel: 'Panel',
+    aulas: 'Aulas',
     cerrarSesion: 'Cerrar sesión',
     abrirMenu: 'Abrir menú de navegación',
     cerrarMenu: 'Cerrar menú de navegación',
@@ -28,7 +29,9 @@ export const TEXTOS = {
     pendiente: 'Pendiente',
     aprobada: 'Aprobada',
     rechazada: 'Rechazada',
-    cancelada: 'Cancelada'
+    cancelada: 'Cancelada',
+    activa: 'Activa',
+    inactiva: 'Inactiva'
   },
   acciones: {
     reservarAula: 'Reservar aula',
@@ -91,7 +94,37 @@ export const TEXTOS = {
     canceladaExito: 'Reserva cancelada.'
   },
   aulas: {
-    errorCarga: 'No se pudieron cargar las aulas. Intente de nuevo.'
+    titulo: 'Aulas',
+    subtitulo: 'Administración de aulas y disponibilidad de espacios físicos.',
+    nuevaAula: 'Nueva aula',
+    editarAula: 'Editar aula',
+    nombre: 'Nombre',
+    ubicacion: 'Ubicación',
+    capacidad: 'Capacidad',
+    recursos: 'Recursos',
+    estado: 'Estado',
+    acciones: 'Acciones',
+    filtroTodas: 'Todas',
+    filtroActivas: 'Activas',
+    filtroInactivas: 'Inactivas',
+    sinRecursos: 'Sin recursos especificados',
+    desactivar: 'Desactivar',
+    reactivar: 'Reactivar',
+    creadaExito: 'Aula creada.',
+    actualizadaExito: 'Cambios guardados.',
+    desactivadaExito: 'Aula desactivada.',
+    reactivadaExito: 'Aula reactivada.',
+    vacioTitulo: 'Sin aulas para mostrar',
+    vacioDescripcion: 'No se encontraron aulas con el filtro seleccionado.',
+    errorCarga: 'No se pudieron cargar las aulas. Intente de nuevo.',
+    confirmarDesactivarTitulo: 'Desactivar aula',
+    confirmarDesactivarDescripcion: '¿Confirma que desea desactivar esta aula? No estará disponible para nuevas reservas.',
+    avisoReservasFuturas: 'El aula tiene {cantidad} reserva(s) futura(s) activa(s).',
+    cancelarReservasFuturas: 'Cancelar las reservas futuras',
+    motivoBaja: 'Motivo de la baja',
+    motivoRequerido: 'Ingrese un motivo para la baja del aula.',
+    confirmarReactivarTitulo: 'Reactivar aula',
+    confirmarReactivarDescripcion: '¿Confirma que desea reactivar esta aula para recibir nuevas reservas?'
   },
   formulario: {
     tituloNueva: 'Nueva reserva',

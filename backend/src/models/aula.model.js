@@ -13,14 +13,18 @@ const Aula = sequelize.define('Aula', {
     allowNull: false // Obligatorio
   },
   ubicacion: {
-    type: DataTypes.STRING,
-    allowNull: false // Obligatorio
+    type: DataTypes.STRING(120),
+    allowNull: false,
+    validate: {
+      len: [1, 120]
+    }
   },
   capacidad: {
     type: DataTypes.INTEGER,
-    allowNull: false, // Obligatorio
+    allowNull: false,
     validate: {
-      min: 1
+      min: 1,
+      max: 1000
     }
   },
   recursos: {

@@ -43,8 +43,8 @@ export const crearNuevaReserva = async (datosReserva) => {
 
   try {
     return await sequelize.transaction(async (transaction) => {
-      // 2. Buscar el aula en la base de datos
-      const aula = await Aula.findByPk(aulaId, { transaction });
+      // 2. Buscar el aula en la base de datos con bloqueo compartido para evitar carreras con baja
+      const aula = await Aula.findByPk(aulaId, { transaction, lock: transaction.LOCK.SHARE });
       if (!aula) {
         const error = new Error('El aula solicitada no existe');
         error.status = 404;
@@ -409,8 +409,8 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
         throw error;
       }
 
-      // Validar existencia, estado activo y capacidad del aula
-      const aula = await Aula.findByPk(nuevoAulaId, { transaction });
+      // Validar existencia, estado activo y capacidad del aula con bloqueo compartido
+      const aula = await Aula.findByPk(nuevoAulaId, { transaction, lock: transaction.LOCK.SHARE });
       if (!aula) {
         const error = new Error('El aula solicitada no existe');
         error.status = 404;

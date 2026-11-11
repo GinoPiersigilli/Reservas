@@ -9,6 +9,7 @@ import Reservas from '../Reservas.jsx';
 import FormularioReserva from '../FormularioReserva.jsx';
 import DetalleReserva from '../DetalleReserva.jsx';
 import Resumen from '../Resumen.jsx';
+import Aulas from '../Aulas.jsx';
 import NotFound from '../NotFound.jsx';
 import * as AuthContextModule from '../../context/AuthContext.jsx';
 import * as aulaService from '../../services/aula.service.js';
@@ -245,12 +246,27 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
     uResumen();
 
     // 5. NotFound (404)
-    const { container: c404 } = render(
+    const { container: c404, unmount: u404 } = render(
       <MemoryRouter initialEntries={['/ruta-inexistente']}>
         <NotFound />
       </MemoryRouter>
     );
     sinViolacionesAxe(await axe(c404));
+    u404();
+
+    // 6. AppShell + Aulas
+    const { container: cAulas, unmount: uAulas } = render(
+      <MemoryRouter initialEntries={['/aulas']}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/aulas" element={<Aulas />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+    await screen.findByRole('heading', { name: /^Aulas$/i });
+    sinViolacionesAxe(await axe(cAulas));
+    uAulas();
   }, 30000);
 
   it('supports keyboard navigation with arrow keys in GrillaDisponibilidad and focus trap + Escape in ConfirmDialog', async () => {

@@ -9,6 +9,7 @@ import Reservas from './pages/Reservas.jsx';
 import DetalleReserva from './pages/DetalleReserva.jsx';
 import FormularioReserva from './pages/FormularioReserva.jsx';
 import Resumen from './pages/Resumen.jsx';
+import Aulas from './pages/Aulas.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -56,6 +57,14 @@ function App() {
             element={
               <RutaSoloAdmin>
                 <Resumen />
+              </RutaSoloAdmin>
+            }
+          />
+          <Route
+            path="/aulas"
+            element={
+              <RutaSoloAdmin>
+                <Aulas />
               </RutaSoloAdmin>
             }
           />

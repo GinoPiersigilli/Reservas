@@ -40,11 +40,21 @@ export const manejadorErrores = (err, req, res, _next) => {
   }
 
   if (err.name === 'SequelizeUniqueConstraintError' || pgCode === '23505') {
-    const constraint = err.parent?.constraint || err.original?.constraint || '';
+    const constraint = (err.parent?.constraint || err.original?.constraint || '').toLowerCase();
     const esEmail =
       Boolean(err.fields?.email) ||
       constraint.includes('email') ||
       (Array.isArray(err.errors) && err.errors.some((e) => e.path === 'email'));
+
+    const esAulaNombre =
+      constraint.includes('aulas_nombre') ||
+      (Array.isArray(err.errors) && err.errors.some((e) => e.path === 'nombre'));
+
+    if (esAulaNombre) {
+      return res.status(409).json({
+        error: 'Ya existe un aula con ese nombre'
+      });
+    }
 
     return res.status(400).json({
       error: esEmail ? 'El email ya está registrado' : 'Ya existe un registro con esos datos únicos'
@@ -90,7 +100,12 @@ export const manejadorErrores = (err, req, res, _next) => {
     });
   }
 
-  return res.status(statusCode).json({
+  const payload = {
     error: err.message || 'Error en la petición'
-  });
+  };
+  if (err.reservasAfectadas !== undefined) payload.reservasAfectadas = err.reservasAfectadas;
+  if (err.detalle !== undefined) payload.detalle = err.detalle;
+  if (err.capacidadMaximaRequerida !== undefined) payload.capacidadMaximaRequerida = err.capacidadMaximaRequerida;
+
+  return res.status(statusCode).json(payload);
 };

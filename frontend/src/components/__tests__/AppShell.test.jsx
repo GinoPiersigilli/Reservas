@@ -30,6 +30,7 @@ describe('AppShell layout', () => {
     expect(screen.getByRole('link', { name: 'Reservas' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Nueva reserva' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Panel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Aulas' })).not.toBeInTheDocument();
     expect(screen.getByText('David López')).toBeInTheDocument();
     expect(screen.getByText('Usuario')).toBeInTheDocument();
 
@@ -52,6 +53,7 @@ describe('AppShell layout', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Panel' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Aulas' })).toBeInTheDocument();
     expect(screen.getByText('Administrador')).toBeInTheDocument();
   });
 

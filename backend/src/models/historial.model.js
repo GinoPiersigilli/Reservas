@@ -30,7 +30,7 @@ const HistorialReserva = sequelize.define('HistorialReserva', {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      isIn: [['creacion', 'edicion', 'aprobacion', 'rechazo', 'cancelacion']]
+      isIn: [['creacion', 'edicion', 'aprobacion', 'rechazo', 'cancelacion', 'cancelada']]
     }
   },
   fechaHora: {

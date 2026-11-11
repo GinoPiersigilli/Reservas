@@ -22,6 +22,16 @@ const CONFIG_ESTADOS = {
     texto: TEXTOS.estados.cancelada,
     clase: styles.cancelada,
     Icono: Ban
+  },
+  activa: {
+    texto: TEXTOS.estados.activa,
+    clase: styles.aprobada,
+    Icono: CheckCircle2
+  },
+  inactiva: {
+    texto: TEXTOS.estados.inactiva,
+    clase: styles.cancelada,
+    Icono: Ban
   }
 };
 

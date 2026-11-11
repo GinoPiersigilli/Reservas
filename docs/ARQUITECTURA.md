@@ -84,6 +84,8 @@ erDiagram
     AULAS ||--o{ RESERVAS : "aloja"
     RESERVAS ||--o{ HISTORIAL_RESERVAS : "registra ciclo de vida"
     USUARIOS ||--o{ HISTORIAL_RESERVAS : "ejecuta accion"
+    AULAS ||--o{ HISTORIAL_AULAS : "registra ciclo de vida"
+    USUARIOS ||--o{ HISTORIAL_AULAS : "ejecuta accion"
 
     USUARIOS {
         int id PK "Autoincremental"
@@ -99,13 +101,11 @@ erDiagram
 
     AULAS {
         int id PK "Autoincremental"
-        string nombre "Not null"
-        string ubicacion "Not null"
-        int capacidad "Check: capacidad > 0"
+        string nombre "Not null, indice unico lower(nombre)"
+        string ubicacion "Not null, max 120 caracteres"
+        int capacidad "Check: capacidad >= 1 AND capacidad <= 1000"
         string recursos "Opcional"
         boolean activa "Default: true"
-        timestamp createdAt "Marca temporal de creacion"
-        timestamp updatedAt "Marca temporal de modificacion"
     }
 
     RESERVAS {
@@ -126,12 +126,20 @@ erDiagram
         int id PK "Autoincremental"
         int reservaId FK "ON DELETE RESTRICT"
         int usuarioId FK "ON DELETE RESTRICT"
-        string accion "Enum: 'creacion' | 'edicion' | 'aprobacion' | 'rechazo' | 'cancelacion'"
+        string accion "Enum: 'creacion' | 'edicion' | 'aprobacion' | 'rechazo' | 'cancelacion' | 'cancelada'"
         timestamptz fechaHora "Default: NOW() con zona horaria"
         jsonb valorAnterior "Snapshot previo del estado"
         jsonb valorNuevo "Snapshot posterior del cambio"
-        timestamp createdAt "Marca temporal de creacion"
-        timestamp updatedAt "Marca temporal de modificacion"
+    }
+
+    HISTORIAL_AULAS {
+        int id PK "Autoincremental"
+        int aulaId FK "ON DELETE RESTRICT"
+        int usuarioId FK "ON DELETE RESTRICT"
+        string accion "Enum: 'creacion' | 'edicion' | 'desactivacion' | 'reactivacion'"
+        timestamptz fechaHora "Default: NOW() con zona horaria"
+        jsonb valorAnterior "Snapshot previo del estado"
+        jsonb valorNuevo "Snapshot posterior del cambio"
     }
 ```
 
@@ -141,7 +149,11 @@ erDiagram
   - `nombre`, `email` (único), `passwordHash` (nulo para usuarios SSO Clerk), `clerkId` (único, nulo para locales), `rol` (`'usuario'` o `'admin'`), `activo` (booleano).
 - **`aulas`:** Aulas disponibles para asignación.
   - `id`: Entero, clave primaria.
-  - `nombre`, `ubicacion`, `capacidad` (check `> 0`), `recursos`, `activa` (booleano).
+  - `nombre`: Cadena de texto obligatoria con índice único insensible a mayúsculas (`LOWER(nombre)`).
+  - `ubicacion`: Cadena de texto obligatoria (máx. 120 caracteres).
+  - `capacidad`: Entero (check `capacidad >= 1 AND capacidad <= 1000`).
+  - `recursos`: Cadena de texto opcional.
+  - `activa`: Booleano (default: `true`).
 - **`reservas`:** Solicitudes y reservas asignadas.
   - `id`: Entero, clave primaria.
   - `aulaId`: FK hacia `aulas.id` (`ON DELETE RESTRICT`).
@@ -151,13 +163,21 @@ erDiagram
   - `cantidadPersonas`: Entero (check `cantidadPersonas > 0`).
   - `motivo`: Cadena de texto (máx. 255 caracteres).
   - `estado`: Enum textual (`'pendiente'`, `'aprobada'`, `'rechazada'`, `'cancelada'`).
-- **`historial_reservas`:** Registro inmutable de trazabilidad y auditoría cronológica.
+- **`historial_reservas`:** Registro inmutable de trazabilidad y auditoría cronológica de reservas.
   - `id`: Entero, clave primaria.
   - `reservaId`: FK hacia `reservas.id` (`ON DELETE RESTRICT`).
   - `usuarioId`: FK hacia `usuarios.id` (`ON DELETE RESTRICT`).
-  - `accion`: Enum textual (`'creacion'`, `'edicion'`, `'aprobacion'`, `'rechazo'`, `'cancelacion'`).
+  - `accion`: Enum textual (`'creacion'`, `'edicion'`, `'aprobacion'`, `'rechazo'`, `'cancelacion'`, `'cancelada'`).
   - `fechaHora`: Marca temporal con zona horaria (`TIMESTAMPTZ`).
   - `valorAnterior`, `valorNuevo`: Campos `JSONB` que preservan el estado del cambio.
+- **`historial_aulas`:** Registro append-only inmutable de trazabilidad del ciclo de vida de aulas.
+  - `id`: Entero, clave primaria autoincremental.
+  - `aulaId`: FK hacia `aulas.id` (`ON DELETE RESTRICT`).
+  - `usuarioId`: FK hacia `usuarios.id` (`ON DELETE RESTRICT`).
+  - `accion`: Enum textual (`'creacion'`, `'edicion'`, `'desactivacion'`, `'reactivacion'`).
+  - `fechaHora`: Marca temporal con zona horaria (`TIMESTAMPTZ`).
+  - `valorAnterior`, `valorNuevo`: Snapshots `JSONB` antes y después de cada cambio.
+  - **Inmutabilidad por Disparador:** Protegida mediante trigger PostgreSQL `trg_historial_aulas_inmutable` que rechaza operaciones `UPDATE` y `DELETE`.
 
 ### 3.3. Restricción de Exclusión contra la Doble Reserva (`reservas_sin_solapamiento`)
 Para garantizar la inmunidad ante condiciones de carrera (race conditions) en reservas concurrentes, se utiliza la extensión `btree_gist` de PostgreSQL:
@@ -182,8 +202,12 @@ Todos los endpoints bajo `/api/reservas` y `/api/aulas/:id/disponibilidad` requi
 |---|---|---|---|
 | `GET` | `/api/health` | Público | Verificación de estado del servicio y conexión a PostgreSQL |
 | `POST` | `/api/auth/login` | Público | Inicio de sesión local con tasa limitada (rate limit) |
-| `GET` | `/api/aulas` | Público | Lista de aulas activas ordenadas alfabéticamente |
-| `GET` | `/api/aulas/:id/disponibilidad` | Usuario, Admin | Franjas horarias ocupadas para una fecha determinada |
+| `GET` | `/api/aulas` | Usuario, Admin | Lista de aulas activas (para admin admite `?incluirInactivas=true` para auditoría y gestión) |
+| `POST` | `/api/aulas` | Solo Admin | Creación de aula con nombre único (case-insensitive), capacidad 1-1000 y auditoría |
+| `PUT` | `/api/aulas/:id` | Solo Admin | Edición integral de aula (valida no reducir capacidad bajo reservas futuras activas -> 409) |
+| `PATCH` | `/api/aulas/:id/desactivar` | Solo Admin | Baja lógica de aula; con reservas futuras exige confirmación y las cancela atómicamente |
+| `PATCH` | `/api/aulas/:id/reactivar` | Solo Admin | Reactivación de aula inactiva con registro de auditoría |
+| `GET` | `/api/aulas/:id/disponibilidad` | Usuario, Admin | Franjas horarias ocupadas para una fecha determinada (rechaza 400 si aula inactiva) |
 | `GET` | `/api/reservas` | Usuario, Admin | Listado paginado y filtrable (usuario ve solo suyas; admin ve todas con solicitante) |
 | `POST` | `/api/reservas` | Usuario, Admin | Creación de una nueva solicitud de reserva en estado pendiente |
 | `GET` | `/api/reservas/:id` | Propietario, Admin | Detalle completo de una reserva |
@@ -258,6 +282,31 @@ stateDiagram-v2
 2. **Invariantes Transaccionales y Motor Relacional:**
    - **Gobernanza y Trazabilidad Inmutable:** Cada transición invoca obligatoriamente `registrarAccion(...)` dentro del mismo bloque `sequelize.transaction`. La operación escribe en `historial_reservas` los snapshots `JSONB` de `valorAnterior` y `valorNuevo`. Si la auditoría fallase por cualquier motivo de persistencia, toda la transacción hace rollback atómico.
    - **Liberación Inmediata de Franjas (Soft Release):** Debido al predicado `WHERE (estado IN ('pendiente', 'aprobada'))` en la restricción GiST `reservas_sin_solapamiento`, el paso atómico a `cancelada` o `rechazada` desactiva de inmediato la restricción de exclusión para ese intervalo de tiempo y aula, habilitando al instante a otros solicitantes sin requerir purgas físicas de registros.
+
+### 5.4. Ciclo de Vida de Aulas, Concurrencia y Política de Desactivación
+
+1. **Aislamiento y Concurrencia Relacional (FOR SHARE vs FOR UPDATE):**
+   - Al crear (`POST /api/reservas`) o editar (`PUT /api/reservas/:id`) una reserva, la consulta de validación del aula adquiere un bloqueo compartido explícito (`SELECT ... FOR SHARE`, parametrizado vía `lock: transaction.LOCK.SHARE` en Sequelize).
+   - Las operaciones de modificación o baja sobre aulas (`PUT /api/aulas/:id`, `PATCH /api/aulas/:id/desactivar`, `PATCH /api/aulas/:id/reactivar`) adquieren un bloqueo exclusivo sobre la fila (`SELECT ... FOR UPDATE`).
+   - Esta sincronización transaccional garantiza inmunidad ante condiciones de carrera (race conditions): ninguna reserva activa puede quedar huérfana en un aula dada de baja simultáneamente.
+
+2. **Política de Desactivación Atómica y Cancelación en Cascada:**
+   - Se prohíbe la eliminación física (`DELETE`) de aulas en base de datos para preservar la integridad de auditoría histórica (`ON DELETE RESTRICT`).
+   - Si un aula registra reservas futuras activas (`fecha >= hoy` en `America/Argentina/Cordoba`, con estado `pendiente` o `aprobada`):
+     - La solicitud de desactivación sin confirmación responde inmediatamente `409 Conflict`, informando la cantidad exacta de reservas afectadas (`reservasAfectadas`).
+     - Al confirmar explícitamente (`{ "cancelarReservasFuturas": true, "motivo": "..." }`), en una **única transacción atómica**:
+       - Se establece `aula.activa = false`.
+       - Se cancelan todas las reservas futuras afectadas (`estado = 'cancelada'`).
+       - Se escribe el historial individual en `historial_reservas` con acción `'cancelada'`, motivo ingresado y referencia a la baja del aula.
+       - Se registra el evento en `historial_aulas` (`accion = 'desactivacion'`).
+     - Las reservas pasadas permanecen intactas en su estado original.
+
+3. **Invariante de Capacidad vs. Reservas Futuras:**
+   - La reducción de capacidad de un aula está restringida por sus compromisos vigentes. Si la nueva capacidad solicitada es menor a la mayor cantidad de personas de una reserva futura pendiente o aprobada, la API responde `409 Conflict` detallando la capacidad máxima requerida y el número de reservas afectadas.
+
+4. **Gobernanza Inmutable del Historial de Aulas (`historial_aulas`):**
+   - La tabla `historial_aulas` cuenta con claves foráneas `RESTRICT` hacia `aulas` y `usuarios`.
+   - Se encuentra blindada a nivel de motor PostgreSQL mediante la función y disparador `trg_historial_aulas_inmutable`, el cual lanza una excepción y aborta cualquier instrucción `UPDATE` o `DELETE`, garantizando la condición de almacenamiento exclusivamente incremental (append-only).
 
 ---
 
