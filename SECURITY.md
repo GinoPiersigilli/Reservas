@@ -28,6 +28,7 @@ Para reportar un fallo de seguridad de forma privada y coordinada, utilizá uno 
 
 2. **Correo Electrónico de Contacto:**
    - En caso de no contar con cuenta de GitHub, enviá un correo electrónico al mantenedor responsable del repositorio indicando en el asunto: `[SEGURIDAD] Reporte de Vulnerabilidad en Sistema de Reservas`.
+   - ginobpiersigilli@gmail.com
 
 ---
 
