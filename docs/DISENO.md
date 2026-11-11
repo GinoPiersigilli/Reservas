@@ -48,7 +48,7 @@ Resuelve el problema central de "reservar a ciegas":
 
 ---
 
-## 6. Modo Oscuro (Fase 7)
+## 6. Modo Oscuro
 - **Paleta oscura accesible:** Redefinición integral en `:root[data-theme="dark"]` (`--fondo #0F141A`, `--superficie #171E27`, `--tinta #E7ECF2`, `--borde-control #6B7A8E`). Todos los contrastes cumplen WCAG 2.1 AA (e.g. texto sobre fondo 15.6:1, bordes de control 3.8:1).
 - **Sin estilos ni scripts en línea (CSP estricta):** Script estático `/tema-init.js` en el `<head>` servido desde `'self'` para evitar parpadeos (FOUC).
 - **Preferencia y persistencia:** Conmutador accesible en `AppShell` (`Sun`/`Moon` con `aria-pressed`), sincronizado con `prefers-color-scheme` y persistido en `localStorage` mediante el hook `useTema`.
