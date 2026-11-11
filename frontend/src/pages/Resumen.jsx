@@ -154,7 +154,7 @@ const Resumen = () => {
   const mapaPorEstado = new Map(
     (resumen.porEstado || []).map((item) => [item.estado, Number(item.total) || 0])
   );
-  const totalReservas = Array.from(mapaPorEstado.values()).reduce(
+  const totalReservas = resumen.totalReservas ?? Array.from(mapaPorEstado.values()).reduce(
     (acc, actual) => acc + actual,
     0
   );
@@ -162,6 +162,16 @@ const Resumen = () => {
     colaPendientes.length > 0
       ? colaPendientes.length
       : mapaPorEstado.get('pendiente') || 0;
+
+  const distribucionEstados = Array.isArray(resumen.distribucionEstados) && resumen.distribucionEstados.length > 0
+    ? resumen.distribucionEstados
+    : ORDEN_ESTADOS.map((estadoKey) => {
+        const cantidad = mapaPorEstado.get(estadoKey) || 0;
+        const porcentaje = totalReservas > 0 ? Math.round((cantidad / totalReservas) * 100) : 0;
+        return { estado: estadoKey, cantidad, porcentaje };
+      });
+
+  const tasaOcupacion = Array.isArray(resumen.tasaOcupacionAulas) ? resumen.tasaOcupacionAulas : [];
 
   const obtenerNombreAula = (item) =>
     item.aula?.nombre ||
@@ -259,7 +269,7 @@ const Resumen = () => {
       titulo: 'Reservas',
       align: 'right',
       render: (a) => (
-        <span className={styles.valorCompacto}>{a.total}</span>
+        <span className={styles.valorCompacto}>{a.total ?? a.totalReservas}</span>
       )
     }
   ];
@@ -351,20 +361,57 @@ const Resumen = () => {
         )}
       </section>
 
-      {/* 3. Datos compactos: Totales por estado y Aulas más reservadas */}
+      {/* 3. Métricas de gestión y analítica operativa */}
+      {tasaOcupacion.length > 0 ? (
+        <section className={styles.seccion} aria-labelledby="titulo-analitica-ocupacion">
+          <div className={styles.cabeceraSeccion}>
+            <h2 id="titulo-analitica-ocupacion" className={styles.tituloSeccion}>
+              Métricas de gestión y ocupación mensual
+            </h2>
+            <span className={styles.contador}>
+              {totalReservas} reservas analizadas
+            </span>
+          </div>
+          <div className={styles.grillaMetricas}>
+            {tasaOcupacion.map((item) => (
+              <article key={item.aulaId} className={styles.tarjetaMetrica}>
+                <div className={styles.cabeceraTarjetaMetrica}>
+                  <span className={styles.nombreAula}>{item.nombre}</span>
+                  <span className={styles.tasaValor}>{item.tasaOcupacion}%</span>
+                </div>
+                <progress
+                  className={styles.progresoOcupacion}
+                  value={item.tasaOcupacion}
+                  max="100"
+                  aria-label={`Tasa de ocupación de ${item.nombre}: ${item.tasaOcupacion}%`}
+                >
+                  {item.tasaOcupacion}%
+                </progress>
+                <div className={styles.pieTarjetaMetrica}>
+                  <span>{item.horasOcupadas} hs reservadas</span>
+                  {item.capacidad ? <span>Cap. {item.capacidad} pers.</span> : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* 4. Datos compactos: Totales por estado y Aulas más reservadas */}
       <div className={styles.grillaSecundaria}>
         <section className={styles.bloqueCompacto} aria-labelledby="titulo-totales-estado">
           <h2 id="titulo-totales-estado" className={styles.tituloSeccion}>
             {TEXTOS.panel.totalesEstado}
           </h2>
           <dl className={styles.listaCompacta}>
-            {ORDEN_ESTADOS.map((estadoKey) => (
-              <div key={estadoKey} className={styles.filaCompacta}>
+            {distribucionEstados.map((item) => (
+              <div key={item.estado} className={styles.filaCompacta}>
                 <dt className={styles.etiquetaCompacta}>
-                  {ETIQUETAS_TOTAL_ESTADO[estadoKey]}
+                  {ETIQUETAS_TOTAL_ESTADO[item.estado] || item.estado}
                 </dt>
                 <dd className={styles.valorCompacto}>
-                  {mapaPorEstado.get(estadoKey) || 0}
+                  {item.cantidad}
+                  <span className={styles.porcentajeTexto}>({item.porcentaje}%)</span>
                 </dd>
               </div>
             ))}
@@ -381,7 +428,8 @@ const Resumen = () => {
           <h2 id="titulo-aulas-frecuentes" className={styles.tituloSeccion}>
             {TEXTOS.panel.aulasMasReservadas}
           </h2>
-          {!resumen.porAula || resumen.porAula.length === 0 ? (
+          {(!resumen.aulasMayorDemanda || resumen.aulasMayorDemanda.length === 0) &&
+          (!resumen.porAula || resumen.porAula.length === 0) ? (
             <p className={styles.lineaVacia}>
               No hay registros de uso de aulas disponibles.
             </p>
@@ -389,7 +437,11 @@ const Resumen = () => {
             <Table
               ariaLabel="Aulas más reservadas"
               columnas={columnasPorAula}
-              datos={resumen.porAula}
+              datos={
+                resumen.aulasMayorDemanda && resumen.aulasMayorDemanda.length > 0
+                  ? resumen.aulasMayorDemanda
+                  : resumen.porAula
+              }
               claveFila="aulaId"
             />
           )}

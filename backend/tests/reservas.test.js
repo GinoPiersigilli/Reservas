@@ -8,7 +8,7 @@ import Usuario from '../src/models/usuario.model.js';
 import Aula from '../src/models/aula.model.js';
 import Reserva from '../src/models/reserva.model.js';
 import HistorialReserva from '../src/models/historial.model.js';
-import { hoyArgentina, horaActualArgentina } from '../src/utils/fecha.js';
+import { hoyArgentina, horaActualArgentina, esHorarioPasado } from '../src/utils/fecha.js';
 import { manejadorErrores } from '../src/middleware/error.middleware.js';
 import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
@@ -1437,6 +1437,121 @@ describe('Reservas API', () => {
       expect(resDisp.text).not.toContain('email');
       expect(resDisp.text).not.toContain(usuario.nombre);
       expect(resDisp.text).not.toContain(usuario.email);
+    });
+  });
+
+  describe('Fase 9 — Validación de Horarios Intradiarios Pasados (esHorarioPasado)', () => {
+    it('debe rechazar correctamente fechas pasadas y horarios ya transcurridos del día de hoy en la función de utilidad', () => {
+      // 14:30 en Córdoba (UTC-3) -> 17:30 UTC
+      const instante1430 = new Date('2026-11-10T17:30:00.000Z');
+      const fechaHoy = hoyArgentina(instante1430);
+
+      // Fecha pasada siempre es horario pasado
+      expect(esHorarioPasado('2026-11-09', '10:00', instante1430)).toBe(true);
+
+      // Mismo día pero horario anterior (10:00 vs 14:30)
+      expect(esHorarioPasado(fechaHoy, '10:00', instante1430)).toBe(true);
+      expect(esHorarioPasado(fechaHoy, '14:30', instante1430)).toBe(true);
+
+      // Mismo día pero horario posterior (15:00 vs 14:30)
+      expect(esHorarioPasado(fechaHoy, '15:00', instante1430)).toBe(false);
+      expect(esHorarioPasado(fechaHoy, '18:00', instante1430)).toBe(false);
+
+      // Fecha futura nunca es horario pasado
+      expect(esHorarioPasado('2026-11-11', '08:00', instante1430)).toBe(false);
+    });
+
+    it('debe rechazar con 400 una reserva para hoy en un horario que ya transcurrió en POST /api/reservas', async () => {
+      const [anio, mes, dia] = hoyArgentina().split('-').map(Number);
+      // 14:00 en UTC-3 = 17:00 UTC
+      const instante14hs = new Date(Date.UTC(anio, mes - 1, dia, 17, 0, 0));
+
+      jest.useFakeTimers({
+        doNotFake: [
+          'nextTick',
+          'setImmediate',
+          'clearImmediate',
+          'setInterval',
+          'clearInterval',
+          'setTimeout',
+          'clearTimeout'
+        ]
+      });
+      jest.setSystemTime(instante14hs);
+
+      try {
+        const fechaHoy = hoyArgentina();
+
+        // Intento de reservar de 09:00 a 10:00 hoy (ya son las 14:00)
+        const res = await request(app)
+          .post('/api/reservas')
+          .set('Authorization', `Bearer ${usuarioToken}`)
+          .send({
+            aulaId: aula.id,
+            fecha: fechaHoy,
+            horaInicio: '09:00',
+            horaFin: '10:00',
+            cantidadPersonas: 5,
+            motivo: 'Intento de reserva en horario pasado de hoy'
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/horarios que ya han transcurrido/i);
+
+        // Reserva futura de hoy (15:00 a 16:00 cuando son las 14:00) debe proceder
+        const resValida = await request(app)
+          .post('/api/reservas')
+          .set('Authorization', `Bearer ${usuarioToken}`)
+          .send({
+            aulaId: aula.id,
+            fecha: fechaHoy,
+            horaInicio: '15:00',
+            horaFin: '16:00',
+            cantidadPersonas: 5,
+            motivo: 'Reserva válida para la tarde de hoy'
+          });
+
+        expect(resValida.status).toBe(201);
+        expect(resValida.body.estado).toBe('pendiente');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('debe rechazar con 400 la edición a un horario pasado de hoy en PUT /api/reservas/:id', async () => {
+      const [anio, mes, dia] = hoyArgentina().split('-').map(Number);
+      const instante14hs = new Date(Date.UTC(anio, mes - 1, dia, 17, 0, 0));
+
+      jest.useFakeTimers({
+        doNotFake: [
+          'nextTick',
+          'setImmediate',
+          'clearImmediate',
+          'setInterval',
+          'clearInterval',
+          'setTimeout',
+          'clearTimeout'
+        ]
+      });
+      jest.setSystemTime(instante14hs);
+
+      try {
+        const fechaHoy = hoyArgentina();
+
+        const res = await request(app)
+          .put(`/api/reservas/${reservaPendiente.id}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            fecha: fechaHoy,
+            horaInicio: '08:00',
+            horaFin: '09:00'
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/horarios que ya han transcurrido/i);
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });

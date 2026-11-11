@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { esFechaValida, esFechaPasada } from '../utils/fecha.js';
+import { esFechaValida, esFechaPasada, esHorarioPasado } from '../utils/fecha.js';
 
 export const validar = (schema, target = 'body') => (req, res, next) => {
   if (schema && (schema.params || schema.query || schema.body)) {
@@ -163,6 +163,20 @@ export const crearReservaBodySchema = z.object({
     });
   }
 
+  if (
+    esFechaValida(data.fecha) &&
+    !esFechaPasada(data.fecha) &&
+    typeof data.horaInicio === 'string' &&
+    HORA_REGEX.test(data.horaInicio) &&
+    esHorarioPasado(data.fecha, data.horaInicio)
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['horaInicio'],
+      message: 'No se pueden realizar reservas en horarios que ya han transcurrido'
+    });
+  }
+
   if (!esEntero(data.cantidadPersonas) || Number(data.cantidadPersonas) <= 0) {
     ctx.addIssue({
       code: 'custom',
@@ -243,6 +257,22 @@ export const editarReservaBodySchema = z.object({
         message: 'La hora de fin debe tener el formato HH:MM'
       });
     }
+  }
+
+  if (
+    data.fecha !== undefined &&
+    data.horaInicio !== undefined &&
+    esFechaValida(data.fecha) &&
+    !esFechaPasada(data.fecha) &&
+    typeof data.horaInicio === 'string' &&
+    HORA_REGEX.test(data.horaInicio) &&
+    esHorarioPasado(data.fecha, data.horaInicio)
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['horaInicio'],
+      message: 'No se pueden realizar reservas en horarios que ya han transcurrido'
+    });
   }
 
   if (data.cantidadPersonas !== undefined) {

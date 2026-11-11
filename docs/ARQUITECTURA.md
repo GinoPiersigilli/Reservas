@@ -74,7 +74,68 @@ reservas/
 
 El esquema de base de datos se administra mediante migraciones versionadas con Sequelize CLI.
 
-### 3.1. Entidades Principales
+### 3.1. Diagrama Entidad-Relación (DER)
+
+El siguiente diagrama formaliza el modelo relacional del sistema en tercera forma normal (3FN), detallando claves primarias, foráneas, tipos y restricciones de integridad:
+
+```mermaid
+erDiagram
+    USUARIOS ||--o{ RESERVAS : "solicita / posee"
+    AULAS ||--o{ RESERVAS : "aloja"
+    RESERVAS ||--o{ HISTORIAL_RESERVAS : "registra ciclo de vida"
+    USUARIOS ||--o{ HISTORIAL_RESERVAS : "ejecuta accion"
+
+    USUARIOS {
+        int id PK "Autoincremental"
+        string nombre "Not null"
+        string email UK "Not null, unico"
+        string passwordHash "Nulo para usuarios SSO Clerk"
+        string clerkId UK "Nulo para usuarios locales, unico"
+        string rol "Enum: 'usuario' | 'admin'"
+        boolean activo "Default: true"
+        timestamp createdAt "Marca temporal de creacion"
+        timestamp updatedAt "Marca temporal de modificacion"
+    }
+
+    AULAS {
+        int id PK "Autoincremental"
+        string nombre "Not null"
+        string ubicacion "Not null"
+        int capacidad "Check: capacidad > 0"
+        string recursos "Opcional"
+        boolean activa "Default: true"
+        timestamp createdAt "Marca temporal de creacion"
+        timestamp updatedAt "Marca temporal de modificacion"
+    }
+
+    RESERVAS {
+        int id PK "Autoincremental"
+        int aulaId FK "ON DELETE RESTRICT"
+        int usuarioId FK "ON DELETE RESTRICT"
+        date fecha "Not null, formato YYYY-MM-DD"
+        time horaInicio "Not null, Check horaInicio < horaFin"
+        time horaFin "Not null"
+        int cantidadPersonas "Check: cantidadPersonas > 0"
+        string motivo "Max 255 caracteres"
+        string estado "Enum: 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada'"
+        timestamp createdAt "Marca temporal de creacion"
+        timestamp updatedAt "Marca temporal de modificacion"
+    }
+
+    HISTORIAL_RESERVAS {
+        int id PK "Autoincremental"
+        int reservaId FK "ON DELETE RESTRICT"
+        int usuarioId FK "ON DELETE RESTRICT"
+        string accion "Enum: 'creacion' | 'edicion' | 'aprobacion' | 'rechazo' | 'cancelacion'"
+        timestamptz fechaHora "Default: NOW() con zona horaria"
+        jsonb valorAnterior "Snapshot previo del estado"
+        jsonb valorNuevo "Snapshot posterior del cambio"
+        timestamp createdAt "Marca temporal de creacion"
+        timestamp updatedAt "Marca temporal de modificacion"
+    }
+```
+
+### 3.2. Entidades Principales y Restricciones
 - **`usuarios`:** Gestiona cuentas locales y vinculación JIT con Clerk.
   - `id`: Entero, clave primaria autoincremental.
   - `nombre`, `email` (único), `passwordHash` (nulo para usuarios SSO Clerk), `clerkId` (único, nulo para locales), `rol` (`'usuario'` o `'admin'`), `activo` (booleano).
@@ -98,7 +159,7 @@ El esquema de base de datos se administra mediante migraciones versionadas con S
   - `fechaHora`: Marca temporal con zona horaria (`TIMESTAMPTZ`).
   - `valorAnterior`, `valorNuevo`: Campos `JSONB` que preservan el estado del cambio.
 
-### 3.2. Restricción de Exclusión contra la Doble Reserva (`reservas_sin_solapamiento`)
+### 3.3. Restricción de Exclusión contra la Doble Reserva (`reservas_sin_solapamiento`)
 Para garantizar la inmunidad ante condiciones de carrera (race conditions) en reservas concurrentes, se utiliza la extensión `btree_gist` de PostgreSQL:
 
 ```sql
@@ -137,14 +198,66 @@ Todos los endpoints bajo `/api/reservas` y `/api/aulas/:id/disponibilidad` requi
 
 ## 5. Reglas de Negocio e Integridad Transaccional
 
+### 5.1. Reglas de Negocio Principales
+
 1. **Horario Operativo Institucional:** Las reservas deben estar comprendidas estrictamente entre las `08:00` y las `22:00`.
-2. **Control Temporal:** No se admiten reservas con fechas pasadas respecto al huso horario oficial (`America/Argentina/Cordoba`).
+2. **Control Temporal e Intradiario:** No se admiten reservas en fechas pasadas ni en horarios ya transcurridos del día corriente, calculados bajo el huso horario oficial `America/Argentina/Cordoba`.
 3. **Capacidad y Estado del Aula:** La cantidad de personas no puede superar la capacidad máxima del aula y el aula debe estar en estado activo (`activa: true`).
 4. **Ciclo de Vida de Estados:**
    - De `pendiente` se puede transicionar a `aprobada` (admin), `rechazada` (admin) o `cancelada` (propietario/admin).
-   - De `aprobada` solo se puede transicionar a `cancelada`.
-   - Las reservas en estado `rechazada` o `cancelada` son terminales y no pueden modificarse.
+   - De `aprobada` solo se puede transicionar a `cancelada` (propietario/admin).
+   - Las reservas en estado `rechazada` o `cancelada` son terminales y no pueden modificarse ni reactivarse.
 5. **Atomicidad con Transacciones:** Toda modificación de estado o creación de reserva se realiza dentro de transacciones de base de datos (`sequelize.transaction`), asegurando que la escritura en la tabla `reservas` y su registro en `historial_reservas` se completen de manera atómica, aplicando rollback inmediato ante cualquier inconsistencia.
+
+### 5.2. Diagrama de Máquina de Estados (State Machine)
+
+El siguiente diagrama formaliza el ciclo de vida finito de una reserva, indicando roles autorizados y eventos detonantes:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pendiente: Solicitar reserva [Docente / Alumno / Admin]
+    
+    Pendiente --> Aprobada: Aprobar [Solo Admin]
+    Pendiente --> Rechazada: Rechazar [Solo Admin]
+    Pendiente --> Cancelada: Cancelar [Propietario / Admin]
+    
+    Aprobada --> Cancelada: Cancelar [Propietario / Admin]
+    
+    Rechazada --> [*]: Estado Terminal (libera franja horaria)
+    Cancelada --> [*]: Estado Terminal (libera franja horaria)
+
+    note right of Pendiente
+      Ocupa franja en PostgreSQL:
+      EXCLUDE USING gist
+      WHERE (estado IN ('pendiente', 'aprobada'))
+    end note
+
+    note right of Aprobada
+      Ocupa franja confirmada en PostgreSQL.
+      Solo transiciona a Cancelada.
+    end note
+
+    note left of Rechazada
+      Transición terminal irreversible.
+      No admite reactivación ni edición.
+    end note
+
+    note left of Cancelada
+      Transición terminal irreversible.
+      Libera inmediatamente la restricción GiST.
+    end note
+```
+
+### 5.3. Transiciones Prohibidas e Invariantes Transaccionales
+
+1. **Transiciones Prohibidas:**
+   - **`rechazada` o `cancelada` $\rightarrow$ cualquier estado:** Los estados terminales son inmutables. No se permite reabrir, editar ni reactivar una solicitud concluida. Para volver a reservar, se debe generar un nuevo requerimiento.
+   - **`aprobada` $\rightarrow$ `pendiente` o `rechazada`:** Una reserva ya confirmada no puede retornar a la cola de evaluación administrativa ni ser rechazada directamente; debe ser cancelada formalmente dejando traza de auditoría.
+   - **Edición sobre reservas concluidas:** La operación `PUT /api/reservas/:id` rechaza con error `400 Bad Request` cualquier intento de mutación sobre reservas en estado `rechazada` o `cancelada`.
+
+2. **Invariantes Transaccionales y Motor Relacional:**
+   - **Gobernanza y Trazabilidad Inmutable:** Cada transición invoca obligatoriamente `registrarAccion(...)` dentro del mismo bloque `sequelize.transaction`. La operación escribe en `historial_reservas` los snapshots `JSONB` de `valorAnterior` y `valorNuevo`. Si la auditoría fallase por cualquier motivo de persistencia, toda la transacción hace rollback atómico.
+   - **Liberación Inmediata de Franjas (Soft Release):** Debido al predicado `WHERE (estado IN ('pendiente', 'aprobada'))` en la restricción GiST `reservas_sin_solapamiento`, el paso atómico a `cancelada` o `rechazada` desactiva de inmediato la restricción de exclusión para ese intervalo de tiempo y aula, habilitando al instante a otros solicitantes sin requerir purgas físicas de registros.
 
 ---
 

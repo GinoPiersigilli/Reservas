@@ -44,3 +44,14 @@ export const esFechaValida = (fechaStr) => {
 export const esFechaPasada = (fechaStr, date = new Date()) => {
   return fechaStr < hoyArgentina(date);
 };
+
+export const esHorarioPasado = (fechaStr, horaInicioStr, date = new Date()) => {
+  if (esFechaPasada(fechaStr, date)) {
+    return true;
+  }
+  if (fechaStr === hoyArgentina(date)) {
+    const horaActual = horaActualArgentina(date);
+    return horaInicioStr <= horaActual;
+  }
+  return false;
+};
