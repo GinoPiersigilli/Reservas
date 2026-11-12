@@ -7,3 +7,6 @@ bd1fe11cd0c4beee05cf004167c926c1def571f7:backend/tests/error-handling.test.js:ge
 # backend/tests/auth.test.js: token sintético con firma alterada para verificar rechazo de 401 en fallback a Clerk (SEC-AUTH-02)
 be3e397f4433ad2484f7538d3f8a719181ce669f:backend/tests/auth.test.js:generic-api-key:182
 
+
+# backend/tests/idempotencia.test.js: valor sintético no-UUID para verificar rechazo 400 del encabezado Idempotency-Key (no es un secreto)
+edae50387f89a8a0fd670b771b8a1a63fcf049a3:backend/tests/idempotencia.test.js:generic-api-key:307
