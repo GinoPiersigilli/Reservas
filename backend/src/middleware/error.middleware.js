@@ -30,6 +30,19 @@ export const manejadorErrores = (err, req, res, _next) => {
     });
   }
 
+  // 2b. Manejo de saturación del pool de conexiones de base de datos (503 con Retry-After)
+  if (
+    err.name === 'SequelizeConnectionAcquireTimeoutError' ||
+    err.name === 'ConnectionAcquireTimeoutError' ||
+    err.name === 'TimeoutError' ||
+    (typeof err.message === 'string' && /ResourceRequest timed out|Connection acquire timeout/i.test(err.message))
+  ) {
+    res.setHeader('Retry-After', '2');
+    return res.status(503).json({
+      error: 'El servidor se encuentra temporalmente sobrecargado, intente más tarde'
+    });
+  }
+
   // 3. Mapeo de errores de constraints de Sequelize / PostgreSQL
   const pgCode = err.parent?.code || err.original?.code;
 

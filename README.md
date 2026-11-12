@@ -47,10 +47,13 @@ graph LR
 
 ## Decisiones Técnicas Destacadas
 
-- **Inmunidad a la Doble Reserva:** Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`) con rangos `tsrange` semiabiertos `[inicio, fin)` que rechaza físicamente solapamientos ante concurrencia.
+- **Inmunidad a la Doble Reserva y Concurrencia Extrema:** Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`) con rangos `tsrange` semiabiertos `[inicio, fin)`. Validado bajo pruebas de carga con **100 pedidos simultáneos** de usuarios distintos donde exactamente 1 triunfa con 201 y 99 son rechazados con 400 sin inconsistencias ni filas huérfanas.
+- **Idempotencia Transaccional (`Idempotency-Key`):** Protocolo de idempotencia HTTP para `POST /api/reservas` con clave UUID, hash SHA-256 del cuerpo canónico, retención de 24 horas y reemisión de respuestas guardadas (`Idempotent-Replay: true`) ante reintentos de red o doble clic.
+- **Rendimiento Comprobado sobre 200.000 Registros:** Benchmark exhaustivo documentado en [docs/RENDIMIENTO.md](docs/RENDIMIENTO.md) con `EXPLAIN (ANALYZE, BUFFERS)`, verificación GiST en 50 microsegundos y aceleración del 71.3% en consultas de disponibilidad mediante índice compuesto.
 - **Control Temporal e Intradiario:** Validación defensiva que rechaza solicitudes en fechas pasadas y en horarios ya transcurridos del día corriente en el huso oficial (`America/Argentina/Cordoba`).
 - **Atomicidad Transaccional:** Creación, edición y transiciones de estado envueltas en transacciones ACID con registro inmutable en `historial_reservas`.
 - **Modelado Formal y Analítica de Gestión:** Documentación con diagramas formales DER y Máquina de Estados en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), y métricas analíticas de ocupación mensual y demanda en el panel administrativo.
+- **Defensa en Profundidad con Rate Limiting:** Tres capas de limitación de tasa (por IP en `/api`, antes de autenticación en escrituras para cumplimiento CodeQL, y por usuario autenticado post-auth) con códigos 429 y `Retry-After`.
 - **Autenticación Híbrida y Estado Activo:** Soporte simultáneo para Clerk SSO y JWT local (HS256), con validación obligatoria del estado del usuario en la base de datos en cada petición.
 - **Accesibilidad y Modo Oscuro:** Interfaz auditada con axe sin violaciones (WCAG 2.1 AA), navegación por teclado y modo oscuro con anti-flicker (`/tema-init.js`) compatible con CSP.
 - **Pipeline de Seguridad en CI:** Escaneo continuo de imágenes Docker con Trivy, SAST con Semgrep y CodeQL, y detección de secretos con Gitleaks.
