@@ -125,6 +125,7 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
       if (reservaExistente) {
         const error = new Error('El aula ya está reservada en ese horario');
         error.status = 400;
+        error.esSolapamiento = true;
         throw error;
       }
 
@@ -161,7 +162,13 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
         await sequelize.query(`
           INSERT INTO idempotency_keys ("usuarioId", "clave", "cuerpoHash", "estadoRespuesta", "cuerpoRespuesta", "createdAt", "expiresAt")
           VALUES (:usuarioId, :clave, :cuerpoHash, :estadoRespuesta, :cuerpoRespuesta::jsonb, NOW(), :expiresAt)
-          ON CONFLICT ("usuarioId", "clave") DO NOTHING
+          ON CONFLICT ("usuarioId", "clave") DO UPDATE SET
+            "cuerpoHash" = EXCLUDED."cuerpoHash",
+            "estadoRespuesta" = EXCLUDED."estadoRespuesta",
+            "cuerpoRespuesta" = EXCLUDED."cuerpoRespuesta",
+            "createdAt" = EXCLUDED."createdAt",
+            "expiresAt" = EXCLUDED."expiresAt"
+          WHERE idempotency_keys."expiresAt" < NOW()
         `, {
           replacements: {
             usuarioId,
@@ -184,9 +191,17 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
       return nuevaReserva;
     });
   } catch (err) {
-    if (idempotencyKey) {
-      // Si otra transacción concurrente con la misma clave ganó la carrera y commiteó
-      for (let intento = 0; intento < 10; intento++) {
+    // Solo un conflicto de solapamiento (chequeo previo o constraint 23P01) o de
+    // unicidad (23505) puede deberse a otro pedido concurrente con la misma clave que
+    // ganó la carrera. Cualquier otro error se propaga de inmediato, sin demorar la respuesta.
+    const pgCode = err?.parent?.code || err?.original?.code;
+    const posibleCarrera = err?.esSolapamiento === true || pgCode === '23P01' || pgCode === '23505';
+    if (idempotencyKey && posibleCarrera) {
+      const ESPERAS_MS = [0, 20, 40, 80];
+      for (const espera of ESPERAS_MS) {
+        if (espera > 0) {
+          await new Promise((r) => setTimeout(r, espera));
+        }
         const claveCometida = await IdempotencyKey.findOne({
           where: {
             usuarioId,
@@ -207,8 +222,6 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
           error.status = 422;
           throw error;
         }
-
-        await new Promise((r) => setTimeout(r, 30 * (intento + 1)));
       }
     }
 

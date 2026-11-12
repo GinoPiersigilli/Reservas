@@ -351,4 +351,77 @@ describe('Fase 11 — Idempotencia en Creación de Reservas (POST /api/reservas)
     const checkActiva = await IdempotencyKey.findOne({ where: { clave: keyActiva } });
     expect(checkActiva).not.toBeNull();
   });
+
+  it('9. Con clave, un choque con la reserva de OTRO usuario responde 400 sin demora', async () => {
+    const payload = {
+      aulaId: aula1.id,
+      fecha: fechaFutura(7),
+      horaInicio: '10:00',
+      horaFin: '12:00',
+      cantidadPersonas: 10,
+      motivo: 'Clase de consulta'
+    };
+
+    const primera = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${token2}`)
+      .send(payload);
+    expect(primera.status).toBe(201);
+
+    const inicio = Date.now();
+    const res = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${token1}`)
+      .set('Idempotency-Key', crypto.randomUUID())
+      .send(payload);
+    const duracion = Date.now() - inicio;
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/ya está reservada en ese horario/i);
+    expect(duracion).toBeLessThan(500);
+  });
+
+  it('10. Una clave vencida reutilizada se renueva y vuelve a proteger contra duplicados', async () => {
+    const key = crypto.randomUUID();
+    await IdempotencyKey.create({
+      usuarioId: user1.id,
+      clave: key,
+      cuerpoHash: 'hash-vencido',
+      estadoRespuesta: 201,
+      cuerpoRespuesta: { id: 999 },
+      expiresAt: new Date(Date.now() - 48 * 60 * 60 * 1000)
+    });
+
+    const payload = {
+      aulaId: aula1.id,
+      fecha: fechaFutura(8),
+      horaInicio: '14:00',
+      horaFin: '16:00',
+      cantidadPersonas: 10,
+      motivo: 'Clase de repaso'
+    };
+
+    const res1 = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${token1}`)
+      .set('Idempotency-Key', key)
+      .send(payload);
+    expect(res1.status).toBe(201);
+
+    const registro = await IdempotencyKey.findOne({ where: { usuarioId: user1.id, clave: key } });
+    expect(new Date(registro.expiresAt).getTime()).toBeGreaterThan(Date.now());
+    expect(registro.cuerpoRespuesta.id).toBe(res1.body.id);
+
+    const res2 = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${token1}`)
+      .set('Idempotency-Key', key)
+      .send(payload);
+    expect(res2.status).toBe(201);
+    expect(res2.headers['idempotent-replay']).toBe('true');
+    expect(res2.body.id).toBe(res1.body.id);
+
+    const total = await Reserva.count({ where: { usuarioId: user1.id } });
+    expect(total).toBe(1);
+  });
 });
