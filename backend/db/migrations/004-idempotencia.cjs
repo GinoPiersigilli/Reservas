@@ -88,7 +88,9 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.removeIndex('reservas', 'reservas_aula_fecha_idx');
-    await queryInterface.dropTable('idempotency_keys');
+    await queryInterface.sequelize.transaction(async (transaction) => {
+      await queryInterface.removeIndex('reservas', 'reservas_aula_fecha_idx', { transaction });
+      await queryInterface.dropTable('idempotency_keys', { transaction });
+    });
   }
 };
