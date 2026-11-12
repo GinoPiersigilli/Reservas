@@ -38,6 +38,14 @@ export const validarEnv = (rawEnv = process.env) => {
     LOG_SQL: String(rawEnv.LOG_SQL).toLowerCase() === 'true',
     WORK_HOUR_START: rawEnv.WORK_HOUR_START || '08:00',
     WORK_HOUR_END: rawEnv.WORK_HOUR_END || '22:00',
+    RATE_LIMIT_GENERAL_WINDOW_MS: Number(rawEnv.RATE_LIMIT_GENERAL_WINDOW_MS) || 15 * 60 * 1000,
+    RATE_LIMIT_GENERAL_MAX: rawEnv.RATE_LIMIT_GENERAL_MAX !== undefined && String(rawEnv.RATE_LIMIT_GENERAL_MAX).trim() !== ''
+      ? Number(rawEnv.RATE_LIMIT_GENERAL_MAX)
+      : (nodeEnv === 'test' ? 10000 : 300),
+    RATE_LIMIT_ESCRITURAS_WINDOW_MS: Number(rawEnv.RATE_LIMIT_ESCRITURAS_WINDOW_MS) || 15 * 60 * 1000,
+    RATE_LIMIT_ESCRITURAS_MAX: rawEnv.RATE_LIMIT_ESCRITURAS_MAX !== undefined && String(rawEnv.RATE_LIMIT_ESCRITURAS_MAX).trim() !== ''
+      ? Number(rawEnv.RATE_LIMIT_ESCRITURAS_MAX)
+      : (nodeEnv === 'test' ? 10000 : 60),
     CORS_ORIGINS: (rawEnv.CORS_ORIGINS || 'http://localhost:5173')
       .split(',')
       .map((origin) => origin.trim())

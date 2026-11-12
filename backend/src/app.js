@@ -6,6 +6,7 @@ import sequelize from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
 import reservasRoutes from './routes/reservas.routes.js';
 import aulaRoutes from './routes/aulas.routes.js';
+import { limiteGeneral } from './middleware/rateLimit.middleware.js';
 import { manejadorErrores } from './middleware/error.middleware.js';
 
 const app = express();
@@ -46,6 +47,8 @@ app.get('/api/health', async (_req, res) => {
     });
   }
 });
+
+app.use('/api', limiteGeneral);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/reservas', reservasRoutes);
