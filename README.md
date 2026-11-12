@@ -24,7 +24,7 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 
 Elimina la "reserva a ciegas" mediante una grilla visual en bloques de 30 minutos (08:00 a 22:00) y previene la doble reserva física a nivel de base de datos.
 - **Docentes y Estudiantes (`usuario`):** Consultan disponibilidad en tiempo real, seleccionan franjas horarias libres con dos clics, gestionan sus solicitudes y cancelan reservas activas.
-- **Personal Administrativo (`admin`):** Cola priorizada de solicitudes pendientes, aprobación/rechazo con confirmación, edición integral de reservas, auditoría histórica, visualización de solicitantes y panel analítico de métricas de ocupación y demanda de aulas.
+- **Personal Administrativo (`admin`):** Cola priorizada de solicitudes pendientes, aprobación/rechazo con confirmación, edición integral de reservas, ABM completo de aulas con control de concurrencia y auditoría, visualización de solicitantes y panel analítico de métricas de ocupación y demanda de aulas.
 
 ---
 
@@ -105,7 +105,6 @@ node frontend/scripts/capturar-pantallas.mjs # Verificación responsive automati
 
 - **Terminación TLS/HTTPS:** Debe configurarse un proxy reverso con certificados SSL válidos delante de Nginx.
 - **Copias de Seguridad:** Scripts automatizados `scripts/backup-db.sh` y `scripts/restore-db.sh` con retención de 7 días.
-- **Próximas mejoras:** Pantalla de gestión administrativa (ABM) de aulas desde la interfaz web.
 
 Documentación técnica completa: [Arquitectura](docs/ARQUITECTURA.md) | [Diseño UI/UX](docs/DISENO.md) | [Guía de Despliegue](docs/DEPLOY.md) | [Seguridad](docs/SEGURIDAD.md).
 

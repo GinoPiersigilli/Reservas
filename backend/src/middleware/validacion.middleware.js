@@ -50,6 +50,74 @@ export const idParamSchema = z.object({
     .positive('El id debe ser un número entero mayor a 0')
 });
 
+export const queryAulasSchema = z.object({
+  incluirInactivas: opcional(
+    z.preprocess(
+      (val) => (val === true || val === 'true' || val === 1 || val === '1'),
+      z.boolean()
+    )
+  )
+});
+
+export const crearAulaSchema = z.object({
+  nombre: z.string({ message: 'El nombre del aula es obligatorio' })
+    .trim()
+    .min(1, 'El nombre del aula es obligatorio')
+    .max(100, 'El nombre no puede superar los 100 caracteres'),
+  ubicacion: z.string({ message: 'La ubicación del aula es obligatoria' })
+    .trim()
+    .min(1, 'La ubicación del aula es obligatoria')
+    .max(120, 'La ubicación no puede superar los 120 caracteres'),
+  capacidad: z.coerce.number({ message: 'La capacidad debe ser un número entero entre 1 y 1000' })
+    .int('La capacidad debe ser un número entero entre 1 y 1000')
+    .min(1, 'La capacidad debe ser un número entero entre 1 y 1000')
+    .max(1000, 'La capacidad debe ser un número entero entre 1 y 1000'),
+  recursos: opcional(z.string().max(255, 'Los recursos no pueden superar los 255 caracteres'))
+});
+
+export const editarAulaSchema = z.object({
+  nombre: opcional(
+    z.string()
+      .trim()
+      .min(1, 'El nombre del aula no puede estar vacío')
+      .max(100, 'El nombre no puede superar los 100 caracteres')
+  ),
+  ubicacion: opcional(
+    z.string()
+      .trim()
+      .min(1, 'La ubicación no puede estar vacía')
+      .max(120, 'La ubicación no puede superar los 120 caracteres')
+  ),
+  capacidad: opcional(
+    z.coerce.number({ message: 'La capacidad debe ser un número entero entre 1 y 1000' })
+      .int('La capacidad debe ser un número entero entre 1 y 1000')
+      .min(1, 'La capacidad debe ser un número entero entre 1 y 1000')
+      .max(1000, 'La capacidad debe ser un número entero entre 1 y 1000')
+  ),
+  recursos: opcional(z.string().max(255, 'Los recursos no pueden superar los 255 caracteres'))
+}).refine(
+  (data) => data.nombre !== undefined || data.ubicacion !== undefined || data.capacidad !== undefined || data.recursos !== undefined,
+  { message: 'Debe enviar al menos un campo para actualizar' }
+);
+
+export const desactivarAulaSchema = z.object({
+  cancelarReservasFuturas: opcional(
+    z.preprocess(
+      (val) => (val === true || val === 'true' || val === 1 || val === '1'),
+      z.boolean()
+    )
+  ),
+  motivo: opcional(z.string().max(255, 'El motivo no puede superar los 255 caracteres'))
+}).superRefine((data, ctx) => {
+  if (data.cancelarReservasFuturas && (!data.motivo || data.motivo.trim().length === 0)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['motivo'],
+      message: 'Debe ingresar un motivo para cancelar las reservas futuras'
+    });
+  }
+});
+
 export const queryReservasSchema = z.object({
   page: opcional(
     z.coerce.number({ message: 'La página debe ser un número entero mayor a 0' })

@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Calendar, CalendarPlus, LayoutDashboard, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { Calendar, CalendarPlus, DoorOpen, LayoutDashboard, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTema } from '../hooks/useTema.js';
 import { TEXTOS } from '../textos.js';
@@ -95,10 +95,17 @@ export default function AppShell({ children }) {
             </NavLink>
 
             {esAdmin ? (
-              <NavLink to="/resumen" className={obtenerClaseEnlace}>
-                <LayoutDashboard size={16} strokeWidth={1.75} aria-hidden="true" />
-                <span>{TEXTOS.navegacion.panel}</span>
-              </NavLink>
+              <>
+                <NavLink to="/resumen" className={obtenerClaseEnlace}>
+                  <LayoutDashboard size={16} strokeWidth={1.75} aria-hidden="true" />
+                  <span>{TEXTOS.navegacion.panel}</span>
+                </NavLink>
+
+                <NavLink to="/aulas" className={obtenerClaseEnlace}>
+                  <DoorOpen size={16} strokeWidth={1.75} aria-hidden="true" />
+                  <span>{TEXTOS.navegacion.aulas}</span>
+                </NavLink>
+              </>
             ) : null}
           </nav>
         </div>

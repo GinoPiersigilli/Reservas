@@ -3,6 +3,10 @@ import { MemoryRouter } from 'react-router-dom';
 import Resumen from '../Resumen.jsx';
 import * as reservasService from '../../services/reservas.service.js';
 
+vi.mock('../../services/aula.service.js', () => ({
+  getAulas: vi.fn().mockResolvedValue({ data: [] })
+}));
+
 vi.mock('../../services/reservas.service.js', () => ({
   getResumen: vi.fn(),
   getReservas: vi.fn(),
