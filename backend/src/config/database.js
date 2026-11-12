@@ -8,10 +8,10 @@ const sequelize = new Sequelize(databaseUrl, {
   dialect: 'postgres',
   logging: env.LOG_SQL ? console.log : false,
   pool: {
-    max: env.NODE_ENV === 'test' ? 30 : 20,
-    min: 2,
-    acquire: 30000,
-    idle: 10000
+    max: env.DB_POOL_MAX,
+    min: env.DB_POOL_MIN,
+    acquire: env.DB_POOL_ACQUIRE,
+    idle: env.DB_POOL_IDLE
   }
 });
 

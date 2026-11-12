@@ -60,14 +60,19 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reservar aula/i }));
 
     await waitFor(() => {
-      expect(reservasService.crearReserva).toHaveBeenCalledWith({
-        aulaId: '1',
-        fecha: '2027-11-20',
-        horaInicio: '10:00',
-        horaFin: '12:00',
-        cantidadPersonas: '20',
-        motivo: 'Parcial de Desarrollo de Software'
-      });
+      expect(reservasService.crearReserva).toHaveBeenCalledWith(
+        {
+          aulaId: '1',
+          fecha: '2027-11-20',
+          horaInicio: '10:00',
+          horaFin: '12:00',
+          cantidadPersonas: '20',
+          motivo: 'Parcial de Desarrollo de Software'
+        },
+        expect.objectContaining({
+          idempotencyKey: expect.any(String)
+        })
+      );
     });
   });
 

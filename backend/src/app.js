@@ -8,8 +8,12 @@ import reservasRoutes from './routes/reservas.routes.js';
 import aulaRoutes from './routes/aulas.routes.js';
 import { limiteGeneral } from './middleware/rateLimit.middleware.js';
 import { manejadorErrores } from './middleware/error.middleware.js';
+import { purgarClavesVencidas } from './services/idempotencia.services.js';
 
 const app = express();
+
+// Purgar claves de idempotencia vencidas al iniciar
+purgarClavesVencidas().catch(() => {});
 
 if (env.TRUST_PROXY_HOPS > 0) {
   app.set('trust proxy', env.TRUST_PROXY_HOPS);
@@ -22,7 +26,8 @@ app.use(helmet());
 app.use(cors({
   origin: env.CORS_ORIGINS,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+  exposedHeaders: ['Idempotent-Replay', 'Retry-After'],
   credentials: true
 }));
 

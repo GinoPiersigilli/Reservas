@@ -325,6 +325,7 @@ El sistema parametriza su configuración exclusivamente a través de variables d
 - `NODE_ENV`
 - `DATABASE_URL`
 - `DATABASE_URL_TEST`
+- `DATABASE_URL_BENCH`
 - `JWT_SECRET`
 - `CLERK_SECRET_KEY`
 - `CLERK_PUBLISHABLE_KEY`
@@ -333,7 +334,51 @@ El sistema parametriza su configuración exclusivamente a través de variables d
 - `WORK_HOUR_END`
 - `LOG_SQL`
 - `DATABASE_SSL`
+- `DB_POOL_MAX`
+- `DB_POOL_MIN`
+- `DB_POOL_ACQUIRE`
+- `DB_POOL_IDLE`
+- `RATE_LIMIT_GENERAL_WINDOW_MS`
+- `RATE_LIMIT_GENERAL_MAX`
+- `RATE_LIMIT_ESCRITURAS_WINDOW_MS`
+- `RATE_LIMIT_ESCRITURAS_MAX`
+- `RATE_LIMIT_USUARIO_WINDOW_MS`
+- `RATE_LIMIT_USUARIO_MAX`
 
 ### Frontend (`frontend/.env`)
 - `VITE_API_BASE_URL`
 - `VITE_CLERK_PUBLISHABLE_KEY`
+
+---
+
+## 7. Idempotencia, Concurrencia y Rendimiento
+
+### 7.1 Idempotencia en la Creación de Reservas (`POST /api/reservas`)
+Para prevenir reservas duplicadas producto de reintentos de red, reconexiones móviles o doble clic en el cliente, el sistema implementa un protocolo estricto de idempotencia basado en el encabezado HTTP estándar `Idempotency-Key`:
+- **Clave del Cliente:** UUID v4 generado por el frontend por intento de envío (`crypto.randomUUID()`). Si el usuario reintenta o experimenta un timeout de red sin alterar los datos del formulario, la clave se preserva. Si los datos cambian o el envío resulta exitoso, se regenera una nueva clave. El botón de envío se bloquea (`disabled` y estado de carga) durante la transmisión.
+- **Persistencia y Hash Canónico:** La tabla `idempotency_keys` almacena la tupla `(usuarioId, clave)` con índice único, junto al hash criptográfico SHA-256 del cuerpo canónico (claves ordenadas alfabéticamente de forma recursiva), el código HTTP de respuesta y el cuerpo JSONB resultante.
+- **Transaccionalidad Atómica y Serialización:** La inserción de la clave se efectúa dentro de la misma transacción de base de datos que crea la reserva y su historial mediante `ON CONFLICT ("usuarioId", "clave") DO NOTHING`.
+  - **Misma clave y mismo cuerpo ya procesados:** Se retorna la respuesta almacenada (código 201 y JSON original) con el encabezado HTTP `Idempotent-Replay: true`, sin interactuar nuevamente con las tablas de negocio.
+  - **Misma clave con cuerpo divergente:** Responde `422 Unprocessable Entity`, alertando sobre el intento de reutilización ilegítima de la clave.
+  - **Pedidos concurrentes simultáneos:** Si múltiples solicitudes con la misma clave compiten en milisegundos, la restricción única y el bloqueo GiST serializan las transacciones; la primera crea el registro y las demás devuelven la réplica exacta con `Idempotent-Replay: true`.
+  - **Peticiones fallidas (4xx):** Cualquier error de validación o conflicto de negocio aborta la transacción (`ROLLBACK`), por lo que **no consume la clave**, permitiendo subsanar el error y reintentar.
+  - **Retención y Purga:** Las claves tienen un período de vigencia de **24 horas** (`expiresAt`). El sistema ejecuta una purga automática al inicio del servidor y cuenta con un índice dedicado sobre `expiresAt` para mantenimiento programado.
+
+### 7.2 Pruebas de Alta Concurrencia (100 pedidos simultáneos)
+La robustez concurrente del sistema está validada empíricamente en `backend/tests/concurrencia.test.js`:
+- **100 solicitudes simultáneas para la misma aula y horario:** 100 usuarios distintos disparan peticiones concurrentes mediante `Promise.all`. Exactamente **1 solicitud obtiene `201 Created`**, mientras las **99 restantes reciben `400 Bad Request`** con el mensaje de aula ocupada. Cero errores `5xx`. Se verifica en la base de datos la existencia de exactamente 1 reserva activa y **ninguna fila huérfana en `historial_reservas`**.
+- **100 solicitudes repartidas en 10 franjas horarias:** Exactamente **10 reservas creadas** (una por cada franja horaria) y 90 rechazadas sin fallos de contención.
+- **Gestión del Pool de Conexiones:** El pool de conexiones de Sequelize es completamente configurable por variables de entorno (`DB_POOL_MAX`, `DB_POOL_MIN`, `DB_POOL_ACQUIRE`, `DB_POOL_IDLE`). Si el pool se satura bajo condiciones extremas, el middleware de errores intercepta `SequelizeConnectionAcquireTimeoutError` y responde con código **`503 Service Unavailable`** acompañado del encabezado **`Retry-After: 2`**, impidiendo que la sobrecarga derive en un error 500 genérico.
+
+### 7.3 Rendimiento y Evidencia de Base de Datos en Escala (200.000 Reservas)
+Se implementó la suite de benchmark `backend/scripts/benchmark-db.js`, equipada con una guarda de seguridad que exige operar exclusivamente sobre bases de datos que finalicen en `_bench`.
+- Se generaron **200.000 reservas verosímiles** con distribución temporal uniforme a lo largo de 800 días y se ejecutó `EXPLAIN (ANALYZE, BUFFERS)` sobre las 5 consultas críticas del sistema.
+- Los resultados justificaron la adición del índice compuesto `reservas_aula_fecha_idx ON reservas ("aulaId", fecha)`, el cual aceleró las consultas de disponibilidad en un **71.3%** (de 0.244 ms a 0.070 ms) y los listados con filtros combinados en un **66.9%** (de 0.317 ms a 0.105 ms), reduciendo drásticamente las lecturas de buffers de memoria.
+- La validación de solapamiento GiST (`reservas_sin_solapamiento`) demostró ejecutarse en apenas **50 microsegundos** sobre 200.000 filas.
+- Toda la metodología, resultados reproducibles y análisis de buffers se detallan en [docs/RENDIMIENTO.md](RENDIMIENTO.md).
+
+### 7.4 Estrategia de Rate Limiting Multicapa
+El backend implementa una defensa en profundidad contra abusos y denegación de servicio mediante tres limitadores complementarios basados en `express-rate-limit`:
+1. **Límite General por IP (`limiteGeneral`):** Protege globalmente la raíz `/api` (300 peticiones cada 15 min), eximiendo de rate limiting a `/api/health` para preservar el monitoreo de infraestructura.
+2. **Límite de Modificaciones por IP (`limiteEscrituras`):** Aplicado explícitamente antes de `verificarToken` en todas las rutas `POST`, `PUT` y `PATCH` de aulas y reservas, satisfaciendo los requerimientos de análisis estático SAST de CodeQL.
+3. **Límite de Modificaciones por Usuario Autenticado (`limiteEscriturasUsuario`):** Aplicado tras la autenticación para limitar escrituras por cuenta/usuario (`req.usuario.id`), impidiendo que un usuario distribuya peticiones abusivas a través de proxies rotativos. Configurable vía `RATE_LIMIT_USUARIO_*` y con respuestas estandarizadas `429 Too Many Requests` en español con encabezado `Retry-After`.

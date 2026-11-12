@@ -4,8 +4,10 @@ import HistorialReserva from '../models/historial.model.js';
 import sequelize from '../config/database.js';
 import Aula from '../models/aula.model.js';
 import Usuario from '../models/usuario.model.js';
+import IdempotencyKey from '../models/idempotencyKey.model.js';
 import { Op } from 'sequelize'; // Operadores de Sequelize para hacer consultas complejas
 import { registrarAccion } from './historial.services.js';
+import { esUuidValido, calcularHashCuerpo } from './idempotencia.services.js';
 import env from '../config/env.js';
 import { hoyArgentina, horaActualArgentina, esHorarioPasado } from '../utils/fecha.js';
 
@@ -19,8 +21,49 @@ const esErrorSolapamiento = (err) =>
   err?.original?.code === '23P01';
 
 // Función para crear una nueva reserva
-export const crearNuevaReserva = async (datosReserva) => {
+export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
+  const { idempotencyKey, cuerpoOriginal } = opciones;
+
+  // 1. Manejo y validación de idempotencia si se provee la clave
+  let cuerpoHash = null;
+  if (idempotencyKey !== undefined && idempotencyKey !== null) {
+    if (!esUuidValido(idempotencyKey)) {
+      const error = new Error('El encabezado Idempotency-Key debe ser un UUID válido');
+      error.status = 400;
+      throw error;
+    }
+
+    cuerpoHash = calcularHashCuerpo(cuerpoOriginal || {
+      aulaId,
+      fecha,
+      horaInicio,
+      horaFin,
+      cantidadPersonas,
+      motivo
+    });
+
+    const clavePrevia = await IdempotencyKey.findOne({
+      where: {
+        usuarioId,
+        clave: idempotencyKey,
+        expiresAt: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (clavePrevia) {
+      if (clavePrevia.cuerpoHash === cuerpoHash) {
+        return {
+          replay: true,
+          status: clavePrevia.estadoRespuesta,
+          datos: clavePrevia.cuerpoRespuesta
+        };
+      }
+      const error = new Error('La clave de idempotencia ya fue utilizada con un cuerpo diferente');
+      error.status = 422;
+      throw error;
+    }
+  }
 
   // Validar que la horaInicio sea menor a horaFin
   if (horaInicio >= horaFin) {
@@ -110,9 +153,65 @@ export const crearNuevaReserva = async (datosReserva) => {
         { transaction }
       );
 
+      // 7. Si hay clave de idempotencia, registrarla dentro de la misma transacción
+      if (idempotencyKey) {
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const reservaJson = nuevaReserva.toJSON ? nuevaReserva.toJSON() : nuevaReserva;
+
+        await sequelize.query(`
+          INSERT INTO idempotency_keys ("usuarioId", "clave", "cuerpoHash", "estadoRespuesta", "cuerpoRespuesta", "createdAt", "expiresAt")
+          VALUES (:usuarioId, :clave, :cuerpoHash, :estadoRespuesta, :cuerpoRespuesta::jsonb, NOW(), :expiresAt)
+          ON CONFLICT ("usuarioId", "clave") DO NOTHING
+        `, {
+          replacements: {
+            usuarioId,
+            clave: idempotencyKey,
+            cuerpoHash,
+            estadoRespuesta: 201,
+            cuerpoRespuesta: JSON.stringify(reservaJson),
+            expiresAt
+          },
+          transaction
+        });
+
+        return {
+          replay: false,
+          status: 201,
+          datos: nuevaReserva
+        };
+      }
+
       return nuevaReserva;
     });
   } catch (err) {
+    if (idempotencyKey) {
+      // Si otra transacción concurrente con la misma clave ganó la carrera y commiteó
+      for (let intento = 0; intento < 10; intento++) {
+        const claveCometida = await IdempotencyKey.findOne({
+          where: {
+            usuarioId,
+            clave: idempotencyKey,
+            expiresAt: { [Op.gt]: new Date() }
+          }
+        });
+
+        if (claveCometida) {
+          if (claveCometida.cuerpoHash === cuerpoHash) {
+            return {
+              replay: true,
+              status: claveCometida.estadoRespuesta,
+              datos: claveCometida.cuerpoRespuesta
+            };
+          }
+          const error = new Error('La clave de idempotencia ya fue utilizada con un cuerpo diferente');
+          error.status = 422;
+          throw error;
+        }
+
+        await new Promise((r) => setTimeout(r, 30 * (intento + 1)));
+      }
+    }
+
     if (esErrorSolapamiento(err)) {
       const error = new Error('El aula ya está reservada en ese horario');
       error.status = 400;

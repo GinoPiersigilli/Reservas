@@ -21,8 +21,13 @@ export const getHistorial = (id) =>
 export const getResumen = () =>
   api.get('/reservas/resumen');
 
-export const crearReserva = (datos) =>
-  api.post('/reservas', datos);
+export const crearReserva = (datos, opciones = {}) => {
+  const config = {};
+  if (opciones.idempotencyKey) {
+    config.headers = { 'Idempotency-Key': opciones.idempotencyKey };
+  }
+  return api.post('/reservas', datos, config);
+};
 
 export const editarReserva = (id, datos) =>
   api.put(`/reservas/${id}`, datos);

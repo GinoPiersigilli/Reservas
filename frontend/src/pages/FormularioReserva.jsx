@@ -14,10 +14,19 @@ import { TEXTOS } from '../textos.js';
 import { calcularDuracionTexto, formatearFecha } from '../utils/formato.js';
 import styles from './FormularioReserva.module.css';
 
+const generarClaveIdempotencia = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return null;
+};
+
 export default function FormularioReserva() {
   const { id } = useParams();
   const navigate = useNavigate();
   const esEdicion = Boolean(id);
+
+  const [idempotencyKey, setIdempotencyKey] = useState(generarClaveIdempotencia);
 
   const [form, setForm] = useState({
     aulaId: '',
@@ -132,6 +141,7 @@ export default function FormularioReserva() {
   const handleChange = (evento) => {
     const { name, value } = evento.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setIdempotencyKey(generarClaveIdempotencia());
     if (erroresCampo[name]) {
       setErroresCampo((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -147,6 +157,7 @@ export default function FormularioReserva() {
       horaInicio,
       horaFin
     }));
+    setIdempotencyKey(generarClaveIdempotencia());
     setErroresCampo((prev) => ({
       ...prev,
       aulaId: undefined,
@@ -219,7 +230,8 @@ export default function FormularioReserva() {
         await editarReserva(id, form);
         navigate(`/reservas/${id}`);
       } else {
-        const res = await crearReserva(form);
+        const res = await crearReserva(form, { idempotencyKey });
+        setIdempotencyKey(generarClaveIdempotencia());
         navigate(`/reservas/${res.data.id}`);
       }
     } catch (err) {
@@ -459,7 +471,7 @@ export default function FormularioReserva() {
           </div>
 
           <div className={styles.acciones}>
-            <Button type="submit" variante="primario" cargando={cargando}>
+            <Button type="submit" variante="primario" cargando={cargando} disabled={cargando}>
               {esEdicion
                 ? TEXTOS.acciones.guardarCambios
                 : TEXTOS.acciones.reservarAula}

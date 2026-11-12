@@ -6,10 +6,22 @@ import * as reservasService from '../services/reservas.services.js';
 // ==========================================
 export const crearReserva = async (req, res, next) => {
   try {
-    const datosReserva = req.body;
-    datosReserva.usuarioId = req.usuario.id; // ← descomentado y limpio
-    const nuevaReserva = await reservasService.crearNuevaReserva(datosReserva);
-    res.status(201).json(nuevaReserva);
+    const datosReserva = { ...req.body, usuarioId: req.usuario.id };
+    const idempotencyKey = req.headers['idempotency-key'];
+
+    const resultado = await reservasService.crearNuevaReserva(datosReserva, {
+      idempotencyKey,
+      cuerpoOriginal: req.body
+    });
+
+    if (resultado && typeof resultado === 'object' && resultado.replay !== undefined) {
+      if (resultado.replay) {
+        res.setHeader('Idempotent-Replay', 'true');
+      }
+      return res.status(resultado.status || 201).json(resultado.datos);
+    }
+
+    return res.status(201).json(resultado);
   } catch (error) {
     next(error);
   }

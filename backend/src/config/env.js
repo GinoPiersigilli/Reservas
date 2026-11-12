@@ -46,6 +46,16 @@ export const validarEnv = (rawEnv = process.env) => {
     RATE_LIMIT_ESCRITURAS_MAX: rawEnv.RATE_LIMIT_ESCRITURAS_MAX !== undefined && String(rawEnv.RATE_LIMIT_ESCRITURAS_MAX).trim() !== ''
       ? Number(rawEnv.RATE_LIMIT_ESCRITURAS_MAX)
       : (nodeEnv === 'test' ? 10000 : 60),
+    RATE_LIMIT_USUARIO_WINDOW_MS: Number(rawEnv.RATE_LIMIT_USUARIO_WINDOW_MS) || 15 * 60 * 1000,
+    RATE_LIMIT_USUARIO_MAX: rawEnv.RATE_LIMIT_USUARIO_MAX !== undefined && String(rawEnv.RATE_LIMIT_USUARIO_MAX).trim() !== ''
+      ? Number(rawEnv.RATE_LIMIT_USUARIO_MAX)
+      : (nodeEnv === 'test' ? 10000 : 60),
+    DB_POOL_MAX: Number(rawEnv.DB_POOL_MAX) || (nodeEnv === 'test' ? 30 : 20),
+    DB_POOL_MIN: rawEnv.DB_POOL_MIN !== undefined && String(rawEnv.DB_POOL_MIN).trim() !== ''
+      ? Number(rawEnv.DB_POOL_MIN)
+      : (nodeEnv === 'test' ? 0 : 2),
+    DB_POOL_ACQUIRE: Number(rawEnv.DB_POOL_ACQUIRE) || 30000,
+    DB_POOL_IDLE: Number(rawEnv.DB_POOL_IDLE) || 10000,
     CORS_ORIGINS: (rawEnv.CORS_ORIGINS || 'http://localhost:5173')
       .split(',')
       .map((origin) => origin.trim())
