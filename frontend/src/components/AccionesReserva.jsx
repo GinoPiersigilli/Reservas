@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  aprobarReserva,
-  rechazarReserva,
-  cancelarReserva
-} from '../services/reservas.service.js';
+import { aprobarReserva, rechazarReserva, cancelarReserva } from '../services/reservas.service.js';
 import { TEXTOS } from '../textos.js';
 import Button from './ui/Button.jsx';
 import ConfirmDialog from './ui/ConfirmDialog.jsx';
@@ -14,7 +10,7 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [dialogoActivo, setDialogoActivo] = useState(null); // 'rechazar' | 'cancelar' | null
+  const [dialogoActivo, setDialogoActivo] = useState(null); // 'aprobar' | 'rechazar' | 'cancelar' | null
 
   const esAdmin = usuario?.rol === 'admin';
   const esPropietario = usuario?.id === reserva.usuarioId;
@@ -66,14 +62,8 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
         {puedeAprobar ? (
           <Button
             variante="primario"
-            cargando={cargando && !dialogoActivo}
             disabled={cargando}
-            onClick={() =>
-              ejecutarAccion(
-                () => aprobarReserva(reserva.id),
-                TEXTOS.reservas.aprobadaExito
-              )
-            }
+            onClick={() => setDialogoActivo('aprobar')}
           >
             {TEXTOS.acciones.aprobar}
           </Button>
@@ -101,6 +91,20 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
       </div>
 
       <ConfirmDialog
+        abierto={dialogoActivo === 'aprobar'}
+        titulo={TEXTOS.dialogos.aprobarTitulo}
+        descripcion={TEXTOS.dialogos.aprobarDescripcion}
+        textoConfirmar={TEXTOS.acciones.aprobar}
+        textoCancelar={TEXTOS.acciones.cancelar}
+        variante="primario"
+        cargando={cargando}
+        onCancelar={() => setDialogoActivo(null)}
+        onConfirmar={() =>
+          ejecutarAccion(() => aprobarReserva(reserva.id), TEXTOS.reservas.aprobadaExito)
+        }
+      />
+
+      <ConfirmDialog
         abierto={dialogoActivo === 'rechazar'}
         titulo={TEXTOS.dialogos.rechazarTitulo}
         descripcion={TEXTOS.dialogos.rechazarDescripcion}
@@ -110,10 +114,7 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
         cargando={cargando}
         onCancelar={() => setDialogoActivo(null)}
         onConfirmar={() =>
-          ejecutarAccion(
-            () => rechazarReserva(reserva.id),
-            TEXTOS.reservas.rechazadaExito
-          )
+          ejecutarAccion(() => rechazarReserva(reserva.id), TEXTOS.reservas.rechazadaExito)
         }
       />
 
@@ -127,10 +128,7 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
         cargando={cargando}
         onCancelar={() => setDialogoActivo(null)}
         onConfirmar={() =>
-          ejecutarAccion(
-            () => cancelarReserva(reserva.id),
-            TEXTOS.reservas.canceladaExito
-          )
+          ejecutarAccion(() => cancelarReserva(reserva.id), TEXTOS.reservas.canceladaExito)
         }
       />
     </div>
