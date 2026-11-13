@@ -40,9 +40,11 @@ export const crearLimitador = ({
         res.setHeader('Retry-After', String(segundos));
       }
 
-      const mensajeError = typeof options.message === 'string'
-        ? options.message
-        : options.message?.error || 'Demasiadas solicitudes desde esta IP, por favor intente nuevamente más tarde';
+      const mensajeError =
+        typeof options.message === 'string'
+          ? options.message
+          : options.message?.error ||
+            'Demasiadas solicitudes desde esta IP, por favor intente nuevamente más tarde';
 
       return res.status(options.statusCode || 429).json({
         error: mensajeError
@@ -73,7 +75,8 @@ export const limiteEscrituras = crearLimitador({
     if (process.env.RATE_LIMIT_ESCRITURAS_MAX) return Number(process.env.RATE_LIMIT_ESCRITURAS_MAX);
     return env.RATE_LIMIT_ESCRITURAS_MAX;
   },
-  message: 'Demasiadas solicitudes de modificación desde esta IP, por favor intente nuevamente más tarde'
+  message:
+    'Demasiadas solicitudes de modificación desde esta IP, por favor intente nuevamente más tarde'
 });
 
 export const limiteEscriturasUsuario = crearLimitador({
@@ -89,5 +92,12 @@ export const limiteEscriturasUsuario = crearLimitador({
     }
     return req.ip || 'anonymous';
   },
-  message: 'Demasiadas solicitudes de modificación para este usuario, por favor intente nuevamente más tarde'
+  message:
+    'Demasiadas solicitudes de modificación para este usuario, por favor intente nuevamente más tarde'
+});
+
+export const limiteLogin = crearLimitador({
+  windowMs: env.RATE_LIMIT_LOGIN_WINDOW_MS,
+  max: env.RATE_LIMIT_LOGIN_MAX,
+  message: 'Demasiados intentos de inicio de sesión, intente más tarde'
 });

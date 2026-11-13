@@ -1,19 +1,11 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import { loginUsuario } from '../services/auth.services.js';
 import { validar, loginSchema } from '../middleware/validacion.middleware.js';
+import { limiteLogin } from '../middleware/rateLimit.middleware.js';
 
 const router = express.Router();
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Demasiados intentos de inicio de sesión, intente más tarde' }
-});
-
-router.post('/login', loginLimiter, validar(loginSchema), async (req, res, next) => {
+router.post('/login', limiteLogin, validar(loginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const resultado = await loginUsuario(email, password);
