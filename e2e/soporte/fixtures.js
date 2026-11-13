@@ -10,6 +10,7 @@ import { test as base, expect } from '@playwright/test';
 export const test = base.extend({
   page: async ({ page }, use, testInfo) => {
     const problemas = [];
+    const respuestasClave = [];
 
     page.on('console', (msg) => {
       if (msg.type() === 'error') problemas.push(`consola: ${msg.text()}`);
@@ -19,6 +20,19 @@ export const test = base.extend({
       problemas.push(`pedido fallido: ${req.method()} ${req.url()} (${req.failure()?.errorText})`);
     });
     page.on('response', async (res) => {
+      // La disponibilidad alimenta la grilla: se guarda aunque responda 200,
+      // porque una grilla vacía con respuestas correctas apunta al frontend.
+      if (res.ok() && /\/api\/aulas\/\d+\/disponibilidad/.test(res.url())) {
+        try {
+          const url = new URL(res.url());
+          respuestasClave.push(
+            `200 ${url.pathname}${url.search} -> ${(await res.text()).slice(0, 200)}`
+          );
+        } catch {
+          /* la respuesta pudo descartarse */
+        }
+        return;
+      }
       if (res.ok() || !res.url().includes('/api/')) return;
       let cuerpo = '(sin cuerpo)';
       try {
@@ -33,13 +47,18 @@ export const test = base.extend({
 
     await use(page);
 
-    if (testInfo.status !== testInfo.expectedStatus && problemas.length > 0) {
-      const detalle = problemas.join('\n');
-      await testInfo.attach('llamadas-con-error', { body: detalle, contentType: 'text/plain' });
-      console.log(
-        `\n[diagnóstico] ${testInfo.title}\n${problemas.map((p) => `  - ${p}`).join('\n')}\n`
-      );
-    }
+    if (testInfo.status === testInfo.expectedStatus) return;
+
+    const detalle = [...problemas, ...respuestasClave.slice(-6)];
+    if (detalle.length === 0) return;
+
+    await testInfo.attach('llamadas-y-respuestas', {
+      body: detalle.join('\n'),
+      contentType: 'text/plain'
+    });
+    console.log(
+      `\n[diagnóstico] ${testInfo.title}\n${detalle.map((d) => `  - ${d}`).join('\n')}\n`
+    );
   }
 });
 

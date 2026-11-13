@@ -17,8 +17,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  timeout: 30_000,
-  expect: { timeout: 7_000 },
+  // En CI el primer pedido de cada tipo paga el arranque en frío de la API y
+  // del pool de conexiones, así que los márgenes son mayores que en local.
+  timeout: process.env.CI ? 90_000 : 30_000,
+  expect: { timeout: process.env.CI ? 20_000 : 7_000 },
   use: {
     baseURL: URL_WEB,
     locale: 'es-AR',
