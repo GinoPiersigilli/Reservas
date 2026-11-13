@@ -14,7 +14,20 @@ test.describe('Flujo 3 — Solicitud de reserva', () => {
 
     await expect(page.getByRole('textbox', { name: 'Hora de inicio' })).toHaveValue('15:00');
     await page.getByRole('textbox', { name: 'Motivo' }).fill('Taller de integración continua');
-    await page.getByRole('button', { name: 'Reservar aula' }).click();
+
+    // El resumen solo aparece cuando el formulario tomó fecha, aula y horario:
+    // sirve de punto de sincronización antes de enviar.
+    await expect(page.getByText(/^Seleccionado:/)).toContainText('15:00 a 15:30');
+
+    // Se espera la respuesta del alta, de modo que un fallo distinga entre
+    // "no se envió" y "el servidor la rechazó".
+    const [respuesta] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().endsWith('/api/reservas') && res.request().method() === 'POST'
+      ),
+      page.getByRole('button', { name: 'Reservar aula' }).click()
+    ]);
+    expect(respuesta.status(), await respuesta.text()).toBe(201);
 
     await expect(page).toHaveURL(/\/reservas\/\d+$/);
     const datos = page.getByRole('region', { name: 'Datos de la reserva' });
