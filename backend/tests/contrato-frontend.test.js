@@ -410,4 +410,31 @@ describe('Contrato Frontend-Backend: Replicación exacta de peticiones del clien
       expect(resReact.body.activa).toBe(true);
     });
   });
+
+  describe('CORS: cabeceras que el frontend realmente envía', () => {
+    // El frontend manda Idempotency-Key al crear una reserva y X-Request-Id en
+    // todas las peticiones. Si CORS no las permite, el navegador bloquea la
+    // petición antes de que llegue al servidor: en las pruebas de API no se
+    // nota, en la aplicación falla todo.
+    const CABECERAS = ['content-type', 'authorization', 'idempotency-key', 'x-request-id'];
+
+    it.each(CABECERAS)('el preflight permite la cabecera %s', async (cabecera) => {
+      const res = await request(app)
+        .options('/api/reservas')
+        .set('Origin', 'http://localhost:5173')
+        .set('Access-Control-Request-Method', 'POST')
+        .set('Access-Control-Request-Headers', cabecera);
+
+      expect([200, 204]).toContain(res.status);
+      expect((res.headers['access-control-allow-headers'] || '').toLowerCase()).toContain(cabecera);
+    });
+
+    it('expone al navegador las cabeceras de respuesta que el frontend lee', async () => {
+      const res = await request(app).get('/api/health/live').set('Origin', 'http://localhost:5173');
+
+      const expuestas = (res.headers['access-control-expose-headers'] || '').toLowerCase();
+      expect(expuestas).toContain('idempotent-replay');
+      expect(expuestas).toContain('x-request-id');
+    });
+  });
 });

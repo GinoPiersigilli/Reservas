@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import env from '../config/env.js';
 import Usuario from '../models/usuario.model.js';
+import logger from '../utils/logger.js';
 
 const clerkClient = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY
@@ -86,7 +87,7 @@ export async function sincronizarUsuarioClerk(clerkUser) {
       mismoEmail.rol = datos.rol;
     }
     await mismoEmail.save();
-    console.log(`[AUTH] Cuenta local vinculada a cuenta Clerk (usuarioId: ${mismoEmail.id})`);
+    logger.info('cuenta local vinculada a cuenta de Clerk', { usuarioId: mismoEmail.id });
     return mismoEmail;
   }
 

@@ -2,6 +2,7 @@
 import crypto from 'crypto';
 import { Op } from 'sequelize';
 import IdempotencyKey from '../models/idempotencyKey.model.js';
+import logger from '../utils/logger.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -40,7 +41,7 @@ export const purgarClavesVencidas = async () => {
     return eliminadas;
   } catch (err) {
     if (process.env.NODE_ENV !== 'test') {
-      console.error('[IDEMPOTENCY] Error al purgar claves vencidas:', err.message);
+      logger.warn('no se pudieron purgar las claves de idempotencia vencidas', { error: err });
     }
     return 0;
   }
