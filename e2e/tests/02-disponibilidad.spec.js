@@ -4,6 +4,7 @@ import {
   crearReservaApi,
   fechaEnDias,
   iniciarSesion,
+  irANuevaReserva,
   obtenerToken
 } from '../soporte/ayudas.js';
 
@@ -24,7 +25,7 @@ test.describe('Flujo 2 — Consulta de disponibilidad', () => {
     });
 
     await iniciarSesion(page, CREDENCIALES.usuario);
-    await page.getByRole('button', { name: 'Nueva reserva' }).click();
+    await irANuevaReserva(page);
     await page.getByRole('textbox', { name: 'Fecha' }).fill(fecha);
 
     const grilla = page.getByRole('region', { name: 'Grilla de disponibilidad horaria' });

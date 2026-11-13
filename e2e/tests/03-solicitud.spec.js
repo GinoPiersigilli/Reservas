@@ -1,11 +1,11 @@
 import { test, expect } from '../soporte/fixtures.js';
-import { CREDENCIALES, fechaEnDias, iniciarSesion } from '../soporte/ayudas.js';
+import { CREDENCIALES, fechaEnDias, iniciarSesion, irANuevaReserva } from '../soporte/ayudas.js';
 
 test.describe('Flujo 3 — Solicitud de reserva', () => {
   test('un usuario solicita un aula eligiendo la franja en la grilla', async ({ page }) => {
     const fecha = fechaEnDias(18);
     await iniciarSesion(page, CREDENCIALES.usuario);
-    await page.getByRole('button', { name: 'Nueva reserva' }).click();
+    await irANuevaReserva(page);
 
     await page.getByRole('textbox', { name: 'Fecha' }).fill(fecha);
     await page.getByRole('combobox', { name: 'Aula' }).selectOption({ label: 'Laboratorio A6' });

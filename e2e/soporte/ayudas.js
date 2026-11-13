@@ -28,6 +28,25 @@ export const iniciarSesion = async (page, { email, password }) => {
   await page.getByRole('textbox', { name: 'Contraseña' }).fill(password);
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await expect(page).toHaveURL(/\/reservas$/);
+  // El listado ya montado garantiza que la sesión quedó aplicada.
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+};
+
+/**
+ * Abre el formulario de nueva reserva y espera a que esté usable.
+ *
+ * Sin esta espera, la navegación por el router puede no haber terminado y los
+ * datos se escriben en los campos de la pantalla anterior (el listado también
+ * tiene un filtro llamado "Fecha"), con lo que el formulario queda vacío.
+ */
+export const irANuevaReserva = async (page) => {
+  await page.getByRole('button', { name: 'Nueva reserva' }).click();
+  await expect(page).toHaveURL(/\/reservas\/nueva$/);
+  await expect(page.getByRole('heading', { name: 'Nueva reserva', level: 1 })).toBeVisible();
+  // Las aulas llegan por API; sin ellas la grilla no puede mostrar franjas.
+  await expect(
+    page.getByRole('combobox', { name: 'Aula' }).getByRole('option', { name: 'Aula 910' })
+  ).toBeAttached();
 };
 
 /** Obtiene un token JWT local llamando a la API (para preparar datos de prueba). */
