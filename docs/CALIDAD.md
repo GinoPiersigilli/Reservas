@@ -81,8 +81,15 @@ De paso verifica lo que no se debe ver. Cada ruta se mide a 360, 768 y 1280 px
 comprobando que `scrollWidth` no supere `clientWidth`, de modo que un desborde
 horizontal rompe la generación en lugar de quedar documentado en una imagen.
 
-Se corre aparte de `npm test` porque escribe archivos en el repositorio: es la
-generación de un artefacto, no una verificación que deba correr en CI.
+`npm run gif --prefix e2e` graba el recorrido completo del README sobre el
+mismo entorno —solicitar una reserva como docente y aprobarla como bedelía— y
+lo convierte a GIF con ffmpeg. Es una grabación, pero verifica lo que muestra:
+si un paso deja de funcionar, falla en lugar de producir un video de una
+aplicación rota.
+
+Las dos se corren aparte de `npm test` porque escriben archivos en el
+repositorio: son la generación de un artefacto, no una verificación que deba
+correr en CI.
 
 ---
 

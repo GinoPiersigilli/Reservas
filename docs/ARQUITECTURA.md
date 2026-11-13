@@ -70,7 +70,7 @@ reservas/
 │       ├── services/            # Clientes de servicios API con Axios
 │       └── styles/              # Variables tokens.css y reset base.css
 ├── e2e/                         # Pruebas de extremo a extremo y generación de capturas
-│   ├── capturas/                # Genera docs/img desde la aplicación real
+│   ├── capturas/                # Genera docs/img y el GIF desde la aplicación real
 │   ├── soporte/                 # Entorno compartido, ayudas y diagnóstico de fallos
 │   └── tests/                   # Los 7 flujos completos de usuario
 └── carga/                       # Pruebas de carga con k6 (manuales)

@@ -21,11 +21,11 @@ Qué hay en cada documento y cuándo conviene abrirlo.
 
 ## Material de referencia
 
-| Carpeta                                      | Contenido                                                                                       |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [img/](img/)                                 | Capturas de la aplicación. Se regeneran con `npm run capturas --prefix e2e`.                    |
-| [seguridad/evidencia/](seguridad/evidencia/) | Salidas crudas de las herramientas de auditoría, tal como las devolvieron.                      |
-| [CIERRE_TECNICO.md](CIERRE_TECNICO.md)       | Informe de cierre de las fases de seguridad y calidad, con las mediciones del día que se cerró. |
+| Carpeta                                      | Contenido                                                                                                       |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [img/](img/)                                 | Capturas y GIF de la aplicación. Se regeneran con `npm run capturas --prefix e2e` y `npm run gif --prefix e2e`. |
+| [seguridad/evidencia/](seguridad/evidencia/) | Salidas crudas de las herramientas de auditoría, tal como las devolvieron.                                      |
+| [CIERRE_TECNICO.md](CIERRE_TECNICO.md)       | Informe de cierre de las fases de seguridad y calidad, con las mediciones del día que se cerró.                 |
 
 Las cifras concretas de pruebas y cobertura viven en **CALIDAD.md** y no se
 repiten en los demás documentos, para que no queden dos números distintos

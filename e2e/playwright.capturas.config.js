@@ -13,6 +13,8 @@ import { servidores, URL_WEB } from './soporte/entorno.js';
  */
 export default defineConfig({
   testDir: './capturas',
+  // El video del recorrido se escribe acá y lo recoge `soporte/gif-recorrido.sh`.
+  outputDir: './salida-capturas',
   fullyParallel: false,
   workers: 1,
   retries: 0,

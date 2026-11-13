@@ -23,6 +23,11 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 
 ## Capturas de Pantalla
 
+El recorrido completo: un docente consulta la grilla, elige una franja libre y
+solicita el aula; bedelía aprueba la solicitud desde el panel.
+
+![Recorrido completo: solicitar una reserva y aprobarla](docs/img/recorrido.gif)
+
 | Grilla de Disponibilidad Horaria                            | Agenda por Jornada                                    |
 | ----------------------------------------------------------- | ----------------------------------------------------- |
 | ![Grilla de disponibilidad](docs/img/grilla-escritorio.png) | ![Agenda de reservas](docs/img/agenda-escritorio.png) |
@@ -32,8 +37,9 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 | ![Panel administrativo](docs/img/panel-escritorio.png) | ![Agenda en modo oscuro](docs/img/agenda-oscuro.png) |
 
 Más capturas —tabla ordenable, detalle con historial, ABM de aulas, teléfono y
-ancho intermedio— en [docs/img](docs/img). Se generan desde la aplicación real
-con `npm run capturas --prefix e2e`.
+ancho intermedio— en [docs/img](docs/img). Tanto las imágenes como el GIF se
+generan desde la aplicación real con `npm run capturas --prefix e2e` y
+`npm run gif --prefix e2e`.
 
 ---
 
@@ -121,6 +127,7 @@ npm test --prefix frontend                 # Pruebas de componentes y accesibili
 npm run format:check                       # Formato del repositorio (Prettier)
 node frontend/scripts/verificar-contraste.js # Validación contractual de contraste WCAG 2.1 AA
 npm run capturas --prefix e2e              # Regenera docs/img y verifica que nada desborde en horizontal
+npm run gif --prefix e2e                   # Regraba el recorrido del README (requiere ffmpeg)
 ```
 
 Pruebas de extremo a extremo sobre los 7 flujos completos. Playwright
