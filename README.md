@@ -13,7 +13,7 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 > application-level checks, and this is verified under 100 concurrent requests.
 > Retries and double clicks are absorbed by an HTTP `Idempotency-Key` protocol,
 > and every state change is written to an append-only audit trail inside the
-> same transaction. Covered by 206 API tests, 112 component tests and 20
+> same transaction. Covered by 211 API tests, 112 component tests and 20
 > end-to-end tests across 7 complete user flows, with Trivy, Semgrep, CodeQL
 > and Gitleaks running on every push. The interface and the documentation are in Spanish; the code, including
 > identifiers and comments, is in Spanish as well, since that is the language of
@@ -77,7 +77,7 @@ graph LR
 - **Control Temporal e Intradiario:** Validación defensiva que rechaza solicitudes en fechas pasadas y en horarios ya transcurridos del día corriente en el huso oficial (`America/Argentina/Cordoba`).
 - **Atomicidad Transaccional:** Creación, edición y transiciones de estado envueltas en transacciones ACID con registro inmutable en `historial_reservas`.
 - **Modelado Formal y Analítica de Gestión:** Documentación con diagramas formales DER y Máquina de Estados en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), y métricas analíticas de ocupación mensual y demanda en el panel administrativo.
-- **Defensa en Profundidad con Rate Limiting:** Tres capas de limitación de tasa (por IP en `/api`, antes de autenticación en escrituras para cumplimiento CodeQL, y por usuario autenticado post-auth) con códigos 429 y `Retry-After`.
+- **Defensa en Profundidad con Rate Limiting:** Cuatro limitadores, cada uno contra una amenaza distinta: por IP en `/api` acota el tráfico total; en escrituras **antes** de autenticar, para no gastar verificación de tokens en peticiones que igual se rechazan; por usuario autenticado, para que una cuenta no esquive al anterior rotando de IP; y en `/api/auth/login`, el único que frena la adivinación de contraseñas por fuerza bruta. Todos responden 429 con `Retry-After`. Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md#74-estrategia-de-rate-limiting-multicapa).
 - **Autenticación Híbrida y Estado Activo:** Soporte simultáneo para Clerk SSO y JWT local (HS256), con validación obligatoria del estado del usuario en la base de datos en cada petición.
 - **Accesibilidad y Modo Oscuro:** Las pantallas principales pasan `axe-core` sin violaciones en sus reglas automatizables, que cubren una parte de WCAG 2.1 AA; los contrastes de los tokens se verifican por separado con un script propio, y la navegación por teclado de la grilla y de las modales se prueba caso por caso. Modo oscuro con anti-flicker (`/tema-init.js`) compatible con CSP.
 - **Pipeline de Seguridad en CI:** Escaneo continuo de imágenes Docker con Trivy, SAST con Semgrep y CodeQL, y detección de secretos con Gitleaks.

@@ -18,6 +18,7 @@ function fechaFutura(dias = 12) {
 describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', () => {
   let tokens = [];
   let aulaTest;
+  let usuariosTest = [];
 
   // Las 100 transacciones en conflicto se serializan en la restricción de
   // exclusión: en un runner de CI, con PostgreSQL en un contenedor, la prueba
@@ -45,6 +46,7 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     }));
 
     const usuariosCreados = await Usuario.bulkCreate(usuariosData, { returning: true });
+    usuariosTest = usuariosCreados;
 
     tokens = usuariosCreados.map((u) =>
       jwt.sign({ id: u.id, nombre: u.nombre, email: u.email, rol: 'usuario' }, env.JWT_SECRET, {
@@ -204,5 +206,110 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     expect(res.body).toHaveProperty('error');
     expect(res.body.error).toMatch(/temporalmente sobrecargado/i);
     expect(res.body).not.toHaveProperty('stack');
+  });
+
+  describe('4. Conflictos transitorios de PostgreSQL (deadlock y serialización)', () => {
+    // Un deadlock entre pedidos simultáneos por la misma franja salía como 500:
+    // el pedido estaba bien y el conflicto era pasajero, pero quien lo recibía
+    // no tenía forma de saber que repetirlo funcionaba. Lo destapó una corrida
+    // de CI en la que PostgreSQL abortó dos transacciones y nueve de diez
+    // pedidos devolvieron 5xx en vez de 409.
+
+    const errorPg = (codigo, mensaje) => {
+      const err = new Error(mensaje);
+      err.name = 'SequelizeDatabaseError';
+      err.parent = { code: codigo, message: mensaje };
+      err.original = err.parent;
+      return err;
+    };
+
+    const appConError = async (err) => {
+      const { manejadorErrores } = await import('../src/middleware/error.middleware.js');
+      const express = (await import('express')).default;
+      const testApp = express();
+      testApp.get('/falla', (_req, _res, next) => next(err));
+      testApp.use(manejadorErrores);
+      return testApp;
+    };
+
+    it.each([
+      ['40P01', 'deadlock detected'],
+      ['40001', 'could not serialize access due to concurrent update']
+    ])('%s se convierte en 503 con Retry-After y nunca en 500', async (codigo, mensaje) => {
+      const res = await request(await appConError(errorPg(codigo, mensaje))).get('/falla');
+
+      expect(res.status).toBe(503);
+      expect(res.headers['retry-after']).toBe('1');
+      expect(res.body.error).toMatch(/reintente/i);
+      expect(res.body).not.toHaveProperty('stack');
+    });
+
+    it('no filtra el mensaje de PostgreSQL al cliente', async () => {
+      const res = await request(await appConError(errorPg('40P01', 'deadlock detected'))).get(
+        '/falla'
+      );
+
+      expect(JSON.stringify(res.body)).not.toMatch(/deadlock/i);
+    });
+
+    it('crearNuevaReserva reintenta el deadlock y termina devolviendo el 409 que corresponde', async () => {
+      jest.resetModules();
+      const { crearNuevaReserva } = await import('../src/services/reservas.services.js');
+      const sequelizeServicio = (await import('../src/config/database.js')).default;
+
+      const datos = {
+        aulaId: aulaTest.id,
+        usuarioId: usuariosTest[0].id,
+        fecha: fechaFutura(9),
+        horaInicio: '09:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'Reintento tras deadlock'
+      };
+
+      // Primer intento: PostgreSQL aborta por deadlock. Segundo: el solapamiento
+      // real, que es la respuesta que el cliente tiene que recibir.
+      const original = sequelizeServicio.transaction.bind(sequelizeServicio);
+      const espia = jest
+        .spyOn(sequelizeServicio, 'transaction')
+        .mockImplementationOnce(() => Promise.reject(errorPg('40P01', 'deadlock detected')))
+        .mockImplementation(original);
+
+      await expect(crearNuevaReserva(datos)).resolves.toHaveProperty('id');
+      await expect(
+        crearNuevaReserva({ ...datos, usuarioId: usuariosTest[1].id })
+      ).rejects.toMatchObject({ status: 409 });
+
+      // Dos llamadas para la primera reserva (el deadlock y el reintento) más
+      // una para la segunda: el reintento ocurrió.
+      expect(espia).toHaveBeenCalledTimes(3);
+      espia.mockRestore();
+    });
+
+    it('deja de reintentar y propaga el error si el deadlock no cede', async () => {
+      jest.resetModules();
+      const { crearNuevaReserva } = await import('../src/services/reservas.services.js');
+      const sequelizeServicio = (await import('../src/config/database.js')).default;
+
+      const espia = jest
+        .spyOn(sequelizeServicio, 'transaction')
+        .mockImplementation(() => Promise.reject(errorPg('40P01', 'deadlock detected')));
+
+      await expect(
+        crearNuevaReserva({
+          aulaId: aulaTest.id,
+          usuarioId: usuariosTest[0].id,
+          fecha: fechaFutura(10),
+          horaInicio: '14:00',
+          horaFin: '16:00',
+          cantidadPersonas: 10,
+          motivo: 'Deadlock permanente'
+        })
+      ).rejects.toMatchObject({ parent: { code: '40P01' } });
+
+      // El intento original más tres reintentos: acotado, no infinito.
+      expect(espia).toHaveBeenCalledTimes(4);
+      espia.mockRestore();
+    });
   });
 });
