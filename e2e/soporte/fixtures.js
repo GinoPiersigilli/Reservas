@@ -49,7 +49,25 @@ export const test = base.extend({
 
     if (testInfo.status === testInfo.expectedStatus) return;
 
-    const detalle = [...problemas, ...respuestasClave.slice(-6)];
+    // Estado visible al momento de la falla: la dirección y los avisos de
+    // error explican, por ejemplo, un envío detenido por validación.
+    const estado = [];
+    try {
+      estado.push(`dirección: ${page.url()}`);
+      const avisos = await page.locator('[role="alert"]').allTextContents();
+      if (avisos.length > 0) estado.push(`avisos: ${avisos.join(' | ')}`);
+      const campos = await page.locator('input, select, textarea').evaluateAll((nodos) =>
+        nodos
+          .map((n) => `${n.name || n.id || n.type}=${JSON.stringify(n.value)}`)
+          .filter((t) => !t.startsWith('password'))
+          .join(', ')
+      );
+      if (campos) estado.push(`campos: ${campos}`);
+    } catch {
+      /* la página pudo cerrarse */
+    }
+
+    const detalle = [...estado, ...problemas, ...respuestasClave.slice(-6)];
     if (detalle.length === 0) return;
 
     await testInfo.attach('llamadas-y-respuestas', {
