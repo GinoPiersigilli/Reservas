@@ -48,15 +48,35 @@ Resuelve el problema central de "reservar a ciegas":
 
 ---
 
-## 5. Accesibilidad y Contrastes Verificados (WCAG 2.1 AA)
+## 5. La Agenda como Vista Principal
 
-- **Ratios verificados:** Todo par de texto contra fondo supera 4.5:1 (e.g. texto principal sobre superficie: 15.7:1; texto secundario: 6.2:1). Contornos de controles superan 3.0:1 (3.1:1).
-- **Verificación automatizada:** Script `frontend/scripts/verificar-contraste.js` y tests en Vitest (`vitest-axe`) auditan contractualmente los tokens y la ausencia de violaciones de accesibilidad en cada vista.
+El listado de reservas era una tabla de ocho columnas sin jerarquía, con fechas en `dd/mm/aaaa`, en una aplicación cuyo tema es _cuándo_ está ocupada cada aula. La vista por defecto es ahora una agenda:
+
+- **Agrupación por jornada:** Un encabezado por día en serif (_"viernes 13 de noviembre"_), con `hoy`, `mañana` o `ayer` cuando corresponde. El resto de la interfaz conserva `dd/mm/aaaa` donde la fecha es un dato de tabla.
+- **La reserva como tramo horario:** Hora de inicio y hora de fin unidas por un trazo vertical que toma el color y el patrón de su estado — el mismo lenguaje visual que la grilla. Toda la fila es el enlace al detalle.
+- **La tabla no se descarta:** Ordenar y filtrar sigue siendo necesario para administración, así que la tabla queda detrás de un conmutador y la elección se recuerda en el navegador. En pantalla angosta la agenda la reemplaza por completo, porque una tabla de ocho columnas en un teléfono obliga a desplazarse en horizontal.
 
 ---
 
-## 6. Modo Oscuro
+## 6. El Acento Reservado para la Acción
 
-- **Paleta oscura accesible:** Redefinición integral en `:root[data-theme="dark"]` (`--fondo #0F141A`, `--superficie #171E27`, `--tinta #E7ECF2`, `--borde-control #6B7A8E`). Todos los contrastes cumplen WCAG 2.1 AA (e.g. texto sobre fondo 15.6:1, bordes de control 3.8:1).
+El azul institucional (`--acento`) marcaba a la vez el botón primario, el destino actual del menú, la página activa de la paginación y el paso en curso del formulario. Cuando todo es azul, el azul deja de significar algo:
+
+- **Azul:** Solo lo que ejecuta algo — botones primarios y enlaces.
+- **Ubicación y progreso:** Superficie, peso tipográfico y una barra al costado o debajo.
+- **Barra lateral adaptable:** Entre 769 y 1100 px colapsa a un riel de iconos; los textos se ocultan a la vista pero siguen siendo el nombre accesible de cada enlace.
+
+---
+
+## 7. Accesibilidad y Contrastes Verificados
+
+- **Ratios verificados:** Todo par de texto contra fondo supera 4.5:1 (e.g. texto principal sobre superficie: 15.7:1; texto secundario: 6.2:1). Contornos de controles superan 3.0:1 (3.1:1).
+- **Verificación automatizada:** El script `frontend/scripts/verificar-contraste.js` audita contractualmente los pares de tokens, y las pruebas en Vitest corren `axe-core` sobre cada vista. Vale aclarar el alcance: `axe-core` cubre las reglas de WCAG 2.1 AA que pueden automatizarse, que son una parte del criterio; el resto —orden de lectura, sentido de los textos alternativos, recorrido de teclado en la grilla y en las modales— se prueba caso por caso.
+
+---
+
+## 8. Modo Oscuro
+
+- **Paleta oscura accesible:** Redefinición integral en `:root[data-theme="dark"]` (`--fondo #0F141A`, `--superficie #171E27`, `--tinta #E7ECF2`, `--borde-control #6B7A8E`). Los pares verificados por el script superan los umbrales de WCAG 2.1 AA (e.g. texto sobre fondo 15.6:1, bordes de control 3.8:1).
 - **Sin estilos ni scripts en línea (CSP estricta):** Script estático `/tema-init.js` en el `<head>` servido desde `'self'` para evitar parpadeos (FOUC).
 - **Preferencia y persistencia:** Conmutador accesible en `AppShell` (`Sun`/`Moon` con `aria-pressed`), sincronizado con `prefers-color-scheme` y persistido en `localStorage` mediante el hook `useTema`.

@@ -29,13 +29,16 @@ reservas/
 │       └── init-test-db.sql     # Script de inicialización de la base de datos de pruebas
 ├── docker-compose.yml           # Infraestructura PostgreSQL 16 para desarrollo
 ├── docker-compose.prod.yml      # Entorno de despliegue completo de producción
-├── docs/                        # Documentación técnica (Arquitectura, Seguridad, Diseño, Despliegue)
+├── docs/                        # Documentación técnica (Arquitectura, Seguridad, Diseño, Calidad…)
 │   ├── ARQUITECTURA.md
+│   ├── CALIDAD.md
 │   ├── DEPLOY.md
 │   ├── DISENO.md
+│   ├── RENDIMIENTO.md
 │   ├── SEGURIDAD.md
-│   ├── evidencia/               # Reportes y logs de auditorías de seguridad
-│   └── img/                     # Capturas de pantalla del sistema (modo claro y oscuro)
+│   ├── adr/                     # Decisiones de arquitectura, una por archivo
+│   ├── img/                     # Capturas generadas por `npm run capturas --prefix e2e`
+│   └── seguridad/evidencia/     # Reportes y logs de auditorías de seguridad
 ├── backend/
 │   ├── index.js                 # Punto de entrada del servidor API
 │   ├── db/
@@ -52,21 +55,25 @@ reservas/
 │   │   ├── services/            # Lógica de negocio y transacciones de base de datos
 │   │   └── utils/               # Utilidades de cálculo horario en zona horaria local
 │   └── tests/                   # Pruebas unitarias, de integración, contrato y concurrencia
-└── frontend/
-    ├── Dockerfile               # Compilación multi-etapa (Node → Nginx Alpine)
-    ├── nginx.conf               # Servidor web de producción y proxy API
-    ├── public/
-    │   └── tema-init.js         # Script estático de inicialización de tema anti-flicker
-    ├── scripts/
-    │   ├── capturar-pantallas.mjs # Automatización CDP para capturas responsive
-    │   └── verificar-contraste.js # Validación de contrastes WCAG 2.1 AA en tokens CSS
-    └── src/
-        ├── components/          # Componentes de layout, grilla interactiva y vistas de reservas
-        ├── context/             # Contexto de autenticación y sesión
-        ├── hooks/               # Custom hooks (gestión de tema, OAuth)
-        ├── pages/               # Páginas de la aplicación (Reservas, Formulario, Panel, Login)
-        ├── services/            # Clientes de servicios API con Axios
-        └── styles/              # Variables tokens.css y reset base.css
+├── frontend/
+│   ├── Dockerfile               # Compilación multi-etapa (Node → Nginx Alpine)
+│   ├── nginx.conf               # Servidor web de producción y proxy API
+│   ├── public/
+│   │   └── tema-init.js         # Script estático de inicialización de tema anti-flicker
+│   ├── scripts/
+│   │   └── verificar-contraste.js # Validación de contrastes WCAG 2.1 AA en tokens CSS
+│   └── src/
+│       ├── components/          # Componentes de layout, grilla interactiva y vistas de reservas
+│       ├── context/             # Contexto de autenticación y sesión
+│       ├── hooks/               # Custom hooks (tema, OAuth, trampa de foco, navegación de grilla)
+│       ├── pages/               # Páginas de la aplicación (Reservas, Formulario, Panel, Login)
+│       ├── services/            # Clientes de servicios API con Axios
+│       └── styles/              # Variables tokens.css y reset base.css
+├── e2e/                         # Pruebas de extremo a extremo y generación de capturas
+│   ├── capturas/                # Genera docs/img y el GIF desde la aplicación real
+│   ├── soporte/                 # Entorno compartido, ayudas y diagnóstico de fallos
+│   └── tests/                   # Los 7 flujos completos de usuario
+└── carga/                       # Pruebas de carga con k6 (manuales)
 ```
 
 ---

@@ -10,6 +10,14 @@
 > **Último Commit Auditado:** `d3281bd` (`docs(auditoria): ajustar informe de cierre tecnico con revision critica de evidencias`)  
 > **Total de Commits Evaluados:** 159 commits alcanzables en `HEAD`
 
+> **Cómo leer este documento.** Es una foto fechada: las cifras y los commits
+> que cita son los de la auditoría del 10 de noviembre de 2026 y no se
+> actualizan, porque entonces dejaría de ser un informe de cierre. Para el
+> estado vigente de seguridad, el documento de referencia es
+> [SEGURIDAD.md](SEGURIDAD.md); para el de pruebas y cobertura,
+> [CALIDAD.md](CALIDAD.md). Cuando una cifra de acá no coincida con una de
+> ellos, manda el otro documento.
+
 ---
 
 ## A. Estado General y Alcance
@@ -25,7 +33,7 @@ Las actividades de evaluación abarcaron los componentes del repositorio en su e
 1. **Historial de Control de Versiones:** Inspección de 154 commits analizados por Gitleaks sobre los 158 alcanzables desde `HEAD` (Gitleaks omite commits de merge sin cambios de contenido/diffs vacíos); análisis con TruffleHog; investigación forense de commits `20077a02` y `4935a92a` (`SEC-SEC-02`). No abarca ramas remotas huérfanas o no fusionadas.
 2. **Backend API:** 21 módulos en Express ESM, esquemas de validación Zod, autenticación dual (JWT + Clerk JWKS), 14 endpoints con control IDOR y middleware de manejo de errores.
 3. **Capa de Persistencia y Concurrencia:** PostgreSQL 16 con extensión `btree_gist`, restricción de exclusión `EXCLUDE USING gist`, intervalos semiabiertos `tsrange`, migraciones Sequelize y advisory locks en testing.
-4. **Frontend SPA:** React 19, Vite, React Router, CSS Modules, diseño con tokens semánticos accesibles (modo claro y oscuro auditados bajo WCAG 2.1 AA).
+4. **Frontend SPA:** React 19, Vite, React Router, CSS Modules, diseño con tokens semánticos accesibles (modo claro y oscuro, con los contrastes verificados contra los umbrales de WCAG 2.1 AA).
 5. **Infraestructura y Contenedores:** Nginx unprivileged (UID 101), multi-stage Dockerfiles con usuario no root, escaneo de imágenes con Trivy y proxy inverso endurecido.
 6. **Pipeline de Integración Continua (CI/CD):** Workflows de GitHub Actions fijados por commit SHA completo de 40 caracteres, escaneos automáticos de Semgrep, Gitleaks, CodeQL y npm audit.
 
@@ -103,7 +111,7 @@ A continuación se detallan los hallazgos identificados, confirmados o investiga
   - Hoja de estilos CSS: **47.0 KB** de variables nativas CSS (sin librerías runtime ni inyección dinámica).
   - Tipografías locales auto-alojadas: 6 archivos WOFF/WOFF2 de 14 a 25 KB cada uno.
 
-### D.4. Verificación de Accesibilidad y Contraste WCAG 2.1 AA
+### D.4. Verificación de Accesibilidad y Contraste
 
 - **Ejecución (`node frontend/scripts/verificar-contraste.js`):**
   - Modo Claro: 10/10 combinaciones evaluadas cumplen el ratio mínimo de 4.5:1.
@@ -162,7 +170,7 @@ A continuación se detallan los hallazgos identificados, confirmados o investiga
 | **P3 — Base de Datos**           | Concurrencia y Advisory Locks en Tests               | **Completada**            | `pg_advisory_lock` y pool dimensionado a 30 conexiones.                    |
 | **P4 — Testing y Calidad**       | Ejecución de suite Backend (Jest)                    | **Completada**            | 128 tests aprobados (10 suites). Cobertura no absoluta.                    |
 | **P4 — Testing y Calidad**       | Ejecución de suite Frontend (Vitest)                 | **Completada**            | 66 tests aprobados (11 suites).                                            |
-| **P4 — Testing y Calidad**       | Verificación de accesibilidad WCAG 2.1 AA            | **Completada**            | 100 % de contraste y auditorías `axe` en verde.                            |
+| **P4 — Testing y Calidad**       | Verificación de accesibilidad                        | **Completada**            | Todos los pares de contraste cumplen y `axe` no reporta violaciones.       |
 | **P5 — CI/CD e Infraestructura** | Endurecimiento de GitHub Actions                     | **Completada**            | Commit SHAs inmutables de 40 caracteres en todos los pasos.                |
 | **P5 — CI/CD e Infraestructura** | Contenedores Nginx unprivileged                      | **Completada**            | Nginx ejecutando como usuario UID 101 sin root.                            |
 | **P6 — Reproducibilidad**        | Simulación de instalación limpia en 5 pasos          | **Completada**            | Instrucciones de `README.md` validadas contra `.env.example`.              |
