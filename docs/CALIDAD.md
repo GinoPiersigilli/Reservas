@@ -70,6 +70,20 @@ Playwright levanta por sí mismo la API (puerto 3101) y el frontend compilado
   crea por API y no por la interfaz: el flujo bajo prueba queda aislado y la
   corrida es más rápida.
 
+### Las capturas de la documentación salen del mismo arnés
+
+`npm run capturas --prefix e2e` levanta el entorno de `e2e/soporte/entorno.js`
+—la API real contra la base sembrada y el frontend compilado— y regenera
+`docs/img` desde la aplicación tal cual es. No hay un backend simulado que se
+desactualice en silencio: si una pantalla cambia, la captura cambia con ella.
+
+De paso verifica lo que no se debe ver. Cada ruta se mide a 360, 768 y 1280 px
+comprobando que `scrollWidth` no supere `clientWidth`, de modo que un desborde
+horizontal rompe la generación en lugar de quedar documentado en una imagen.
+
+Se corre aparte de `npm test` porque escribe archivos en el repositorio: es la
+generación de un artefacto, no una verificación que deba correr en CI.
+
 ---
 
 ## 3. Pruebas de carga (k6)

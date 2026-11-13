@@ -6,17 +6,34 @@
 
 Plataforma web institucional full-stack para la gestión, consulta visual de disponibilidad horaria y asignación de aulas académicas sin riesgo de solapamiento.
 
+> **In English** — A full-stack classroom booking system for a university
+> registrar's office. Node.js/Express, PostgreSQL 16 and React 19. Double
+> booking is impossible by construction: overlaps are rejected by a PostgreSQL
+> `EXCLUDE USING gist` constraint over half-open `tsrange` values, not by
+> application-level checks, and this is verified under 100 concurrent requests.
+> Retries and double clicks are absorbed by an HTTP `Idempotency-Key` protocol,
+> and every state change is written to an append-only audit trail inside the
+> same transaction. Covered by 198 API tests, 112 component tests and 20
+> end-to-end flows, with Trivy, Semgrep, CodeQL and Gitleaks running on every
+> push. The interface and the documentation are in Spanish; the code, including
+> identifiers and comments, is in Spanish as well, since that is the language of
+> the institution it was written for.
+
 ---
 
 ## Capturas de Pantalla
 
-| Grilla de Disponibilidad Horaria                                          | Panel Administrativo                                |
-| ------------------------------------------------------------------------- | --------------------------------------------------- |
-| ![Grilla de disponibilidad](docs/img/nueva-reserva-grilla-escritorio.png) | ![Panel admin](docs/img/panel-admin-escritorio.png) |
+| Grilla de Disponibilidad Horaria                            | Agenda por Jornada                                    |
+| ----------------------------------------------------------- | ----------------------------------------------------- |
+| ![Grilla de disponibilidad](docs/img/grilla-escritorio.png) | ![Agenda de reservas](docs/img/agenda-escritorio.png) |
 
-| Listado y Filtros de Reservas                                  | Grilla en Modo Oscuro                                    |
-| -------------------------------------------------------------- | -------------------------------------------------------- |
-| ![Listado de reservas](docs/img/reservas-admin-escritorio.png) | ![Modo oscuro](docs/img/nueva-reserva-grilla-oscuro.png) |
+| Panel Administrativo                                   | Modo Oscuro                                          |
+| ------------------------------------------------------ | ---------------------------------------------------- |
+| ![Panel administrativo](docs/img/panel-escritorio.png) | ![Agenda en modo oscuro](docs/img/agenda-oscuro.png) |
+
+Más capturas —tabla ordenable, detalle con historial, ABM de aulas, teléfono y
+ancho intermedio— en [docs/img](docs/img). Se generan desde la aplicación real
+con `npm run capturas --prefix e2e`.
 
 ---
 
@@ -56,7 +73,7 @@ graph LR
 - **Modelado Formal y Analítica de Gestión:** Documentación con diagramas formales DER y Máquina de Estados en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), y métricas analíticas de ocupación mensual y demanda en el panel administrativo.
 - **Defensa en Profundidad con Rate Limiting:** Tres capas de limitación de tasa (por IP en `/api`, antes de autenticación en escrituras para cumplimiento CodeQL, y por usuario autenticado post-auth) con códigos 429 y `Retry-After`.
 - **Autenticación Híbrida y Estado Activo:** Soporte simultáneo para Clerk SSO y JWT local (HS256), con validación obligatoria del estado del usuario en la base de datos en cada petición.
-- **Accesibilidad y Modo Oscuro:** Interfaz auditada con axe sin violaciones (WCAG 2.1 AA), navegación por teclado y modo oscuro con anti-flicker (`/tema-init.js`) compatible con CSP.
+- **Accesibilidad y Modo Oscuro:** Las pantallas principales pasan `axe-core` sin violaciones en sus reglas automatizables, que cubren una parte de WCAG 2.1 AA; los contrastes de los tokens se verifican por separado con un script propio, y la navegación por teclado de la grilla y de las modales se prueba caso por caso. Modo oscuro con anti-flicker (`/tema-init.js`) compatible con CSP.
 - **Pipeline de Seguridad en CI:** Escaneo continuo de imágenes Docker con Trivy, SAST con Semgrep y CodeQL, y detección de secretos con Gitleaks.
 
 ---
@@ -103,7 +120,7 @@ npm test --prefix backend                  # Pruebas de API: negocio, concurrenc
 npm test --prefix frontend                 # Pruebas de componentes y accesibilidad axe (Vitest)
 npm run format:check                       # Formato del repositorio (Prettier)
 node frontend/scripts/verificar-contraste.js # Validación contractual de contraste WCAG 2.1 AA
-node frontend/scripts/capturar-pantallas.mjs # Verificación responsive automatizada con Chrome/Brave
+npm run capturas --prefix e2e              # Regenera docs/img y verifica que nada desborde en horizontal
 ```
 
 Pruebas de extremo a extremo sobre los 7 flujos completos. Playwright
@@ -131,12 +148,12 @@ Estrategia completa, decisiones y límites de complejidad: [docs/CALIDAD.md](doc
 
 Documentación de la API: con el backend corriendo en desarrollo, `http://localhost:3001/api/docs/ui` (OpenAPI 3.1; no se publica en producción).
 
-Documentación técnica completa: [Arquitectura](docs/ARQUITECTURA.md) | [Decisiones de arquitectura (ADR)](docs/adr/README.md) | [Diseño UI/UX](docs/DISENO.md) | [Calidad y pruebas](docs/CALIDAD.md) | [Rendimiento](docs/RENDIMIENTO.md) | [Guía de Despliegue](docs/DEPLOY.md) | [Seguridad](docs/SEGURIDAD.md).
+Documentación técnica completa, con un índice de qué responde cada documento: [docs/](docs/README.md).
 
 ---
 
 ## Proceso de Desarrollo y Licencia
 
-Desarrollado de manera iterativa con asistencia de herramientas de IA (Google Antigravity), con diseño de arquitectura, revisión de código, desarrollo de pruebas y auditoría de seguridad implementados con criterio propio.
+Desarrollado de manera iterativa con asistencia de herramientas de IA (Google Antigravity y Claude Code), con diseño de arquitectura, revisión de código, desarrollo de pruebas y auditoría de seguridad implementados con criterio propio.
 
 Distribuido bajo licencia [MIT](LICENSE). © 2026 Gino Piersigilli.

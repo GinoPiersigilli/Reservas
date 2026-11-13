@@ -149,7 +149,7 @@ Se ejecutaron escaneos de fuga de secretos y claves criptográficas sobre el ár
 - **Alcance:** 170 archivos rastreados por git, 115 reglas aplicadas.
 - **Distribución por Severidad:**
   - **ERROR (2 hallazgos):**
-    - `typescript.react.security.react-insecure-request` en `frontend/scripts/capturar-pantallas.mjs` y `verificar-csp-clerk.mjs` por peticiones no cifradas sobre `http://localhost` contra servidores locales de prueba.
+    - `typescript.react.security.react-insecure-request` en `frontend/scripts/capturar-pantallas.mjs` y `verificar-csp-clerk.mjs` por peticiones no cifradas sobre `http://localhost` contra servidores locales de prueba. El primero de esos scripts fue reemplazado más tarde por el generador de capturas sobre Playwright (`e2e/capturas/`), que levanta el mismo entorno que las pruebas de extremo a extremo.
   - **WARNING (5 hallazgos):**
     - 4 hallazgos `yaml.github-actions.security.github-actions-mutable-action-tag` en `.github/workflows/ci.yml:45,48,76,79` por uso de tags mutables (`actions/checkout@v4`, `actions/setup-node@v5`) en lugar de fijar commit SHAs inmutables (`SEC-SAST-02`).
       - **Estado:** **Cerrado** (Commits `4f0f3da` y `d82c87b`). Todas las acciones de terceros utilizadas en `.github/workflows/ci.yml` y `.github/workflows/codeql.yml` (`actions/checkout`, `actions/setup-node`, `aquasec/trivy-action`, `github/codeql-action`) fueron fijadas a sus commit SHAs inmutables completos de 40 caracteres oficiales, acompañadas de comentarios aclaratorios con el tag de versión de referencia para evitar ataques en la cadena de suministro de GitHub Marketplace.
