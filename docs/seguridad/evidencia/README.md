@@ -2,6 +2,8 @@
 
 Este directorio almacena los reportes y salidas crudas generadas por las herramientas de análisis de seguridad estático (SAST), dinámico (DAST), escaneo de secretos y auditoría de dependencias, referenciadas en `docs/SEGURIDAD.md`.
 
+> **Qué es y qué no es esta carpeta.** Son salidas fechadas de la auditoría del 10 de noviembre de 2026: respaldan los hallazgos de `SEGURIDAD.md`, no describen el estado de hoy. El estado vigente lo dan los jobs de Trivy, Semgrep, CodeQL y Gitleaks, que corren en cada push. Por eso no se conservan el volcado completo de la imagen del backend (`trivy-image-backend.txt`) ni la versión HTML del informe de ZAP: el primero caduca con cada reconstrucción de la imagen y el segundo repetía lo que ya está en `zap-report.json`.
+
 ---
 
 ## Índice de Archivos
@@ -27,9 +29,7 @@ Este directorio almacena los reportes y salidas crudas generadas por las herrami
 ### Seguridad de Contenedores e Imágenes Docker
 - **`trivy-backend-dockerfile.txt`**: Escaneo de buenas prácticas y directivas del `Dockerfile` de backend con Trivy.
 - **`trivy-frontend-dockerfile.txt`**: Escaneo de buenas prácticas y directivas del `Dockerfile` de frontend con Trivy.
-- **`trivy-image-backend.txt`**: Escaneo de vulnerabilidades de sistema operativo (CVEs) en la imagen Docker del backend.
 - **`trivy-image-frontend.txt`**: Escaneo de vulnerabilidades de sistema operativo (CVEs) en la imagen Docker del frontend.
 
 ### Análisis Dinámico de Seguridad Web (DAST)
-- **`zap-report.html`**: Informe visual navegable del escaneo dinámico realizado con OWASP ZAP Baseline Scan.
 - **`zap-report.json`**: Resultados estructurados del análisis dinámico de cabeceras HTTP y endpoints con OWASP ZAP.

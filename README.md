@@ -155,7 +155,7 @@ Estrategia completa, decisiones y límites de complejidad: [docs/CALIDAD.md](doc
 
 Documentación de la API: con el backend corriendo en desarrollo, `http://localhost:3001/api/docs/ui` (OpenAPI 3.1; no se publica en producción).
 
-Documentación técnica completa, con un índice de qué responde cada documento: [docs/](docs/README.md). Para entender el sistema por sus decisiones y no por su código: [docs/ESTUDIO.md](docs/ESTUDIO.md).
+Documentación técnica completa, con un índice de qué responde cada documento: [docs/](docs/README.md).
 
 ---
 
