@@ -495,7 +495,7 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
       const resultados = await Promise.all(peticiones);
 
       const creadas = resultados.filter((r) => r.status === 201);
-      const rechazadas = resultados.filter((r) => r.status === 400 || r.status === 409);
+      const rechazadas = resultados.filter((r) => r.status === 409);
 
       expect(creadas.length).toBe(1);
       expect(rechazadas.length).toBe(19);

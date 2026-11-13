@@ -389,7 +389,7 @@ Para prevenir reservas duplicadas producto de reintentos de red, reconexiones m�
 
 La robustez concurrente del sistema está validada empíricamente en `backend/tests/concurrencia.test.js`:
 
-- **100 solicitudes simultáneas para la misma aula y horario:** 100 usuarios distintos disparan peticiones concurrentes mediante `Promise.all`. Exactamente **1 solicitud obtiene `201 Created`**, mientras las **99 restantes reciben `400 Bad Request`** con el mensaje de aula ocupada. Cero errores `5xx`. Se verifica en la base de datos la existencia de exactamente 1 reserva activa y **ninguna fila huérfana en `historial_reservas`**.
+- **100 solicitudes simultáneas para la misma aula y horario:** 100 usuarios distintos disparan peticiones concurrentes mediante `Promise.all`. Exactamente **1 solicitud obtiene `201 Created`**, mientras las **99 restantes reciben `409 Conflict`** con el mensaje de aula ocupada. Cero errores `5xx`. Se verifica en la base de datos la existencia de exactamente 1 reserva activa y **ninguna fila huérfana en `historial_reservas`**.
 - **100 solicitudes repartidas en 10 franjas horarias:** Exactamente **10 reservas creadas** (una por cada franja horaria) y 90 rechazadas sin fallos de contención.
 - **Gestión del Pool de Conexiones:** El pool de conexiones de Sequelize es completamente configurable por variables de entorno (`DB_POOL_MAX`, `DB_POOL_MIN`, `DB_POOL_ACQUIRE`, `DB_POOL_IDLE`). Si el pool se satura bajo condiciones extremas, el middleware de errores intercepta `SequelizeConnectionAcquireTimeoutError` y responde con código **`503 Service Unavailable`** acompañado del encabezado **`Retry-After: 2`**, impidiendo que la sobrecarga derive en un error 500 genérico.
 

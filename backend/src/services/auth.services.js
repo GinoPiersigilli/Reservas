@@ -1,39 +1,11 @@
 // services/auth.service.js
+//
+// El alta de cuentas la resuelve Clerk: no hay ruta de registro local, así que
+// este módulo solo verifica credenciales contra la base para el JWT propio.
 import Usuario from '../models/usuario.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
-
-export const registrarUsuario = async (datos) => {
-  const { nombre, email, password } = datos;
-
-  // 1. Verificar si el email ya existe en la base de datos
-  const usuarioExistente = await Usuario.findOne({ where: { email } });
-  if (usuarioExistente) {
-    const error = new Error('El email ya está registrado');
-    error.status = 400;
-    throw error;
-  }
-
-  // 2. Hashear la contraseña (Requisito estricto del TP)
-  const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash(password, salt);
-
-  // 3. Crear el usuario (SEC-AUTH-04: ignorar campo rol del parámetro y forzar 'usuario')
-  const nuevoUsuario = await Usuario.create({
-    nombre,
-    email,
-    passwordHash, // Guardamos el hash de forma segura, nunca la clave plana
-    rol: 'usuario',
-    activo: true
-  });
-
-  // 4. Le sacamos la contraseña antes de devolver los datos para no exponerla
-  const usuarioCreado = nuevoUsuario.toJSON();
-  delete usuarioCreado.passwordHash;
-
-  return usuarioCreado;
-};
 
 export const loginUsuario = async (email, password) => {
   // 1. Buscar al usuario por email

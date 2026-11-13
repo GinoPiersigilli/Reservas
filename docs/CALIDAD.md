@@ -9,7 +9,7 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 
 | Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
 | ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Integración de API | Jest + Supertest               | 198 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
+| Integración de API | Jest + Supertest               | 201 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
 | Componentes        | Vitest + Testing Library + axe | 112 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
 | Extremo a extremo  | Playwright                     | 20 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
 | Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
@@ -103,7 +103,7 @@ No corre en CI: necesita el binario de k6 y una base con datos reales, y sus
 números dependen del hardware, por lo que un umbral fijo en CI daría falsos
 negativos. Se ejecuta a mano al cambiar algo sensible al rendimiento.
 
-Un 400 por franja ocupada no se cuenta como error: es la respuesta correcta
+Un 409 por franja ocupada no se cuenta como error: es la respuesta correcta
 cuando dos usuarios virtuales piden la misma franja, y se registra en la métrica
 `franjas_ya_ocupadas`.
 
@@ -225,6 +225,44 @@ prueban y se descubren en producción:
 - **Contrato de CORS** (en `tests/contrato-frontend.test.js`): el preflight debe
   permitir cada cabecera que el frontend realmente envía. Esta prueba existe
   porque esa falla ya ocurrió (ver más abajo).
+- **Contrato de códigos de conflicto** (en `tests/contrato-frontend.test.js`): los
+  tres caminos que chocan con el estado —horario ocupado, nombre de aula
+  repetido, baja de un aula con reservas futuras— deben responder `409`, y un
+  pedido mal formado debe seguir respondiendo `400` (ver [ADR 0006](adr/0006-codigos-http-de-conflicto.md)).
+  Los tres nacen en archivos distintos, así que sin esta prueba es fácil que uno
+  vuelva a `400` sin que nada falle.
+
+---
+
+## 5.1. Qué pasa si se quita la restricción de exclusión
+
+La afirmación central del proyecto es que la integridad la garantiza PostgreSQL
+y no el código de la aplicación. Esa afirmación se puede medir: basta quitar
+`reservas_sin_solapamiento` de la migración `002`, volver a correr la suite y
+contar qué se cae.
+
+Medido el 13/11/2026, con el resto del sistema intacto:
+
+|                                                             | Resultado               |
+| ----------------------------------------------------------- | ----------------------- |
+| Pedidos de los 100 simultáneos que logran crear una reserva | **29** (debería ser 1)  |
+| Pruebas que fallan                                          | **5**, en tres archivos |
+| Pruebas de negocio que siguen pasando                       | **63 de 65**            |
+
+Las cinco que fallan son exactamente las que tienen que fallar: las dos de
+concurrencia, la de diez POST simultáneos al mismo horario, la que fuerza el
+camino del `23P01` salteando la comprobación previa, y la de diez pedidos
+simultáneos con la misma clave de idempotencia.
+
+Los dos números que importan:
+
+- **29 de 100.** La comprobación previa en el servicio detiene a 71 pedidos,
+  pero no cierra la ventana entre el `SELECT` y el `INSERT`. No es una mejora
+  marginal sobre la restricción: es la diferencia entre 29 reservas dobles y
+  ninguna.
+- **63 de 65 pruebas de negocio siguen pasando.** Una suite que validara la
+  decisión por casualidad se habría caído entera. Que solo se caigan las de
+  concurrencia muestra que cada prueba verifica lo que dice verificar.
 
 ---
 

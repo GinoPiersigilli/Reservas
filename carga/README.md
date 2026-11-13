@@ -46,5 +46,5 @@ La corrida falla si no se cumplen:
 | `http_req_duration{tipo:escritura}` p(95) | < 800 ms | Alta de reserva con transacción      |
 | `checks`                                  | > 99%    | Respuestas con el contenido esperado |
 
-Un 409/400 por franja ocupada **no** cuenta como error: es la respuesta correcta
+Un 409 por franja ocupada **no** cuenta como error: es la respuesta correcta
 cuando dos usuarios virtuales piden la misma franja.

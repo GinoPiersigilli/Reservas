@@ -99,9 +99,9 @@ export default function (datos) {
       tags: { tipo: 'escritura' }
     });
 
-    // 400 por franja ocupada es la respuesta correcta ante dos pedidos a la
+    // 409 por franja ocupada es la respuesta correcta ante dos pedidos a la
     // misma franja: se cuenta aparte y no se considera un fallo.
-    const esConflicto = alta.status === 400 && /ya está reservada/i.test(alta.body || '');
+    const esConflicto = alta.status === 409 && /ya está reservada/i.test(alta.body || '');
     if (alta.status === 201) reservasCreadas.add(1);
     if (esConflicto) franjasOcupadas.add(1);
 

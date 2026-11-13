@@ -75,10 +75,17 @@ const mapearPoolSaturado = (err) => {
   };
 };
 
-/** Solapamiento de reservas garantizado por la restricción de exclusión. */
+/**
+ * Solapamiento de reservas garantizado por la restricción de exclusión.
+ *
+ * Responde 409 y no 400: el pedido está bien formado y es válido: lo que falla
+ * es que choca con el estado actual del recurso, que es la definición de 409 en
+ * la RFC 9110. Un 400 le diría a quien integra la API que revise el cuerpo del
+ * pedido, cuando lo que tiene que hacer es elegir otra franja.
+ */
 const mapearSolapamiento = (err) => {
   if (err.name === 'SequelizeExclusionConstraintError' || codigoPg(err) === '23P01') {
-    return { status: 400, cuerpo: { error: 'El aula ya está reservada en ese horario' } };
+    return { status: 409, cuerpo: { error: 'El aula ya está reservada en ese horario' } };
   }
   return null;
 };
@@ -96,8 +103,10 @@ const mapearUnicidad = (err) => {
   const esEmail =
     Boolean(err.fields?.email) || constraint.includes('email') || tienePath(err, 'email');
 
+  // Mismo criterio que el solapamiento y que el nombre de aula repetido: los
+  // tres son conflictos con el estado y los tres responden 409.
   return {
-    status: 400,
+    status: 409,
     cuerpo: {
       error: esEmail ? 'El email ya está registrado' : 'Ya existe un registro con esos datos únicos'
     }

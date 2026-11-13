@@ -13,7 +13,7 @@ la respuesta, o un proxy repite la petición.
 
 La restricción de exclusión (ADR 0001) no alcanza acá: dos peticiones idénticas
 del mismo usuario para la misma franja son _solapadas_, así que la segunda
-falla con un 400 "el aula ya está reservada" — un mensaje confuso, porque la
+falla con un 409 "el aula ya está reservada" — un mensaje confuso, porque la
 reserva que ocupa la franja es la suya, creada un instante antes.
 
 ## Opciones consideradas
