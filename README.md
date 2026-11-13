@@ -99,14 +99,14 @@ npm run dev --prefix frontend
 ## Tests y Verificación
 
 ```bash
-npm test --prefix backend                  # 172 pruebas de API: negocio, concurrencia, idempotencia (Jest)
-npm test --prefix frontend                 # 77 pruebas de componentes y accesibilidad axe (Vitest)
+npm test --prefix backend                  # Pruebas de API: negocio, concurrencia, idempotencia, observabilidad (Jest)
+npm test --prefix frontend                 # Pruebas de componentes y accesibilidad axe (Vitest)
 npm run format:check                       # Formato del repositorio (Prettier)
 node frontend/scripts/verificar-contraste.js # Validación contractual de contraste WCAG 2.1 AA
 node frontend/scripts/capturar-pantallas.mjs # Verificación responsive automatizada con Chrome/Brave
 ```
 
-Pruebas de extremo a extremo (19 casos sobre 7 flujos completos). Playwright
+Pruebas de extremo a extremo sobre los 7 flujos completos. Playwright
 levanta la API y el frontend compilado por sí mismo:
 
 ```bash
@@ -129,7 +129,9 @@ Estrategia completa, decisiones y límites de complejidad: [docs/CALIDAD.md](doc
 - **Terminación TLS/HTTPS:** Debe configurarse un proxy reverso con certificados SSL válidos delante de Nginx.
 - **Copias de Seguridad:** Scripts automatizados `scripts/backup-db.sh` y `scripts/restore-db.sh` con retención de 7 días.
 
-Documentación técnica completa: [Arquitectura](docs/ARQUITECTURA.md) | [Diseño UI/UX](docs/DISENO.md) | [Calidad y pruebas](docs/CALIDAD.md) | [Rendimiento](docs/RENDIMIENTO.md) | [Guía de Despliegue](docs/DEPLOY.md) | [Seguridad](docs/SEGURIDAD.md).
+Documentación de la API: con el backend corriendo en desarrollo, `http://localhost:3001/api/docs/ui` (OpenAPI 3.1; no se publica en producción).
+
+Documentación técnica completa: [Arquitectura](docs/ARQUITECTURA.md) | [Decisiones de arquitectura (ADR)](docs/adr/README.md) | [Diseño UI/UX](docs/DISENO.md) | [Calidad y pruebas](docs/CALIDAD.md) | [Rendimiento](docs/RENDIMIENTO.md) | [Guía de Despliegue](docs/DEPLOY.md) | [Seguridad](docs/SEGURIDAD.md).
 
 ---
 
