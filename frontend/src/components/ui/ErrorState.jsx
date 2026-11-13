@@ -5,19 +5,15 @@ import styles from './ErrorState.module.css';
 
 export default function ErrorState({
   titulo,
-  title,
   descripcion,
-  description,
   onReintentar,
-  onRetry,
   textoReintentar = TEXTOS.acciones.reintentar,
   mostrarReintentar = true,
   className = '',
   ...rest
 }) {
-  const textoTitulo = titulo || title || TEXTOS.ui.errorTitulo;
-  const textoDescripcion = descripcion || description || TEXTOS.ui.errorDescripcion;
-  const manejadorReintentar = onReintentar || onRetry;
+  const textoTitulo = titulo || TEXTOS.ui.errorTitulo;
+  const textoDescripcion = descripcion || TEXTOS.ui.errorDescripcion;
 
   return (
     <div
@@ -32,7 +28,7 @@ export default function ErrorState({
       {textoDescripcion ? <p className={styles.descripcion}>{textoDescripcion}</p> : null}
       {mostrarReintentar ? (
         <div className={styles.acciones}>
-          <Button variante="secundario" icono={RotateCw} onClick={() => manejadorReintentar?.()}>
+          <Button variante="secundario" icono={RotateCw} onClick={() => onReintentar?.()}>
             {textoReintentar}
           </Button>
         </div>

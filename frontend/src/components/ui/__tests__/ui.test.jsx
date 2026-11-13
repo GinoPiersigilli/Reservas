@@ -128,8 +128,8 @@ describe('Componentes base de UI (src/components/ui/)', () => {
 
   describe('Table, TablaSkeleton, EmptyState y ErrorState', () => {
     const columnas = [
-      { key: 'id', titulo: '#' },
-      { key: 'aula', titulo: 'Aula' }
+      { clave: 'id', titulo: '#' },
+      { clave: 'aula', titulo: 'Aula' }
     ];
 
     it('renderiza filas y cabeceras con Table', () => {

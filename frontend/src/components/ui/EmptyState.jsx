@@ -5,20 +5,15 @@ import styles from './EmptyState.module.css';
 
 export default function EmptyState({
   titulo,
-  title,
   descripcion,
-  description,
   icono: IconoProp,
-  icon,
   accion,
-  action,
   className = '',
   ...rest
 }) {
-  const textoTitulo = titulo || title || TEXTOS.ui.tablaVaciaTitulo;
-  const textoDescripcion = descripcion || description || TEXTOS.ui.tablaVaciaDescripcion;
-  const Icono = IconoProp || icon || Inbox;
-  const nodoAccion = accion || action;
+  const textoTitulo = titulo || TEXTOS.ui.tablaVaciaTitulo;
+  const textoDescripcion = descripcion || TEXTOS.ui.tablaVaciaDescripcion;
+  const Icono = IconoProp || Inbox;
 
   const renderIcono = () => {
     if (isValidElement(Icono)) return Icono;
@@ -33,7 +28,7 @@ export default function EmptyState({
       </span>
       <h3 className={styles.titulo}>{textoTitulo}</h3>
       {textoDescripcion ? <p className={styles.descripcion}>{textoDescripcion}</p> : null}
-      {nodoAccion ? <div className={styles.accion}>{nodoAccion}</div> : null}
+      {accion ? <div className={styles.accion}>{accion}</div> : null}
     </div>
   );
 }

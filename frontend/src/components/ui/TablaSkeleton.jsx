@@ -3,17 +3,12 @@ import styles from './TablaSkeleton.module.css';
 
 export default function TablaSkeleton({
   filas = 5,
-  rows,
   columnas = 5,
-  columns,
   cabeceras,
-  headers,
   etiqueta = TEXTOS.ui.tablaCargando,
   className = ''
 }) {
-  const numFilas = rows ?? filas;
-  const listaCabeceras = headers || cabeceras;
-  const numColumnas = Array.isArray(listaCabeceras) ? listaCabeceras.length : (columns ?? columnas);
+  const numColumnas = Array.isArray(cabeceras) ? cabeceras.length : columnas;
 
   return (
     <div
@@ -29,8 +24,8 @@ export default function TablaSkeleton({
           <tr>
             {Array.from({ length: numColumnas }).map((_, colIdx) => (
               <th key={colIdx} className={styles.th}>
-                {Array.isArray(listaCabeceras) && listaCabeceras[colIdx] ? (
-                  listaCabeceras[colIdx]
+                {Array.isArray(cabeceras) && cabeceras[colIdx] ? (
+                  cabeceras[colIdx]
                 ) : (
                   <span className={styles.barraCabecera} />
                 )}
@@ -39,7 +34,7 @@ export default function TablaSkeleton({
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: numFilas }).map((_, filaIdx) => (
+          {Array.from({ length: filas }).map((_, filaIdx) => (
             <tr key={filaIdx}>
               {Array.from({ length: numColumnas }).map((__, colIdx) => (
                 <td key={colIdx} className={styles.td}>

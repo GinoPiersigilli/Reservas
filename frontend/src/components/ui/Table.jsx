@@ -3,105 +3,103 @@ import EmptyState from './EmptyState.jsx';
 import TablaSkeleton from './TablaSkeleton.jsx';
 import styles from './Table.module.css';
 
+/**
+ * Clase de alineación de una columna. Por omisión, a la izquierda.
+ */
+const claseAlineacion = (alineacion) => {
+  if (alineacion === 'derecha') return styles.derecha;
+  if (alineacion === 'centro') return styles.centro;
+  return '';
+};
+
+const claseCelda = (base, alineacion) =>
+  [base, claseAlineacion(alineacion)].filter(Boolean).join(' ');
+
+function Cabecera({ columnas }) {
+  return (
+    <thead className={styles.thead}>
+      <tr>
+        {columnas.map((col) => (
+          <th key={col.clave} scope="col" className={claseCelda(styles.th, col.alineacion)}>
+            {col.titulo}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+}
+
+function Cuerpo({ columnas, datos, obtenerClave }) {
+  return (
+    <tbody>
+      {datos.map((fila, filaIdx) => (
+        <tr key={obtenerClave(fila, filaIdx)} className={styles.tr}>
+          {columnas.map((col) => (
+            <td key={col.clave} className={claseCelda(styles.td, col.alineacion)}>
+              {typeof col.render === 'function' ? col.render(fila, filaIdx) : fila?.[col.clave]}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  );
+}
+
+/**
+ * Tabla con dos modos de uso:
+ *
+ * - **Declarativo:** se le pasan `columnas` y `datos`, y resuelve por su cuenta
+ *   la carga (esqueleto) y el estado vacío.
+ * - **Compuesto:** se le pasan hijos y se arma la tabla con `Table.Head`,
+ *   `Table.Row`, etc., para casos que no encajan en una grilla uniforme.
+ *
+ * Cada columna es `{ clave, titulo, alineacion?, render? }`; `alineacion`
+ * acepta `'derecha'` o `'centro'`.
+ */
 function Table({
   columnas,
-  columns,
   datos,
-  data,
   claveFila = 'id',
-  rowKey,
   cargando = false,
-  loading = false,
   vacia = false,
-  isEmpty = false,
   vacioTitulo = TEXTOS.ui.tablaVaciaTitulo,
   vacioDescripcion = TEXTOS.ui.tablaVaciaDescripcion,
   vacioAccion,
   estadoVacio,
-  emptyState,
   ariaLabel,
   className = '',
   children,
   ...rest
 }) {
-  const listaColumnas = columnas || columns;
-  const listaDatos = datos ?? data;
-  const estaCargando = Boolean(cargando || loading);
+  const esDeclarativa = Array.isArray(columnas) && Array.isArray(datos);
 
-  if (estaCargando) {
+  if (cargando) {
     return (
       <TablaSkeleton
-        cabeceras={
-          Array.isArray(listaColumnas)
-            ? listaColumnas.map((col) => col.titulo ?? col.header ?? '')
-            : undefined
-        }
+        cabeceras={Array.isArray(columnas) ? columnas.map((col) => col.titulo ?? '') : undefined}
       />
     );
   }
 
-  const sinDatosDeclarativos = Array.isArray(listaDatos) && listaDatos.length === 0;
-  const mostrarVacio = Boolean(vacia || isEmpty || sinDatosDeclarativos);
-
+  const mostrarVacio = vacia || (esDeclarativa && datos.length === 0);
   if (mostrarVacio) {
-    if (estadoVacio || emptyState) {
-      return estadoVacio || emptyState;
-    }
-    return <EmptyState titulo={vacioTitulo} descripcion={vacioDescripcion} accion={vacioAccion} />;
+    return (
+      estadoVacio || (
+        <EmptyState titulo={vacioTitulo} descripcion={vacioDescripcion} accion={vacioAccion} />
+      )
+    );
   }
 
-  const obtenerClaseAlineacion = (alineacion) => {
-    if (alineacion === 'right' || alineacion === 'derecha') return styles.derecha;
-    if (alineacion === 'center' || alineacion === 'centro') return styles.centro;
-    return '';
-  };
-
-  const obtenerClave = (fila, indice) => {
-    const keyProp = rowKey || claveFila;
-    if (typeof keyProp === 'function') return keyProp(fila, indice);
-    return fila?.[keyProp] ?? indice;
-  };
+  const obtenerClave = (fila, indice) =>
+    typeof claveFila === 'function' ? claveFila(fila, indice) : (fila?.[claveFila] ?? indice);
 
   return (
     <div className={[styles.wrapper, className].filter(Boolean).join(' ')}>
       <table className={styles.tabla} aria-label={ariaLabel} {...rest}>
-        {Array.isArray(listaColumnas) && Array.isArray(listaDatos) ? (
+        {esDeclarativa ? (
           <>
-            <thead className={styles.thead}>
-              <tr>
-                {listaColumnas.map((col, idx) => {
-                  const key = col.key ?? col.clave ?? idx;
-                  const titulo = col.titulo ?? col.header ?? '';
-                  const alinear = obtenerClaseAlineacion(col.align || col.alineacion);
-                  return (
-                    <th
-                      key={key}
-                      scope="col"
-                      className={[styles.th, alinear].filter(Boolean).join(' ')}
-                    >
-                      {titulo}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {listaDatos.map((fila, filaIdx) => (
-                <tr key={obtenerClave(fila, filaIdx)} className={styles.tr}>
-                  {listaColumnas.map((col, colIdx) => {
-                    const key = col.key ?? col.clave ?? colIdx;
-                    const alinear = obtenerClaseAlineacion(col.align || col.alineacion);
-                    const contenido =
-                      typeof col.render === 'function' ? col.render(fila, filaIdx) : fila?.[key];
-                    return (
-                      <td key={key} className={[styles.td, alinear].filter(Boolean).join(' ')}>
-                        {contenido}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
+            <Cabecera columnas={columnas} />
+            <Cuerpo columnas={columnas} datos={datos} obtenerClave={obtenerClave} />
           </>
         ) : (
           children

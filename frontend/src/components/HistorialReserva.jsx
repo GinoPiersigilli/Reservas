@@ -50,21 +50,21 @@ function formatearObjetoCambio(obj) {
 const HistorialReserva = ({ historial = [] }) => {
   const columnas = [
     {
-      key: 'fechaHora',
+      clave: 'fechaHora',
       titulo: 'Fecha y hora',
       render: (item) => (
         <span className={styles.fechaCelda}>{formatearFechaHora(item.fechaHora)}</span>
       )
     },
     {
-      key: 'accion',
+      clave: 'accion',
       titulo: 'Acción',
       render: (item) => (
         <span className={styles.accionTexto}>{ETIQUETAS_ACCION[item.accion] || item.accion}</span>
       )
     },
     {
-      key: 'usuario',
+      clave: 'usuario',
       titulo: 'Usuario',
       render: (item) => (
         <span className={styles.usuarioTexto}>
@@ -73,7 +73,7 @@ const HistorialReserva = ({ historial = [] }) => {
       )
     },
     {
-      key: 'detalle',
+      clave: 'detalle',
       titulo: 'Detalle',
       render: (item) => {
         const anterior = formatearValorHistorial(item.valorAnterior);
