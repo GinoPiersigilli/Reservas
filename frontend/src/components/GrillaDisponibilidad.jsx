@@ -4,7 +4,6 @@ import {
   obtenerHoyArgentina,
   obtenerMinutosAhoraArgentina
 } from '../config/horarios.js';
-import { TEXTOS } from '../textos.js';
 import { useNavegacionGrilla } from '../hooks/useNavegacionGrilla.js';
 import { calcularSegmentosFila, calcularTramos, hayOcupacionEnRango } from './grillaCalculos.js';
 import GrillaEscritorio from './GrillaEscritorio.jsx';
@@ -29,11 +28,11 @@ function Leyenda({ esHoy, minutosAhora }) {
         </span>
         <span className={styles.itemLeyenda}>
           <span className={styles.muestraPendiente} aria-hidden="true" />
-          <span>{TEXTOS.estados.pendiente} (rayado)</span>
+          <span>Reserva pendiente</span>
         </span>
         <span className={styles.itemLeyenda}>
           <span className={styles.muestraAprobada} aria-hidden="true" />
-          <span>{TEXTOS.estados.aprobada} (macizo)</span>
+          <span>Reserva aprobada</span>
         </span>
       </div>
 
@@ -55,6 +54,7 @@ function Leyenda({ esHoy, minutosAhora }) {
  * cierra el rango si no hay nada ocupado en el medio.
  */
 export default function GrillaDisponibilidad({
+  id,
   aulas = [],
   fecha = '',
   disponibilidadPorAula = {},
@@ -138,7 +138,7 @@ export default function GrillaDisponibilidad({
   };
 
   return (
-    <section aria-label="Grilla de disponibilidad horaria" className={styles.contenedor}>
+    <section id={id} aria-label="Grilla de disponibilidad horaria" className={styles.contenedor}>
       <Leyenda esHoy={reloj.esHoy} minutosAhora={minutosAhora} />
 
       {!fecha ? (

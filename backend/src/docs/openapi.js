@@ -168,6 +168,15 @@ export const openapi = {
             enum: ['creacion', 'edicion', 'aprobacion', 'rechazo', 'cancelacion']
           },
           usuarioId: { type: 'integer' },
+          usuario: {
+            type: 'object',
+            nullable: true,
+            description: 'Quien hizo el cambio. Sin correo: lo ve también quien pidió la reserva.',
+            properties: {
+              id: { type: 'integer' },
+              nombre: { type: 'string' }
+            }
+          },
           fechaHora: { type: 'string', format: 'date-time' },
           valorAnterior: { type: 'object', nullable: true },
           valorNuevo: { type: 'object', nullable: true }

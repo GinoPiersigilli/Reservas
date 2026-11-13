@@ -40,7 +40,9 @@
 .muestraPendiente,
 .muestraMuesca {
   display: inline-block;
-  width: var(--icono-sm);
+  /* Muestras anchas: el rayado de «pendiente» se tiene que distinguir del
+     macizo de «aprobada» en la muestra misma, sin aclararlo entre paréntesis. */
+  width: 28px;
   height: var(--icono-sm);
   border-radius: var(--radio-control);
   border: var(--borde-ancho) solid var(--borde-control);

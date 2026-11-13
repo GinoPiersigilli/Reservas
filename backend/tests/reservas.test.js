@@ -1175,6 +1175,15 @@ describe('Reservas API', () => {
       valorAnterior: null,
       valorNuevo: { estado: 'pendiente' }
     });
+
+    // El historial nombra a quien hizo el cambio: un registro que dice
+    // "Usuario #4" no sirve para auditar. El correo no viaja: esta respuesta
+    // la ve también quien pidió la reserva.
+    expect(resHistorial.body[0].usuario).toMatchObject({
+      id: usuario.id,
+      nombre: 'User Test A'
+    });
+    expect(resHistorial.body[0].usuario).not.toHaveProperty('email');
   });
 
   it('should cover complete state transition flow, role permissions, and history entries', async () => {

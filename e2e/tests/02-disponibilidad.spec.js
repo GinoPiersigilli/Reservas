@@ -45,8 +45,30 @@ test.describe('Flujo 2 — Consulta de disponibilidad', () => {
     await filtros.getByRole('combobox', { name: 'Estado' }).selectOption('aprobada');
     await filtros.getByRole('button', { name: 'Filtrar' }).click();
 
-    const filas = page.getByRole('table', { name: 'Listado de reservas' }).getByRole('row');
-    await expect(filas.filter({ hasText: 'Aprobada' }).first()).toBeVisible();
-    await expect(filas.filter({ hasText: 'Pendiente' })).toHaveCount(0);
+    const agenda = page.getByRole('region', { name: 'Agenda de reservas' });
+    const items = agenda.getByRole('listitem');
+    await expect(items.filter({ hasText: 'Aprobada' }).first()).toBeVisible();
+    await expect(items.filter({ hasText: 'Pendiente' })).toHaveCount(0);
+  });
+
+  test('la agenda agrupa por jornada y la tabla queda a un clic', async ({ page }) => {
+    await iniciarSesion(page, CREDENCIALES.admin);
+
+    // La agenda es la vista por defecto: encabezado de día y tramo horario.
+    const agenda = page.getByRole('region', { name: 'Agenda de reservas' });
+    await expect(agenda.getByRole('heading').first()).toBeVisible();
+    await expect(agenda.getByRole('link').first()).toHaveAttribute('href', /\/reservas\/\d+/);
+
+    // La tabla ordenable sigue estando, y la elección se recuerda al volver.
+    await page.getByRole('button', { name: 'Tabla' }).click();
+    const tabla = page.getByRole('table', { name: 'Listado de reservas' });
+    await expect(tabla).toBeVisible();
+    await expect(agenda).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByRole('table', { name: 'Listado de reservas' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Agenda' }).click();
+    await expect(page.getByRole('region', { name: 'Agenda de reservas' })).toBeVisible();
   });
 });

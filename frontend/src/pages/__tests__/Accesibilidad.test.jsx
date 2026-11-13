@@ -75,6 +75,8 @@ function sinViolacionesAxe(resultadosAxe) {
 describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // La vista del listado queda guardada en el navegador entre pruebas.
+    window.localStorage.clear();
     AuthContextModule.useAuth.mockReturnValue({
       usuario: { id: 1, nombre: 'Admin UTN', email: 'admin@utnfrc.edu.ar', rol: 'admin' },
       iniciarSesionLocal: vi.fn(),
@@ -200,6 +202,12 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
       </MemoryRouter>
     );
     await screen.findByText('Parcial de Física');
+    sinViolacionesAxe(await axe(cReservas));
+
+    // Las dos vistas del listado se auditan: la agenda (por defecto) y la
+    // tabla ordenable que queda detrás del conmutador.
+    fireEvent.click(screen.getByRole('button', { name: 'Tabla' }));
+    await screen.findByRole('table', { name: /Listado de reservas/i });
     sinViolacionesAxe(await axe(cReservas));
     uReservas();
 
