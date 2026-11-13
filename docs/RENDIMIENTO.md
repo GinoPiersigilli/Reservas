@@ -45,6 +45,32 @@ Se evaluaron las 5 consultas críticas del sistema en dos estados:
 | **4. Validación de solapamiento GiST** (`tsrange && tsrange`)                             | 0.050 ms          | 0.054 ms          | Ultrarrápida (~50 µs) | 4 buffers (Bitmap Index Scan sobre GiST)                 |
 | **5. Resumen y métricas agregadas** (`GROUP BY estado` sobre 200k filas)                  | 34.589 ms         | 39.188 ms         | Estable (~35–39 ms)   | 3.095 buffers (Parallel Group Aggregate con 2 workers)   |
 
+### Reproducción independiente (13/11/2026)
+
+La medición se volvió a correr desde cero en otra máquina, con
+`npm run benchmark --prefix backend` sobre una base `*_bench` recreada. Los
+**tiempos** cambian con el hardware, como corresponde; los **buffers** no,
+porque dependen del volumen de datos y del plan elegido, y son los que permiten
+verificar que se midió lo que se dice haber medido:
+
+| Consulta               | Buffers documentados | Buffers reproducidos | Plan                                             |
+| ---------------------- | -------------------- | -------------------- | ------------------------------------------------ |
+| 1. Listado paginado    | 203 hit              | 203 hit              | Index Scan + Top-N sort                          |
+| 2. Listado admin       | 5                    | 3 hit + 2 read = 5   | Nested Loop sobre el índice compuesto            |
+| 3. Disponibilidad      | 3 hit                | 3 hit                | `Index Scan using reservas_aula_fecha_idx`       |
+| 4. Solapamiento GiST   | 4                    | 4 hit                | `Bitmap Index Scan on reservas_sin_solapamiento` |
+| 5. Agregado por estado | 3.095                | 3.095 hit            | Parallel Group Aggregate                         |
+
+**Los cinco coinciden exactamente.** Las mejoras porcentuales de las consultas 2
+y 3 se reproducen en la misma dirección y de magnitud comparable (+76.9% y
++77.5% en la corrida nueva, frente a +66.9% y +71.3% documentados): la
+diferencia es el hardware, no el efecto del índice.
+
+Las consultas 1, 4 y 5 no usan el índice compuesto, y por eso esta tabla las
+reporta como estables en lugar de atribuirles una mejora. En la corrida nueva la
+4 y la 5 dieron algo peor que la línea base (−65.7% y −8.8%): es ruido de
+medición sobre consultas que el índice no toca, no una regresión.
+
 ---
 
 ## 3. Justificación Técnica del Nuevo Índice

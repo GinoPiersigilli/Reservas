@@ -59,7 +59,7 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     await sequelize.close();
   });
 
-  it('1. 100 pedidos simultáneos de usuarios distintos para la MISMA aula y el MISMO horario -> exactamente 1 con 201, 99 con 400, cero 5xx', async () => {
+  it('1. 100 pedidos simultáneos de usuarios distintos para la MISMA aula y el MISMO horario -> exactamente 1 con 201, 99 con 409, cero 5xx', async () => {
     const fecha = fechaFutura(14);
     const horaInicio = '10:00';
     const horaFin = '12:00';

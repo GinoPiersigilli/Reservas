@@ -244,6 +244,36 @@ describe('Auth routes, token verification & env validation', () => {
     }
   });
 
+  it('aborts startup in production when JWT_SECRET is too short to resist brute force', () => {
+    const base = {
+      NODE_ENV: 'production',
+      CLERK_SECRET_KEY: 'sk_test_123',
+      DATABASE_URL: 'postgres://u:p@localhost:5432/db'
+    };
+
+    // DEPLOY.md indica `openssl rand -hex 32` (64 caracteres), pero nada lo
+    // obligaba: con un secreto de un carácter la API arrancaba igual.
+    expect(() => validarEnv({ ...base, JWT_SECRET: 'a' })).toThrow(/al menos 32 caracteres/);
+    expect(() => validarEnv({ ...base, JWT_SECRET: 'secreto_corto_pero_no_vacio' })).toThrow(
+      /al menos 32 caracteres/
+    );
+
+    expect(() => validarEnv({ ...base, JWT_SECRET: 'a'.repeat(32) })).not.toThrow();
+    expect(() => validarEnv({ ...base, JWT_SECRET: 'f3a9'.repeat(16) })).not.toThrow();
+  });
+
+  it('does not impose the length requirement outside production', () => {
+    // En desarrollo y en pruebas el secreto es descartable: exigir 32
+    // caracteres solo molestaría sin proteger nada.
+    expect(() =>
+      validarEnv({
+        NODE_ENV: 'development',
+        JWT_SECRET: 'corto',
+        DATABASE_URL: 'postgres://u:p@localhost:5432/db'
+      })
+    ).not.toThrow();
+  });
+
   it('provisions and links Clerk users locally preserving migrated clerkId id', async () => {
     const placeholder = await Usuario.create({
       nombre: 'Usuario Clerk [PLACEHOLDER user_migrado123]',

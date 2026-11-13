@@ -560,7 +560,7 @@ describe('Reservas API', () => {
   // TESTS FASE 3 — LÓGICA DE NEGOCIO Y CONCURRENCIA
   // ==========================================
 
-  it('should allow exactly one 201 and nine 400 when 10 concurrent POST requests target the same slot', async () => {
+  it('should allow exactly one 201 and nine 409 when 10 concurrent POST requests target the same slot', async () => {
     const fechaConcurrente = fechaFutura(5);
 
     const promesas = Array.from({ length: 10 }, (_, idx) =>
@@ -593,7 +593,7 @@ describe('Reservas API', () => {
     expect(totalEnBd).toBe(1);
   }, 15000);
 
-  it('should return 400 when editing a reservation to overlap another even if pre-check is bypassed (23P01)', async () => {
+  it('should return 409 when editing a reservation to overlap another even if pre-check is bypassed (23P01)', async () => {
     const fechaConflicto = fechaFutura(6);
 
     await Reserva.create({
