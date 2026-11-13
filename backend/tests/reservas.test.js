@@ -884,6 +884,61 @@ describe('Reservas API', () => {
     expect(resAulaInactiva.body.error).toMatch(/activa/i);
   });
 
+  describe('Inmutabilidad del historial de reservas (append-only)', () => {
+    // El ADR 0004 declara que las DOS tablas de historial son append-only, pero
+    // el disparador de `historial_reservas` faltaba: lo agrega la migración
+    // 005. Es la tabla de la entidad central —quién aprobó, rechazó o canceló
+    // cada reserva— y la que el detalle muestra en pantalla.
+
+    it('el trigger de PostgreSQL rechaza UPDATE directo en historial_reservas', async () => {
+      const registro = await HistorialReserva.create({
+        reservaId: reservaPendiente.id,
+        usuarioId: admin.id,
+        accion: 'creacion',
+        valorNuevo: { estado: 'pendiente' }
+      });
+
+      await expect(
+        sequelize.query(
+          `UPDATE historial_reservas SET accion = 'aprobacion' WHERE id = ${registro.id};`
+        )
+      ).rejects.toThrow(/append-only/i);
+    });
+
+    it('el trigger de PostgreSQL rechaza DELETE directo en historial_reservas', async () => {
+      const registro = await HistorialReserva.create({
+        reservaId: reservaPendiente.id,
+        usuarioId: admin.id,
+        accion: 'creacion',
+        valorNuevo: { estado: 'pendiente' }
+      });
+
+      await expect(
+        sequelize.query(`DELETE FROM historial_reservas WHERE id = ${registro.id};`)
+      ).rejects.toThrow(/append-only/i);
+    });
+
+    it('no se puede borrar el rastro de una aprobación después de hacerla', async () => {
+      const res = await request(app)
+        .patch(`/api/reservas/${reservaPendiente.id}/aprobar`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+
+      // El caso que importa: alguien con acceso a la base intentando que la
+      // aprobación no deje huella.
+      await expect(
+        sequelize.query(
+          `DELETE FROM historial_reservas WHERE "reservaId" = ${reservaPendiente.id};`
+        )
+      ).rejects.toThrow(/append-only/i);
+
+      const historial = await HistorialReserva.findAll({
+        where: { reservaId: reservaPendiente.id }
+      });
+      expect(historial.some((h) => h.accion === 'aprobacion')).toBe(true);
+    });
+  });
+
   it('should rollback state change if history creation fails in aprobar, rechazar and cancelar', async () => {
     // 1. Aprobar con fallo en historial
     const spyAprobar = jest

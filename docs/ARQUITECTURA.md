@@ -172,7 +172,7 @@ erDiagram
   - `cantidadPersonas`: Entero (check `cantidadPersonas > 0`).
   - `motivo`: Cadena de texto (máx. 255 caracteres).
   - `estado`: Enum textual (`'pendiente'`, `'aprobada'`, `'rechazada'`, `'cancelada'`).
-- **`historial_reservas`:** Registro inmutable de trazabilidad y auditoría cronológica de reservas.
+- **`historial_reservas`:** Registro append-only inmutable de trazabilidad y auditoría cronológica de reservas. Protegido por el disparador `trg_historial_reservas_inmutable`, que rechaza `UPDATE` y `DELETE` (migración `005`).
   - `id`: Entero, clave primaria.
   - `reservaId`: FK hacia `reservas.id` (`ON DELETE RESTRICT`).
   - `usuarioId`: FK hacia `usuarios.id` (`ON DELETE RESTRICT`).

@@ -2,7 +2,7 @@
 
 - **Estado:** aceptada
 - **Fecha:** 2026-10
-- **Contexto de implementación:** migraciones `002-esquema-definitivo` y `003-aulas-mejoras`
+- **Contexto de implementación:** migraciones `002-esquema-definitivo`, `003-aulas-mejoras` y `005-historial-reservas-inmutable`
 
 ## Problema
 
@@ -28,8 +28,18 @@ nadie, ni el código de la aplicación, pueda alterarlo.
 
 Las tablas `historial_reservas` y `historial_aulas` guardan una fila por acción,
 con `usuarioId`, `fechaHora`, `accion`, `valorAnterior` y `valorNuevo` en JSONB.
-Un disparador `BEFORE UPDATE OR DELETE` lanza una excepción, de modo que las
-filas solo se pueden insertar.
+Un disparador `BEFORE UPDATE OR DELETE` lanza una excepción en cada una, de modo
+que las filas solo se pueden insertar.
+
+> **Corrección (13/11/2026).** Esta decisión estuvo a medias durante tres
+> semanas: la migración `003` creó el disparador de `historial_aulas` y este
+> documento afirmaba que las dos tablas estaban protegidas, pero el de
+> `historial_reservas` no existía. Faltaba justamente en la tabla de la entidad
+> central: la que registra quién aprobó, rechazó o canceló cada reserva y la
+> que el detalle muestra en pantalla. La migración `005` lo agrega, y tres
+> pruebas nuevas en `reservas.test.js` lo verifican. Se deja asentado acá
+> porque el hueco no lo detectó ninguna prueba: las que decían verificar la
+> inmutabilidad cubrían solo `historial_aulas`.
 
 El registro se escribe **en la misma transacción** que la operación auditada:
 no puede existir una aprobación sin su entrada de historial, ni una entrada de
@@ -42,8 +52,9 @@ historial de algo que no ocurrió.
 - El historial es confiable por construcción, no por disciplina del equipo.
 - Guardar el estado anterior y el posterior permite reconstruir qué cambió en
   cada paso, no solo que "hubo una edición".
-- Está verificado por pruebas que intentan modificar y borrar filas del
-  historial y esperan que la base lo rechace.
+- Está verificado por pruebas que intentan modificar y borrar filas de **las
+  dos** tablas y esperan que la base lo rechace, incluida una que aprueba una
+  reserva y después intenta borrar el rastro de esa aprobación.
 
 **En contra**
 

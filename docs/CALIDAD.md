@@ -9,7 +9,7 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 
 | Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
 | ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Integración de API | Jest + Supertest               | 201 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
+| Integración de API | Jest + Supertest               | 204 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
 | Componentes        | Vitest + Testing Library + axe | 112 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
 | Extremo a extremo  | Playwright                     | 20 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
 | Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
@@ -231,6 +231,29 @@ prueban y se descubren en producción:
   pedido mal formado debe seguir respondiendo `400` (ver [ADR 0006](adr/0006-codigos-http-de-conflicto.md)).
   Los tres nacen en archivos distintos, así que sin esta prueba es fácil que uno
   vuelva a `400` sin que nada falle.
+
+---
+
+## 5.0. Cuántos mocks hay, y dónde
+
+Una suite puede tener muchas pruebas y no probar nada si todo está simulado, así
+que vale la pena mirar la proporción. Sobre las 204 pruebas de API hay **26
+usos de mock**, concentrados donde simular es lo correcto:
+
+| Archivo                      | Mocks | Qué simula y por qué                                                         |
+| ---------------------------- | ----- | ---------------------------------------------------------------------------- |
+| `clerk-verification.test.js` | 10    | La API de red de Clerk, que no se puede alcanzar desde CI                    |
+| `observabilidad.test.js`     | 7     | El reloj y la salida del logger, para poder afirmar sobre ellos              |
+| `reservas.test.js`           | 4     | Fuerza el fallo del `INSERT` de historial, única forma de probar el rollback |
+| `auth.test.js`               | 2     | Tokens de Clerk                                                              |
+| `error-handling.test.js`     | 2     | La salida del logger                                                         |
+| `aulas.test.js`              | 1     | Fallo del historial, como arriba                                             |
+
+Las suites que sostienen las afirmaciones del proyecto —`concurrencia`,
+`contrato-frontend`, `idempotencia`, `seguridad`, `rate-limit`,
+`esquema-constraint`— tienen **cero mocks**: corren contra un PostgreSQL real
+con las migraciones aplicadas. Es por eso que el experimento de la sección
+siguiente puede medir algo.
 
 ---
 
