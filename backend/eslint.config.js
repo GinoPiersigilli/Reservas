@@ -35,6 +35,17 @@ export default [
     }
   },
   {
+    // Límites de complejidad y tamaño para el código de producción.
+    // No se aplican a pruebas, migraciones ni semillas, donde los bloques
+    // largos y descriptivos son deseables.
+    files: ['src/**/*.js'],
+    rules: {
+      complexity: ['error', 12],
+      'max-depth': ['error', 4],
+      'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }]
+    }
+  },
+  {
     files: ['tests/**/*.{js,cjs}'],
     languageOptions: {
       globals: {
@@ -44,4 +55,3 @@ export default [
     }
   }
 ];
-
