@@ -4,26 +4,29 @@ import styles from './Button.module.css';
 
 const VARIANTES = {
   primario: styles.primario,
-  primary: styles.primario,
   secundario: styles.secundario,
-  secondary: styles.secundario,
-  peligro: styles.peligro,
-  danger: styles.peligro
+  peligro: styles.peligro
 };
+
+const clasesBoton = ({ variante, tamano, bloque, className }) =>
+  [
+    styles.button,
+    VARIANTES[variante] || styles.primario,
+    tamano === 'sm' ? styles.sm : '',
+    bloque ? styles.bloque : '',
+    className
+  ]
+    .filter(Boolean)
+    .join(' ');
 
 const Button = forwardRef(function Button(
   {
-    variante,
-    variant,
+    variante = 'primario',
     tamano = 'md',
-    size,
     bloque = false,
-    fullWidth = false,
     cargando = false,
-    loading = false,
     disabled = false,
-    icono: IconoProp,
-    icon,
+    icono: Icono,
     type = 'button',
     className = '',
     children,
@@ -31,26 +34,11 @@ const Button = forwardRef(function Button(
   },
   ref
 ) {
-  const varianteKey = variante || variant || 'primario';
-  const claseVariante = VARIANTES[varianteKey] || styles.primario;
-  const esSm = (tamano || size) === 'sm';
-  const esBloque = bloque || fullWidth;
-  const estaCargando = Boolean(cargando || loading);
-  const estaDeshabilitado = Boolean(disabled || estaCargando);
-  const Icono = IconoProp || icon;
+  const clases = clasesBoton({ variante, tamano, bloque, className });
 
-  const clases = [
-    styles.button,
-    claseVariante,
-    esSm ? styles.sm : '',
-    esBloque ? styles.bloque : '',
-    className
-  ]
-    .filter(Boolean)
-    .join(' ');
-
+  /** Acepta un componente de icono o un elemento ya construido. */
   const renderIcono = () => {
-    if (estaCargando) {
+    if (cargando) {
       return (
         <span className={styles.icono} aria-hidden="true">
           <Loader2 size={16} strokeWidth={1.75} className={styles.giro} />
@@ -58,17 +46,10 @@ const Button = forwardRef(function Button(
       );
     }
     if (!Icono) return null;
-    if (isValidElement(Icono)) {
-      return (
-        <span className={styles.icono} aria-hidden="true">
-          {Icono}
-        </span>
-      );
-    }
-    const ComponenteIcono = Icono;
+
     return (
       <span className={styles.icono} aria-hidden="true">
-        <ComponenteIcono size={16} strokeWidth={1.75} />
+        {isValidElement(Icono) ? Icono : <Icono size={16} strokeWidth={1.75} />}
       </span>
     );
   };
@@ -78,8 +59,8 @@ const Button = forwardRef(function Button(
       ref={ref}
       type={type}
       className={clases}
-      disabled={estaDeshabilitado}
-      aria-busy={estaCargando || undefined}
+      disabled={disabled || cargando}
+      aria-busy={cargando || undefined}
       {...rest}
     >
       {renderIcono()}

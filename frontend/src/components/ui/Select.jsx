@@ -3,20 +3,10 @@ import { ChevronDown } from 'lucide-react';
 import styles from './Select.module.css';
 
 const Select = forwardRef(function Select(
-  {
-    opciones,
-    options,
-    placeholder,
-    hasError = false,
-    error = false,
-    className = '',
-    children,
-    ...rest
-  },
+  { opciones, placeholder, conError = false, className = '', children, ...rest },
   ref
 ) {
-  const esInvalido = Boolean(hasError || error || rest['aria-invalid']);
-  const listaOpciones = opciones || options;
+  const esInvalido = Boolean(conError || rest['aria-invalid']);
   const clases = [styles.select, esInvalido ? styles.invalido : '', className]
     .filter(Boolean)
     .join(' ');
@@ -25,13 +15,13 @@ const Select = forwardRef(function Select(
     <div className={styles.contenedor}>
       <select ref={ref} className={clases} aria-invalid={esInvalido || undefined} {...rest}>
         {placeholder ? <option value="">{placeholder}</option> : null}
-        {Array.isArray(listaOpciones)
-          ? listaOpciones.map((op) => {
-              const valor = typeof op === 'object' ? (op.value ?? op.valor) : op;
-              const etiqueta = typeof op === 'object' ? (op.label ?? op.etiqueta) : op;
-              const deshabilitado = typeof op === 'object' ? Boolean(op.disabled) : false;
+        {Array.isArray(opciones)
+          ? opciones.map((op) => {
+              // Una opción puede ser un valor suelto o { value, label, disabled }.
+              const valor = typeof op === 'object' ? op.value : op;
+              const etiqueta = typeof op === 'object' ? op.label : op;
               return (
-                <option key={String(valor)} value={valor} disabled={deshabilitado}>
+                <option key={String(valor)} value={valor} disabled={Boolean(op?.disabled)}>
                   {etiqueta}
                 </option>
               );

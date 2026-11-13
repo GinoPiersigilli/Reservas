@@ -5,49 +5,37 @@ import styles from './Toast.module.css';
 
 const CONFIG_TIPOS = {
   exito: { clase: styles.exito, Icono: CheckCircle2, rol: 'status', live: 'polite' },
-  success: { clase: styles.exito, Icono: CheckCircle2, rol: 'status', live: 'polite' },
   error: { clase: styles.error, Icono: AlertCircle, rol: 'alert', live: 'assertive' },
   advertencia: { clase: styles.advertencia, Icono: Clock, rol: 'status', live: 'polite' },
-  warning: { clase: styles.advertencia, Icono: Clock, rol: 'status', live: 'polite' },
   info: { clase: styles.info, Icono: Info, rol: 'status', live: 'polite' }
 };
 
+/**
+ * Notificación breve. Un error se anuncia con `role="alert"` y
+ * `aria-live="assertive"` para que los lectores de pantalla lo interrumpan
+ * todo; el resto se anuncia de forma cortés.
+ */
 export default function Toast({
   tipo = 'info',
-  type,
   titulo,
-  title,
   mensaje,
-  message,
   visible = true,
-  open = true,
   duracion,
-  duration,
   onCerrar,
-  onClose,
   className = '',
   children,
   ...rest
 }) {
-  const estaVisible = Boolean(visible && open);
-  const claveTipo = String(type || tipo || 'info').toLowerCase();
-  const config = CONFIG_TIPOS[claveTipo] || CONFIG_TIPOS.info;
-  const { clase, Icono, rol, live } = config;
-
-  const textoTitulo = titulo || title;
-  const textoMensaje = mensaje || message || children;
-  const manejadorCerrar = onCerrar || onClose;
-  const tiempoAutoCierre = duration ?? duracion;
+  const { clase, Icono, rol, live } = CONFIG_TIPOS[tipo] || CONFIG_TIPOS.info;
+  const contenido = mensaje || children;
 
   useEffect(() => {
-    if (!estaVisible || !tiempoAutoCierre || !manejadorCerrar) return undefined;
-    const timer = setTimeout(() => {
-      manejadorCerrar();
-    }, tiempoAutoCierre);
+    if (!visible || !duracion || !onCerrar) return undefined;
+    const timer = setTimeout(onCerrar, duracion);
     return () => clearTimeout(timer);
-  }, [estaVisible, tiempoAutoCierre, manejadorCerrar]);
+  }, [visible, duracion, onCerrar]);
 
-  if (!estaVisible) return null;
+  if (!visible) return null;
 
   return (
     <div
@@ -61,17 +49,17 @@ export default function Toast({
           <Icono size={16} strokeWidth={1.75} />
         </span>
         <div className={styles.textos}>
-          {textoTitulo ? <strong className={styles.titulo}>{textoTitulo}</strong> : null}
-          {textoMensaje ? <span className={styles.mensaje}>{textoMensaje}</span> : null}
+          {titulo ? <strong className={styles.titulo}>{titulo}</strong> : null}
+          {contenido ? <span className={styles.mensaje}>{contenido}</span> : null}
         </div>
       </div>
 
-      {manejadorCerrar ? (
+      {onCerrar ? (
         <button
           type="button"
           className={styles.cerrar}
           aria-label={TEXTOS.ui.cerrarNotificacion}
-          onClick={() => manejadorCerrar()}
+          onClick={() => onCerrar()}
         >
           <X size={16} strokeWidth={1.75} aria-hidden="true" />
         </button>

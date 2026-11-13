@@ -1,25 +1,50 @@
 import { cloneElement, isValidElement, useId } from 'react';
 import styles from './Field.module.css';
 
+/**
+ * Une las propiedades que ya trae el control con las que aporta el campo, sin
+ * pisar lo que el control declare explícitamente.
+ */
+const propsDelHijo = (hijo, propsControl, tieneError) => {
+  const propias = hijo.props;
+  const descripciones = [propias['aria-describedby'], propsControl['aria-describedby']]
+    .filter(Boolean)
+    .join(' ');
+
+  const resultado = {
+    id: propias.id || propsControl.id,
+    'aria-describedby': descripciones || undefined,
+    'aria-invalid': propias['aria-invalid'] ?? propsControl['aria-invalid'],
+    required: propias.required ?? propsControl.required
+  };
+
+  // Los controles propios reciben además el estado de error como propiedad;
+  // a un elemento nativo solo se le pasan los aria-*.
+  if (typeof hijo.type !== 'string') {
+    resultado.conError = propias.conError ?? tieneError;
+  }
+
+  return resultado;
+};
+
+/**
+ * Etiqueta, texto de ayuda y mensaje de error de un campo, con los `aria-*`
+ * que los relacionan con el control. Acepta el control como hijo (al que le
+ * inyecta esas propiedades) o como función que las recibe.
+ */
 export default function Field({
   id,
   etiqueta,
-  label,
   ayuda,
-  hint,
   error,
   obligatorio = false,
-  required = false,
   className = '',
   children
 }) {
   const autoId = useId();
   const controlId = id || `campo-${autoId}`;
-  const textoEtiqueta = etiqueta || label;
-  const textoAyuda = ayuda || hint;
-  const esObligatorio = Boolean(obligatorio || required);
 
-  const idAyuda = textoAyuda ? `${controlId}-ayuda` : undefined;
+  const idAyuda = ayuda ? `${controlId}-ayuda` : undefined;
   const idError = error ? `${controlId}-error` : undefined;
   const ariaDescribedBy = [idAyuda, idError].filter(Boolean).join(' ') || undefined;
   const tieneError = Boolean(error);
@@ -28,33 +53,25 @@ export default function Field({
     id: controlId,
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': tieneError || undefined,
-    required: esObligatorio || undefined
+    required: obligatorio || undefined
   };
 
-  let contenido = children;
-  if (typeof children === 'function') {
-    contenido = children({ ...propsControl, hasError: tieneError });
-  } else if (isValidElement(children)) {
-    const childProps = {
-      id: children.props.id || controlId,
-      'aria-describedby':
-        [children.props['aria-describedby'], ariaDescribedBy].filter(Boolean).join(' ') ||
-        undefined,
-      'aria-invalid': children.props['aria-invalid'] ?? (tieneError || undefined),
-      required: children.props.required ?? (esObligatorio || undefined)
-    };
-    if (typeof children.type !== 'string') {
-      childProps.hasError = children.props.hasError ?? tieneError;
+  const renderContenido = () => {
+    if (typeof children === 'function') {
+      return children({ ...propsControl, conError: tieneError });
     }
-    contenido = cloneElement(children, childProps);
-  }
+    if (isValidElement(children)) {
+      return cloneElement(children, propsDelHijo(children, propsControl, tieneError));
+    }
+    return children;
+  };
 
   return (
     <div className={[styles.field, className].filter(Boolean).join(' ')}>
-      {textoEtiqueta ? (
+      {etiqueta ? (
         <label htmlFor={controlId} className={styles.label}>
-          <span>{textoEtiqueta}</span>
-          {esObligatorio ? (
+          <span>{etiqueta}</span>
+          {obligatorio ? (
             <span className={styles.obligatorio} aria-hidden="true">
               *
             </span>
@@ -62,11 +79,11 @@ export default function Field({
         </label>
       ) : null}
 
-      {contenido}
+      {renderContenido()}
 
-      {textoAyuda ? (
+      {ayuda ? (
         <p id={idAyuda} className={styles.ayuda}>
-          {textoAyuda}
+          {ayuda}
         </p>
       ) : null}
 

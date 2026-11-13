@@ -35,8 +35,8 @@ const CONFIG_ESTADOS = {
   }
 };
 
-export default function EstadoBadge({ estado, status, className = '', ...rest }) {
-  const clave = String(estado || status || 'pendiente').toLowerCase();
+export default function EstadoBadge({ estado, className = '', ...rest }) {
+  const clave = String(estado || 'pendiente').toLowerCase();
   const config = CONFIG_ESTADOS[clave] || CONFIG_ESTADOS.pendiente;
   const { texto, clase, Icono } = config;
 

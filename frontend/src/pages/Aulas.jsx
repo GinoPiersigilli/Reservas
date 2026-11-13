@@ -1,387 +1,168 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import {
-  getAulas,
-  crearAula,
-  editarAula,
-  desactivarAula,
-  reactivarAula
-} from '../services/aula.service.js';
+import { crearAula, desactivarAula, editarAula, reactivarAula } from '../services/aula.service.js';
 import { TEXTOS } from '../textos.js';
 import {
   Button,
   ConfirmDialog,
   EmptyState,
   ErrorState,
-  EstadoBadge,
-  Field,
-  Input,
   Table,
   TablaSkeleton,
-  Textarea,
   Toast
 } from '../components/ui/index.js';
+import { useAulas } from './aulas/useAulas.js';
+import { CABECERAS_AULAS, columnasAulas } from './aulas/columnasAulas.jsx';
+import FiltrosAulas from './aulas/FiltrosAulas.jsx';
+import DialogoAula from './aulas/DialogoAula.jsx';
+import DialogoDesactivar from './aulas/DialogoDesactivar.jsx';
+import { FORM_VACIO, aulaParaEnviar, formDesdeAula, validarAula } from './aulas/validarAula.js';
 import styles from './Aulas.module.css';
 
+/**
+ * Administración de aulas (solo administradores): alta, edición, baja lógica y
+ * reactivación. Las aulas dadas de baja se conservan para no perder el
+ * historial de sus reservas.
+ */
 export default function Aulas() {
-  const [aulas, setAulas] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [errorCarga, setErrorCarga] = useState(null);
-  const [filtroEstado, setFiltroEstado] = useState('todas'); // 'todas' | 'activas' | 'inactivas'
+  const { aulasFiltradas, conteos, cargando, errorCarga, recargar, filtroEstado, setFiltroEstado } =
+    useAulas();
 
-  // Modal Crear / Editar
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [modoModal, setModoModal] = useState('crear'); // 'crear' | 'editar'
-  const [aulaEnEdicion, setAulaEnEdicion] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  const [errorModal, setErrorModal] = useState(null);
-  const [formData, setFormData] = useState({
-    nombre: '',
-    ubicacion: '',
-    capacidad: '',
-    recursos: ''
-  });
-  const [erroresForm, setErroresForm] = useState({});
-
-  // Diálogo Desactivar
-  const [dialogoDesactivarAbierto, setDialogoDesactivarAbierto] = useState(false);
-  const [aulaParaDesactivar, setAulaParaDesactivar] = useState(null);
-  const [cancelarReservasFuturas, setCancelarReservasFuturas] = useState(false);
-  const [motivoBaja, setMotivoBaja] = useState('');
-  const [errorMotivo, setErrorMotivo] = useState(null);
-  const [avisoAfectadas, setAvisoAfectadas] = useState(null);
-  const [desactivando, setDesactivando] = useState(false);
-
-  // Diálogo Reactivar
-  const [dialogoReactivarAbierto, setDialogoReactivarAbierto] = useState(false);
-  const [aulaParaReactivar, setAulaParaReactivar] = useState(null);
-  const [reactivando, setReactivando] = useState(false);
-
-  // Toast
   const [mensajeToast, setMensajeToast] = useState(null);
 
-  const cargarAulas = useCallback(async () => {
-    setCargando(true);
-    setErrorCarga(null);
-    try {
-      const res = await getAulas(true);
-      const lista = Array.isArray(res?.data) ? res.data : [];
-      setAulas(lista);
-    } catch {
-      setErrorCarga(TEXTOS.aulas.errorCarga);
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+  // Alta y edición
+  const [formulario, setFormulario] = useState({
+    abierto: false,
+    modo: 'crear',
+    aula: null,
+    datos: FORM_VACIO,
+    errores: {},
+    errorGeneral: null,
+    guardando: false
+  });
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    cargarAulas();
-  }, [cargarAulas]);
+  // Baja
+  const [baja, setBaja] = useState({
+    abierto: false,
+    aula: null,
+    cancelarReservasFuturas: false,
+    motivo: '',
+    error: null,
+    avisoAfectadas: null,
+    procesando: false
+  });
 
-  const aulasFiltradas = useMemo(() => {
-    if (filtroEstado === 'activas') {
-      return aulas.filter((a) => a.activa);
-    }
-    if (filtroEstado === 'inactivas') {
-      return aulas.filter((a) => !a.activa);
-    }
-    return aulas;
-  }, [aulas, filtroEstado]);
+  // Reactivación
+  const [reactivacion, setReactivacion] = useState({
+    abierto: false,
+    aula: null,
+    procesando: false
+  });
 
-  // Manejadores Modal Crear/Editar
-  const abrirModalCrear = () => {
-    setModoModal('crear');
-    setAulaEnEdicion(null);
-    setFormData({
-      nombre: '',
-      ubicacion: '',
-      capacidad: '',
-      recursos: ''
+  const abrirFormulario = (aula) =>
+    setFormulario({
+      abierto: true,
+      modo: aula ? 'editar' : 'crear',
+      aula,
+      datos: aula ? formDesdeAula(aula) : FORM_VACIO,
+      errores: {},
+      errorGeneral: null,
+      guardando: false
     });
-    setErroresForm({});
-    setErrorModal(null);
-    setModalAbierto(true);
-  };
-
-  const abrirModalEditar = (aula) => {
-    setModoModal('editar');
-    setAulaEnEdicion(aula);
-    setFormData({
-      nombre: aula.nombre || '',
-      ubicacion: aula.ubicacion || '',
-      capacidad: String(aula.capacidad || ''),
-      recursos: aula.recursos || ''
-    });
-    setErroresForm({});
-    setErrorModal(null);
-    setModalAbierto(true);
-  };
-
-  const validarFormulario = () => {
-    const errores = {};
-    const nombreTrim = formData.nombre.trim();
-    const ubicacionTrim = formData.ubicacion.trim();
-    const capacidadNum = Number(formData.capacidad);
-
-    if (!nombreTrim) {
-      errores.nombre = 'El nombre del aula es obligatorio';
-    } else if (nombreTrim.length > 100) {
-      errores.nombre = 'El nombre no puede superar los 100 caracteres';
-    }
-
-    if (!ubicacionTrim) {
-      errores.ubicacion = 'La ubicación del aula es obligatoria';
-    } else if (ubicacionTrim.length > 120) {
-      errores.ubicacion = 'La ubicación no puede superar los 120 caracteres';
-    }
-
-    if (
-      !formData.capacidad ||
-      Number.isNaN(capacidadNum) ||
-      !Number.isInteger(capacidadNum) ||
-      capacidadNum < 1 ||
-      capacidadNum > 1000
-    ) {
-      errores.capacidad = 'La capacidad debe ser un número entero entre 1 y 1000';
-    }
-
-    setErroresForm(errores);
-    return Object.keys(errores).length === 0;
-  };
 
   const guardarAula = async () => {
-    if (!validarFormulario()) return;
-
-    setGuardando(true);
-    setErrorModal(null);
-
-    const payload = {
-      nombre: formData.nombre.trim(),
-      ubicacion: formData.ubicacion.trim(),
-      capacidad: Number(formData.capacidad),
-      recursos: formData.recursos.trim() || undefined
-    };
-
-    try {
-      if (modoModal === 'crear') {
-        await crearAula(payload);
-        setMensajeToast(TEXTOS.aulas.creadaExito);
-      } else {
-        await editarAula(aulaEnEdicion.id, payload);
-        setMensajeToast(TEXTOS.aulas.actualizadaExito);
-      }
-      setModalAbierto(false);
-      await cargarAulas();
-    } catch (err) {
-      const mensaje = err.response?.data?.error || 'Ocurrió un error al guardar el aula.';
-      setErrorModal(mensaje);
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  // Manejadores Desactivación
-  const iniciarDesactivacion = (aula) => {
-    setAulaParaDesactivar(aula);
-    setCancelarReservasFuturas(false);
-    setMotivoBaja('');
-    setErrorMotivo(null);
-    setAvisoAfectadas(null);
-    setDialogoDesactivarAbierto(true);
-  };
-
-  const confirmarDesactivacion = async () => {
-    if (cancelarReservasFuturas && !motivoBaja.trim()) {
-      setErrorMotivo(TEXTOS.aulas.motivoRequerido);
+    const errores = validarAula(formulario.datos);
+    if (Object.keys(errores).length > 0) {
+      setFormulario((f) => ({ ...f, errores }));
       return;
     }
 
-    setDesactivando(true);
-    setErrorMotivo(null);
+    setFormulario((f) => ({ ...f, errores: {}, errorGeneral: null, guardando: true }));
 
     try {
-      await desactivarAula(aulaParaDesactivar.id, {
-        cancelarReservasFuturas,
-        motivo: motivoBaja.trim() || undefined
-      });
-      setDialogoDesactivarAbierto(false);
-      setMensajeToast(TEXTOS.aulas.desactivadaExito);
-      await cargarAulas();
-    } catch (err) {
-      if (err.response?.status === 409 && err.response?.data?.reservasAfectadas) {
-        const cant = err.response.data.reservasAfectadas;
-        setAvisoAfectadas(TEXTOS.aulas.avisoReservasFuturas.replace('{cantidad}', cant));
-        setCancelarReservasFuturas(true);
+      const datos = aulaParaEnviar(formulario.datos);
+      if (formulario.modo === 'crear') {
+        await crearAula(datos);
+        setMensajeToast(TEXTOS.aulas.creadaExito);
       } else {
-        setErrorMotivo(err.response?.data?.error || 'No se pudo desactivar el aula.');
+        await editarAula(formulario.aula.id, datos);
+        setMensajeToast(TEXTOS.aulas.actualizadaExito);
       }
-    } finally {
-      setDesactivando(false);
+      setFormulario((f) => ({ ...f, abierto: false, guardando: false }));
+      await recargar();
+    } catch (err) {
+      setFormulario((f) => ({
+        ...f,
+        guardando: false,
+        errorGeneral: err.response?.data?.error || 'Ocurrió un error al guardar el aula.'
+      }));
     }
   };
 
-  // Manejadores Reactivación
-  const iniciarReactivacion = (aula) => {
-    setAulaParaReactivar(aula);
-    setDialogoReactivarAbierto(true);
+  const confirmarBaja = async () => {
+    if (baja.cancelarReservasFuturas && !baja.motivo.trim()) {
+      setBaja((b) => ({ ...b, error: TEXTOS.aulas.motivoRequerido }));
+      return;
+    }
+
+    setBaja((b) => ({ ...b, error: null, procesando: true }));
+
+    try {
+      await desactivarAula(baja.aula.id, {
+        cancelarReservasFuturas: baja.cancelarReservasFuturas,
+        motivo: baja.motivo.trim() || undefined
+      });
+      setBaja((b) => ({ ...b, abierto: false, procesando: false }));
+      setMensajeToast(TEXTOS.aulas.desactivadaExito);
+      await recargar();
+    } catch (err) {
+      setBaja((b) => ({ ...b, procesando: false, ...errorDeBaja(err) }));
+    }
   };
 
   const confirmarReactivacion = async () => {
-    setReactivando(true);
+    setReactivacion((r) => ({ ...r, procesando: true }));
     try {
-      await reactivarAula(aulaParaReactivar.id);
-      setDialogoReactivarAbierto(false);
+      await reactivarAula(reactivacion.aula.id);
       setMensajeToast(TEXTOS.aulas.reactivadaExito);
-      await cargarAulas();
+      await recargar();
     } catch (err) {
       setMensajeToast(err.response?.data?.error || 'No se pudo reactivar el aula.');
     } finally {
-      setReactivando(false);
+      setReactivacion({ abierto: false, aula: null, procesando: false });
     }
   };
 
-  const columnas = [
-    {
-      clave: 'nombre',
-      titulo: TEXTOS.aulas.nombre,
-      render: (aula) => <span className={styles.nombreAula}>{aula.nombre}</span>
-    },
-    {
-      clave: 'ubicacion',
-      titulo: TEXTOS.aulas.ubicacion
-    },
-    {
-      clave: 'capacidad',
-      titulo: TEXTOS.aulas.capacidad,
-      alineacion: 'derecha'
-    },
-    {
-      clave: 'recursos',
-      titulo: TEXTOS.aulas.recursos,
-      render: (aula) =>
-        aula.recursos ? (
-          aula.recursos
-        ) : (
-          <span className={styles.sinRecursos}>{TEXTOS.aulas.sinRecursos}</span>
-        )
-    },
-    {
-      clave: 'estado',
-      titulo: TEXTOS.aulas.estado,
-      render: (aula) => <EstadoBadge estado={aula.activa ? 'activa' : 'inactiva'} />
-    },
-    {
-      clave: 'acciones',
-      titulo: TEXTOS.aulas.acciones,
-      alineacion: 'derecha',
-      render: (aula) => (
-        <div className={styles.accionesCelda}>
-          <Button
-            variante="secundario"
-            onClick={() => abrirModalEditar(aula)}
-            aria-label={`Editar ${aula.nombre}`}
-          >
-            {TEXTOS.acciones.editar}
-          </Button>
+  const columnas = columnasAulas({
+    onEditar: abrirFormulario,
+    onDesactivar: (aula) =>
+      setBaja({
+        abierto: true,
+        aula,
+        cancelarReservasFuturas: false,
+        motivo: '',
+        error: null,
+        avisoAfectadas: null,
+        procesando: false
+      }),
+    onReactivar: (aula) => setReactivacion({ abierto: true, aula, procesando: false })
+  });
 
-          {aula.activa ? (
-            <Button
-              variante="peligro"
-              onClick={() => iniciarDesactivacion(aula)}
-              aria-label={`Desactivar ${aula.nombre}`}
-            >
-              {TEXTOS.aulas.desactivar}
-            </Button>
-          ) : (
-            <Button
-              variante="secundario"
-              onClick={() => iniciarReactivacion(aula)}
-              aria-label={`Reactivar ${aula.nombre}`}
-            >
-              {TEXTOS.aulas.reactivar}
-            </Button>
-          )}
-        </div>
-      )
-    }
-  ];
+  const renderListado = () => {
+    if (cargando) return <TablaSkeleton cabeceras={CABECERAS_AULAS} />;
 
-  return (
-    <div className={styles.pagina}>
-      <header className={styles.cabecera}>
-        <div className={styles.titulos}>
-          <h1 className={styles.titulo}>{TEXTOS.aulas.titulo}</h1>
-          <p className={styles.subtitulo}>{TEXTOS.aulas.subtitulo}</p>
-        </div>
-        <Button variante="primario" onClick={abrirModalCrear}>
-          <Plus size={16} strokeWidth={2} aria-hidden="true" />
-          <span>{TEXTOS.aulas.nuevaAula}</span>
-        </Button>
-      </header>
-
-      <div className={styles.barraControles}>
-        <div className={styles.filtros} role="group" aria-label="Filtro de aulas por estado">
-          <button
-            type="button"
-            className={[
-              styles.botonFiltro,
-              filtroEstado === 'todas' ? styles.botonFiltroActivo : ''
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => setFiltroEstado('todas')}
-            aria-pressed={filtroEstado === 'todas'}
-          >
-            {TEXTOS.aulas.filtroTodas} ({aulas.length})
-          </button>
-          <button
-            type="button"
-            className={[
-              styles.botonFiltro,
-              filtroEstado === 'activas' ? styles.botonFiltroActivo : ''
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => setFiltroEstado('activas')}
-            aria-pressed={filtroEstado === 'activas'}
-          >
-            {TEXTOS.aulas.filtroActivas} ({aulas.filter((a) => a.activa).length})
-          </button>
-          <button
-            type="button"
-            className={[
-              styles.botonFiltro,
-              filtroEstado === 'inactivas' ? styles.botonFiltroActivo : ''
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => setFiltroEstado('inactivas')}
-            aria-pressed={filtroEstado === 'inactivas'}
-          >
-            {TEXTOS.aulas.filtroInactivas} ({aulas.filter((a) => !a.activa).length})
-          </button>
-        </div>
-      </div>
-
-      {cargando ? (
-        <TablaSkeleton
-          cabeceras={[
-            TEXTOS.aulas.nombre,
-            TEXTOS.aulas.ubicacion,
-            TEXTOS.aulas.capacidad,
-            TEXTOS.aulas.recursos,
-            TEXTOS.aulas.estado,
-            TEXTOS.aulas.acciones
-          ]}
-        />
-      ) : errorCarga ? (
+    if (errorCarga) {
+      return (
         <ErrorState
           titulo={TEXTOS.ui.errorTitulo}
           descripcion={errorCarga}
-          onReintentar={cargarAulas}
+          onReintentar={recargar}
         />
-      ) : aulasFiltradas.length === 0 ? (
+      );
+    }
+
+    if (aulasFiltradas.length === 0) {
+      return (
         <EmptyState
           titulo={TEXTOS.aulas.vacioTitulo}
           descripcion={TEXTOS.aulas.vacioDescripcion}
@@ -393,133 +174,72 @@ export default function Aulas() {
             ) : undefined
           }
         />
-      ) : (
-        <Table
-          columnas={columnas}
-          datos={aulasFiltradas}
-          claveFila="id"
-          ariaLabel="Listado de aulas institucionales"
-        />
-      )}
+      );
+    }
 
-      {/* Modal Crear / Editar */}
-      <ConfirmDialog
-        abierto={modalAbierto}
-        titulo={modoModal === 'crear' ? TEXTOS.aulas.nuevaAula : TEXTOS.aulas.editarAula}
-        textoConfirmar={TEXTOS.acciones.guardarCambios}
-        textoCancelar={TEXTOS.acciones.cancelar}
-        variante="primario"
-        cargando={guardando}
-        onCancelar={() => setModalAbierto(false)}
-        onConfirmar={guardarAula}
-      >
-        <div className={styles.formModal}>
-          {errorModal ? (
-            <div role="alert" className={styles.errorModal}>
-              {errorModal}
-            </div>
-          ) : null}
+    return (
+      <Table
+        columnas={columnas}
+        datos={aulasFiltradas}
+        claveFila="id"
+        ariaLabel="Listado de aulas institucionales"
+      />
+    );
+  };
 
-          <Field etiqueta={TEXTOS.aulas.nombre} obligatorio error={erroresForm.nombre}>
-            <Input
-              name="nombre"
-              value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              placeholder="Ej. Aula 101 Magna"
-              autoFocus
-            />
-          </Field>
-
-          <Field etiqueta={TEXTOS.aulas.ubicacion} obligatorio error={erroresForm.ubicacion}>
-            <Input
-              name="ubicacion"
-              value={formData.ubicacion}
-              onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-              placeholder="Ej. Pabellón Central - Piso 1"
-            />
-          </Field>
-
-          <Field etiqueta={TEXTOS.aulas.capacidad} obligatorio error={erroresForm.capacidad}>
-            <Input
-              type="number"
-              min="1"
-              max="1000"
-              name="capacidad"
-              value={formData.capacidad}
-              onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })}
-              placeholder="Ej. 45"
-            />
-          </Field>
-
-          <Field
-            etiqueta={TEXTOS.aulas.recursos}
-            ayuda="Separados por coma (ej. proyector, pizarra, 30 PCs)"
-          >
-            <Input
-              name="recursos"
-              value={formData.recursos}
-              onChange={(e) => setFormData({ ...formData, recursos: e.target.value })}
-              placeholder="Ej. proyector, pizarra, aire acondicionado"
-            />
-          </Field>
+  return (
+    <div className={styles.pagina}>
+      <header className={styles.cabecera}>
+        <div className={styles.titulos}>
+          <h1 className={styles.titulo}>{TEXTOS.aulas.titulo}</h1>
+          <p className={styles.subtitulo}>{TEXTOS.aulas.subtitulo}</p>
         </div>
-      </ConfirmDialog>
+        <Button variante="primario" onClick={() => abrirFormulario(null)}>
+          <Plus size={16} strokeWidth={2} aria-hidden="true" />
+          <span>{TEXTOS.aulas.nuevaAula}</span>
+        </Button>
+      </header>
 
-      {/* Diálogo Desactivar */}
+      <FiltrosAulas filtroEstado={filtroEstado} conteos={conteos} onCambiar={setFiltroEstado} />
+
+      {renderListado()}
+
+      <DialogoAula
+        abierto={formulario.abierto}
+        modo={formulario.modo}
+        formData={formulario.datos}
+        errores={formulario.errores}
+        errorGeneral={formulario.errorGeneral}
+        guardando={formulario.guardando}
+        onCambiarCampo={(campo, valor) =>
+          setFormulario((f) => ({ ...f, datos: { ...f.datos, [campo]: valor } }))
+        }
+        onCancelar={() => setFormulario((f) => ({ ...f, abierto: false }))}
+        onConfirmar={guardarAula}
+      />
+
+      <DialogoDesactivar
+        abierto={baja.abierto}
+        cancelarReservasFuturas={baja.cancelarReservasFuturas}
+        motivo={baja.motivo}
+        error={baja.error}
+        avisoAfectadas={baja.avisoAfectadas}
+        desactivando={baja.procesando}
+        onCambiarCancelar={(valor) => setBaja((b) => ({ ...b, cancelarReservasFuturas: valor }))}
+        onCambiarMotivo={(valor) => setBaja((b) => ({ ...b, motivo: valor }))}
+        onCancelar={() => setBaja((b) => ({ ...b, abierto: false }))}
+        onConfirmar={confirmarBaja}
+      />
+
       <ConfirmDialog
-        abierto={dialogoDesactivarAbierto}
-        titulo={TEXTOS.aulas.confirmarDesactivarTitulo}
-        descripcion={TEXTOS.aulas.confirmarDesactivarDescripcion}
-        textoConfirmar={TEXTOS.aulas.desactivar}
-        textoCancelar={TEXTOS.acciones.cancelar}
-        variante="peligro"
-        cargando={desactivando}
-        onCancelar={() => setDialogoDesactivarAbierto(false)}
-        onConfirmar={confirmarDesactivacion}
-      >
-        {avisoAfectadas ? (
-          <div role="alert" className={styles.alertaAfectadas}>
-            {avisoAfectadas}
-          </div>
-        ) : null}
-
-        <label className={styles.checkboxWrapper}>
-          <input
-            type="checkbox"
-            className={styles.checkboxInput}
-            checked={cancelarReservasFuturas}
-            onChange={(e) => setCancelarReservasFuturas(e.target.checked)}
-          />
-          <span>{TEXTOS.aulas.cancelarReservasFuturas}</span>
-        </label>
-
-        {cancelarReservasFuturas ? (
-          <Field etiqueta={TEXTOS.aulas.motivoBaja} obligatorio error={errorMotivo}>
-            <Textarea
-              rows={3}
-              value={motivoBaja}
-              onChange={(e) => setMotivoBaja(e.target.value)}
-              placeholder="Ingrese el motivo de la baja del aula..."
-              autoFocus
-            />
-          </Field>
-        ) : errorMotivo ? (
-          <div role="alert" className={styles.errorModal}>
-            {errorMotivo}
-          </div>
-        ) : null}
-      </ConfirmDialog>
-
-      {/* Diálogo Reactivar */}
-      <ConfirmDialog
-        abierto={dialogoReactivarAbierto}
+        abierto={reactivacion.abierto}
         titulo={TEXTOS.aulas.confirmarReactivarTitulo}
         descripcion={TEXTOS.aulas.confirmarReactivarDescripcion}
         textoConfirmar={TEXTOS.aulas.reactivar}
         textoCancelar={TEXTOS.acciones.cancelar}
         variante="primario"
-        cargando={reactivando}
-        onCancelar={() => setDialogoReactivarAbierto(false)}
+        cargando={reactivacion.procesando}
+        onCancelar={() => setReactivacion({ abierto: false, aula: null, procesando: false })}
         onConfirmar={confirmarReactivacion}
       />
 
@@ -528,4 +248,21 @@ export default function Aulas() {
       ) : null}
     </div>
   );
+}
+
+/**
+ * Un 409 con `reservasAfectadas` no es un error a mostrar y olvidar: significa
+ * que el aula tiene reservas futuras y hay que ofrecer cancelarlas.
+ */
+function errorDeBaja(err) {
+  const afectadas = err.response?.data?.reservasAfectadas;
+
+  if (err.response?.status === 409 && afectadas) {
+    return {
+      avisoAfectadas: TEXTOS.aulas.avisoReservasFuturas.replace('{cantidad}', afectadas),
+      cancelarReservasFuturas: true
+    };
+  }
+
+  return { error: err.response?.data?.error || 'No se pudo desactivar el aula.' };
 }
