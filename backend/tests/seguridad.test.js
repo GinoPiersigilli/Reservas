@@ -513,7 +513,9 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
       });
 
       expect(reservasEnBd.length).toBe(1);
-    }, 15000);
+      // Las 20 transacciones en conflicto se serializan en la restricción de
+      // exclusión: en un runner de CI eso puede tardar bastante más que en local.
+    }, 120000);
   });
 
   describe('10. Prevención de Fuga de Información Sensible', () => {
