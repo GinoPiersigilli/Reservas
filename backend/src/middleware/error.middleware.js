@@ -132,9 +132,32 @@ const mapearClaveForanea = (err) => {
   return { status: 400, cuerpo: { error: 'Referencia a un recurso inexistente' } };
 };
 
+/**
+ * Conflictos transitorios de PostgreSQL: `40P01` (deadlock) y `40001` (fallo de
+ * serialización).
+ *
+ * Son condiciones pasajeras, no fallas del servidor ni del pedido: la
+ * transacción se abortó entera y volver a intentarla normalmente resuelve. El
+ * servicio de reservas ya reintenta antes de llegar acá, así que este mapeador
+ * cubre el resto de las rutas transaccionales y el caso de reintentos agotados.
+ * Responde 503 con `Retry-After`, igual que la saturación del pool, para que un
+ * cliente sepa que puede repetir el pedido; un 500 le diría que no vale la pena.
+ */
+const mapearConflictoTransitorio = (err) => {
+  const codigo = codigoPg(err);
+  if (codigo !== '40P01' && codigo !== '40001') return null;
+
+  return {
+    status: 503,
+    cabeceras: { 'Retry-After': '1' },
+    cuerpo: { error: 'Conflicto temporal al guardar, reintente en un momento' }
+  };
+};
+
 const MAPEADORES = [
   mapearPayloadExcedido,
   mapearPoolSaturado,
+  mapearConflictoTransitorio,
   mapearSolapamiento,
   mapearUnicidad,
   mapearClaveForanea

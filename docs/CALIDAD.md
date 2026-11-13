@@ -9,7 +9,7 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 
 | Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
 | ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Integración de API | Jest + Supertest               | 206 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
+| Integración de API | Jest + Supertest               | 211 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
 | Componentes        | Vitest + Testing Library + axe | 112 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
 | Extremo a extremo  | Playwright                     | 20 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
 | Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
@@ -228,12 +228,35 @@ prueban y se descubren en producción:
   Los tres nacen en archivos distintos, así que sin esta prueba es fácil que uno
   vuelva a `400` sin que nada falle.
 
+### Un deadlock que ninguna prueba local vio
+
+El 13/11/2026 el job de `backend` falló en `main` con un caso que había pasado
+en la rama: PostgreSQL abortó dos transacciones por **deadlock detectado** y
+nueve de diez pedidos simultáneos devolvieron `5xx` en lugar de `409`.
+
+El deadlock es legítimo: varias transacciones que insertan franjas superpuestas
+para la misma aula pueden quedar esperándose entre sí sobre la restricción de
+exclusión, y PostgreSQL rompe el ciclo abortando a una. Lo que estaba mal era la
+respuesta: `40P01` no se reintentaba ni se mapeaba, así que salía por el
+manejador genérico como `500`. Un 500 le dice a quien integra que no vale la
+pena repetir el pedido, cuando repetirlo era exactamente lo que había que hacer.
+
+No se reproduce en una máquina de desarrollo —cero deadlocks en tres corridas de
+la prueba de 100 pedidos—, y por eso vivió desde la fase 11 sin que nadie lo
+viera. Lo destapó la combinación de PostgreSQL en contenedor y CPU compartida
+del runner de CI, que es justamente el entorno más parecido a producción con el
+que cuenta el proyecto.
+
+La corrección reintenta la transacción con esperas cortas y jitter, y si el
+conflicto no cede responde `503` con `Retry-After` en lugar de `500`. Las cinco
+pruebas que lo cubren fallan si se desactiva el reintento.
+
 ---
 
 ## 5.0. Cuántos mocks hay, y dónde
 
 Una suite puede tener muchas pruebas y no probar nada si todo está simulado, así
-que vale la pena mirar la proporción. Sobre las 206 pruebas de API hay **26
+que vale la pena mirar la proporción. Sobre las 211 pruebas de API hay **26
 usos de mock**, concentrados donde simular es lo correcto:
 
 | Archivo                      | Mocks | Qué simula y por qué                                                         |

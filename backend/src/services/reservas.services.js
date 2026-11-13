@@ -20,6 +20,26 @@ const esErrorSolapamiento = (err) =>
   err?.parent?.code === '23P01' ||
   err?.original?.code === '23P01';
 
+/**
+ * Conflictos transitorios de PostgreSQL: `40P01` (deadlock detectado) y `40001`
+ * (fallo de serialización).
+ *
+ * Varias transacciones que insertan franjas superpuestas para la misma aula
+ * pueden quedar esperándose entre sí sobre la restricción de exclusión, y
+ * PostgreSQL rompe el ciclo abortando a una. No es un error del pedido ni del
+ * servidor: la transacción se deshizo entera, así que reintentarla es correcto
+ * y la que pierda chocará después contra la restricción y recibirá su 409.
+ */
+const esConflictoTransitorio = (err) => {
+  const codigo = err?.parent?.code || err?.original?.code;
+  return codigo === '40P01' || codigo === '40001';
+};
+
+/** Esperas del reintento, con jitter para que dos perdedores no vuelvan juntos. */
+const ESPERAS_REINTENTO_MS = [15, 45, 120];
+
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const VENCIMIENTO_CLAVE_MS = 24 * 60 * 60 * 1000;
 
 const errorDeNegocio = (mensaje, status, extra = {}) => {
@@ -168,8 +188,11 @@ const puedeSerCarreraDeIdempotencia = (err) => {
   return err?.esSolapamiento === true || pgCode === '23P01' || pgCode === '23505';
 };
 
-// Función para crear una nueva reserva
-export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
+/**
+ * Crea la reserva en una transacción. Puede fallar por un conflicto transitorio;
+ * de reintentarla se encarga `crearNuevaReserva`.
+ */
+const intentarCrearReserva = async (datosReserva, opciones = {}) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
   const { idempotencyKey, cuerpoOriginal } = opciones;
   const usaIdempotencia = idempotencyKey !== undefined && idempotencyKey !== null;
@@ -242,6 +265,33 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
     throw err;
   }
 };
+
+/**
+ * Crea una reserva, reintentando ante un conflicto transitorio de PostgreSQL.
+ *
+ * Sin este reintento, un deadlock entre pedidos simultáneos por la misma franja
+ * salía como 500: el pedido estaba bien y el conflicto era pasajero, pero quien
+ * lo recibía no tenía forma de saber que repetirlo funcionaba. Con el reintento,
+ * el pedido que pierde el deadlock vuelve a intentarlo y termina recibiendo el
+ * 409 que le corresponde.
+ *
+ * El reintento es seguro porque la transacción abortada no dejó nada escrito, y
+ * la verificación de idempotencia vuelve a correr en cada vuelta: si mientras
+ * tanto otro pedido con la misma clave confirmó, se devuelve su respuesta en
+ * lugar de crear una segunda reserva.
+ */
+export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
+  for (let intento = 0; ; intento += 1) {
+    try {
+      return await intentarCrearReserva(datosReserva, opciones);
+    } catch (err) {
+      if (!esConflictoTransitorio(err) || intento >= ESPERAS_REINTENTO_MS.length) throw err;
+      const base = ESPERAS_REINTENTO_MS[intento];
+      await esperar(base + Math.floor(Math.random() * base));
+    }
+  }
+};
+
 // ==========================================
 // 2. APROBAR RESERVA
 // ==========================================

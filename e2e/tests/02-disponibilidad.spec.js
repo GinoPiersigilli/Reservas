@@ -43,7 +43,17 @@ test.describe('Flujo 2 — Consulta de disponibilidad', () => {
 
     const filtros = page.getByRole('region', { name: 'Filtros de búsqueda' });
     await filtros.getByRole('combobox', { name: 'Estado' }).selectOption('aprobada');
-    await filtros.getByRole('button', { name: 'Filtrar' }).click();
+
+    // Hay que esperar a que llegue el listado ya filtrado antes de afirmar que
+    // no hay pendientes: sin esta espera la aserción puede leer la lista previa
+    // al filtro, que sí los tiene, y falla de forma intermitente.
+    const [respuesta] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/api/reservas?') && r.url().includes('estado=aprobada')
+      ),
+      filtros.getByRole('button', { name: 'Filtrar' }).click()
+    ]);
+    expect(respuesta.ok()).toBeTruthy();
 
     const agenda = page.getByRole('region', { name: 'Agenda de reservas' });
     const items = agenda.getByRole('listitem');

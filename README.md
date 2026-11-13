@@ -13,7 +13,7 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 > application-level checks, and this is verified under 100 concurrent requests.
 > Retries and double clicks are absorbed by an HTTP `Idempotency-Key` protocol,
 > and every state change is written to an append-only audit trail inside the
-> same transaction. Covered by 206 API tests, 112 component tests and 20
+> same transaction. Covered by 211 API tests, 112 component tests and 20
 > end-to-end tests across 7 complete user flows, with Trivy, Semgrep, CodeQL
 > and Gitleaks running on every push. The interface and the documentation are in Spanish; the code, including
 > identifiers and comments, is in Spanish as well, since that is the language of
