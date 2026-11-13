@@ -354,7 +354,7 @@ describe('Fase 11 — Idempotencia en Creación de Reservas (POST /api/reservas)
     expect(checkActiva).not.toBeNull();
   });
 
-  it('9. Con clave, un choque con la reserva de OTRO usuario responde 400 sin demora', async () => {
+  it('9. Con clave, un choque con la reserva de OTRO usuario responde 409 sin demora', async () => {
     const payload = {
       aulaId: aula1.id,
       fecha: fechaFutura(7),

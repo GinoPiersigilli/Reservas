@@ -40,12 +40,37 @@ const verificarObligatorias = (rawEnv, nodeEnv, dbUrlKey) => {
   }
 };
 
+/**
+ * Longitud mínima del secreto de firma en producción.
+ *
+ * `DEPLOY.md` indica generarlo con `openssl rand -hex 32`, que produce 64
+ * caracteres, pero nada lo obligaba: `JWT_SECRET=a` arrancaba igual, y un
+ * secreto corto hace que HS256 sea atacable por fuerza bruta sobre un token
+ * capturado. Son 32 y no 64 para no rechazar un secreto válido generado con
+ * otra herramienta.
+ */
+const LARGO_MINIMO_JWT_SECRET = 32;
+
+const verificarFortalezaDelSecreto = (rawEnv, nodeEnv) => {
+  if (nodeEnv !== 'production') return;
+
+  const secreto = String(rawEnv.JWT_SECRET || '');
+  if (secreto.length < LARGO_MINIMO_JWT_SECRET) {
+    throw new Error(
+      `Error de configuración (${nodeEnv}): JWT_SECRET debe tener al menos ` +
+        `${LARGO_MINIMO_JWT_SECRET} caracteres (generar con "openssl rand -hex 32"); ` +
+        `tiene ${secreto.length}`
+    );
+  }
+};
+
 export const validarEnv = (rawEnv = process.env) => {
   const nodeEnv = rawEnv.NODE_ENV || 'development';
   const esTest = nodeEnv === 'test';
   const dbUrlKey = esTest ? 'DATABASE_URL_TEST' : 'DATABASE_URL';
 
   verificarObligatorias(rawEnv, nodeEnv, dbUrlKey);
+  verificarFortalezaDelSecreto(rawEnv, nodeEnv);
 
   const QUINCE_MINUTOS = 15 * 60 * 1000;
   // En pruebas los límites por IP se elevan para no interferir entre casos.

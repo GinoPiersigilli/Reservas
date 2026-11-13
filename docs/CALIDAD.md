@@ -9,7 +9,7 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 
 | Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
 | ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Integración de API | Jest + Supertest               | 204 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
+| Integración de API | Jest + Supertest               | 206 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
 | Componentes        | Vitest + Testing Library + axe | 112 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
 | Extremo a extremo  | Playwright                     | 20 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
 | Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
@@ -168,14 +168,22 @@ dividieron en piezas con una sola responsabilidad, sin cambiar el
 comportamiento (las 112 pruebas de componentes y las 20 de extremo a extremo
 siguen pasando):
 
-| Antes                               | Después                                                                                                                       |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `GrillaDisponibilidad` (591 líneas) | Orquestador (187) + vista de escritorio (202) + vista compacta (165) + `grillaCalculos.js` (155) + `useNavegacionGrilla` (79) |
-| `Resumen` (458)                     | Página (179) + `usePanel` + `metricasPanel.js` + columnas + 3 secciones                                                       |
-| `Aulas` (531)                       | Página (273) + `useAulas` + `validarAula.js` + 2 diálogos + filtros + columnas                                                |
-| `FormularioReserva` (448)           | Página (149) + `useDatosFormulario` + `validarReserva.js` + pasos + campos + resumen                                          |
-| `GuiaEstilos` (339)                 | Página (49) + 7 secciones + datos de demostración                                                                             |
-| `DetalleReserva` (199)              | Página (84) + `useReservaDetalle` + ficha + migas                                                                             |
+Las líneas de «antes» son las que tenía cada archivo al activarse los límites;
+el «después» describe en qué se dividió, sin repetir conteos que se
+desactualizan con cada cambio.
+
+| Antes                               | Después                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `GrillaDisponibilidad` (591 líneas) | Orquestador + vista de escritorio + vista compacta + `grillaCalculos.js` + `useNavegacionGrilla` |
+| `Resumen` (458)                     | Página + `usePanel` + `metricasPanel.js` + columnas + 3 secciones                                |
+| `Aulas` (531)                       | Página + `useAulas` + `validarAula.js` + 2 diálogos + filtros + columnas                         |
+| `FormularioReserva` (448)           | Página + `useDatosFormulario` + `validarReserva.js` + pasos + campos + resumen                   |
+| `GuiaEstilos` (339)                 | Página + 7 secciones + datos de demostración                                                     |
+| `DetalleReserva` (199)              | Página + `useReservaDetalle` + ficha + migas                                                     |
+
+Ninguno de los archivos resultantes supera los límites que la propia
+configuración de ESLint impone, que es la verificación que importa: la hace CI
+en cada push, no una cifra escrita a mano acá.
 
 Además se eliminó la **API de props duplicada** de los componentes base. Cada
 uno aceptaba el mismo dato con dos nombres (`titulo` y `title`, `abierto` y
@@ -190,18 +198,6 @@ reutilizable (`useTrampaDeFoco`).
 Las definiciones de columnas de las tablas también usaban dos convenciones a la
 vez (`key`/`clave`, `align: 'right'`/`alineacion: 'derecha'`) según la página:
 ahora hay una sola.
-
----------------------- | ----------- | ------ |
-| `Field` | 27 | 79 |
-| `ConfirmDialog` | 23 | 153 |
-| `Table` | 23 | 110 |
-| `GrillaDisponibilidad` | 22 | 551 |
-| `Button` | 21 | 95 |
-
-Eliminar esa API duplicada y dividir `GrillaDisponibilidad`, `Aulas` y
-`FormularioReserva` (más de 400 líneas cada uno) queda pendiente; recién
-entonces tiene sentido forzar un límite de complejidad en el frontend, en lugar
-de fijar uno a la medida del código actual.
 
 ---
 
@@ -237,7 +233,7 @@ prueban y se descubren en producción:
 ## 5.0. Cuántos mocks hay, y dónde
 
 Una suite puede tener muchas pruebas y no probar nada si todo está simulado, así
-que vale la pena mirar la proporción. Sobre las 204 pruebas de API hay **26
+que vale la pena mirar la proporción. Sobre las 206 pruebas de API hay **26
 usos de mock**, concentrados donde simular es lo correcto:
 
 | Archivo                      | Mocks | Qué simula y por qué                                                         |
