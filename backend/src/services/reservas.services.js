@@ -20,116 +20,179 @@ const esErrorSolapamiento = (err) =>
   err?.parent?.code === '23P01' ||
   err?.original?.code === '23P01';
 
+const VENCIMIENTO_CLAVE_MS = 24 * 60 * 60 * 1000;
+
+const errorDeNegocio = (mensaje, status, extra = {}) => {
+  const error = new Error(mensaje);
+  error.status = status;
+  Object.assign(error, extra);
+  return error;
+};
+
+/** Reglas de horario que no dependen de la base de datos. */
+const validarHorarioSolicitado = ({ fecha, horaInicio, horaFin }) => {
+  if (horaInicio >= horaFin) {
+    throw errorDeNegocio('La hora de inicio debe ser menor a la hora de fin', 400);
+  }
+  if (horaInicio < WORK_HOUR_START || horaFin > WORK_HOUR_END) {
+    throw errorDeNegocio(
+      `Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`,
+      400
+    );
+  }
+  if (esHorarioPasado(fecha, horaInicio)) {
+    throw errorDeNegocio('No se pueden realizar reservas en horarios que ya han transcurrido', 400);
+  }
+};
+
+const buscarClaveVigente = (usuarioId, clave) =>
+  IdempotencyKey.findOne({
+    where: { usuarioId, clave, expiresAt: { [Op.gt]: new Date() } }
+  });
+
+/**
+ * Respuesta ya emitida para esta clave. Si el cuerpo no coincide, la clave se
+ * está reutilizando para otra operación y eso es un error del cliente (422).
+ */
+const respuestaAlmacenada = (registro, cuerpoHash) => {
+  if (registro.cuerpoHash !== cuerpoHash) {
+    throw errorDeNegocio('La clave de idempotencia ya fue utilizada con un cuerpo diferente', 422);
+  }
+  return { replay: true, status: registro.estadoRespuesta, datos: registro.cuerpoRespuesta };
+};
+
+/**
+ * Valida la clave de idempotencia y devuelve la respuesta previa si esta
+ * operación ya se había ejecutado.
+ */
+const resolverIdempotencia = async ({ idempotencyKey, usuarioId, cuerpoHash }) => {
+  if (!esUuidValido(idempotencyKey)) {
+    throw errorDeNegocio('El encabezado Idempotency-Key debe ser un UUID válido', 400);
+  }
+
+  const clavePrevia = await buscarClaveVigente(usuarioId, idempotencyKey);
+  return clavePrevia ? respuestaAlmacenada(clavePrevia, cuerpoHash) : null;
+};
+
+/**
+ * Guarda la respuesta asociada a la clave en la misma transacción que la
+ * reserva, de modo que ambas se confirmen o se descarten juntas. Una clave ya
+ * vencida se renueva; una vigente nunca se sobreescribe.
+ */
+const registrarClaveIdempotencia = async (
+  { usuarioId, clave, cuerpoHash, reserva },
+  transaction
+) => {
+  await sequelize.query(
+    `
+    INSERT INTO idempotency_keys ("usuarioId", "clave", "cuerpoHash", "estadoRespuesta", "cuerpoRespuesta", "createdAt", "expiresAt")
+    VALUES (:usuarioId, :clave, :cuerpoHash, :estadoRespuesta, :cuerpoRespuesta::jsonb, NOW(), :expiresAt)
+    ON CONFLICT ("usuarioId", "clave") DO UPDATE SET
+      "cuerpoHash" = EXCLUDED."cuerpoHash",
+      "estadoRespuesta" = EXCLUDED."estadoRespuesta",
+      "cuerpoRespuesta" = EXCLUDED."cuerpoRespuesta",
+      "createdAt" = EXCLUDED."createdAt",
+      "expiresAt" = EXCLUDED."expiresAt"
+    WHERE idempotency_keys."expiresAt" < NOW()
+  `,
+    {
+      replacements: {
+        usuarioId,
+        clave,
+        cuerpoHash,
+        estadoRespuesta: 201,
+        cuerpoRespuesta: JSON.stringify(reserva.toJSON ? reserva.toJSON() : reserva),
+        expiresAt: new Date(Date.now() + VENCIMIENTO_CLAVE_MS)
+      },
+      transaction
+    }
+  );
+};
+
+/** Comprobaciones que requieren leer la base dentro de la transacción. */
+const verificarAulaYDisponibilidad = async (datos, transaction) => {
+  const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas } = datos;
+
+  // Bloqueo compartido sobre el aula para evitar carreras con su baja
+  const aula = await Aula.findByPk(aulaId, { transaction, lock: transaction.LOCK.SHARE });
+  if (!aula) {
+    throw errorDeNegocio('El aula solicitada no existe', 404);
+  }
+  if (!aula.activa) {
+    throw errorDeNegocio('El aula no está activa para nuevas reservas', 400);
+  }
+  if (cantidadPersonas > aula.capacidad) {
+    throw errorDeNegocio('La cantidad de personas supera la capacidad del aula', 400);
+  }
+
+  // Chequeo previo amable; la garantía real la da la restricción de exclusión
+  const reservaExistente = await Reserva.findOne({
+    where: {
+      aulaId,
+      fecha,
+      estado: { [Op.in]: ['pendiente', 'aprobada'] },
+      [Op.and]: [{ horaInicio: { [Op.lt]: horaFin } }, { horaFin: { [Op.gt]: horaInicio } }]
+    },
+    transaction
+  });
+
+  if (reservaExistente) {
+    throw errorDeNegocio('El aula ya está reservada en ese horario', 400, { esSolapamiento: true });
+  }
+};
+
+/**
+ * Tras un conflicto, busca la respuesta que pudo haber dejado otro pedido
+ * concurrente con la misma clave. Los reintentos son cortos y acotados: solo
+ * cubren la ventana entre el conflicto y el commit del pedido que ganó.
+ */
+const recuperarRespuestaDeCarrera = async ({ usuarioId, idempotencyKey, cuerpoHash }) => {
+  const ESPERAS_MS = [0, 20, 40, 80];
+
+  for (const espera of ESPERAS_MS) {
+    if (espera > 0) {
+      await new Promise((r) => setTimeout(r, espera));
+    }
+    const claveCometida = await buscarClaveVigente(usuarioId, idempotencyKey);
+    if (claveCometida) {
+      return respuestaAlmacenada(claveCometida, cuerpoHash);
+    }
+  }
+
+  return null;
+};
+
+/** Solo un conflicto de solapamiento o de unicidad puede deberse a esa carrera. */
+const puedeSerCarreraDeIdempotencia = (err) => {
+  const pgCode = err?.parent?.code || err?.original?.code;
+  return err?.esSolapamiento === true || pgCode === '23P01' || pgCode === '23505';
+};
+
 // Función para crear una nueva reserva
 export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
   const { aulaId, usuarioId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datosReserva;
   const { idempotencyKey, cuerpoOriginal } = opciones;
+  const usaIdempotencia = idempotencyKey !== undefined && idempotencyKey !== null;
 
-  // 1. Manejo y validación de idempotencia si se provee la clave
+  // 1. Idempotencia: si esta misma operación ya se ejecutó, se repite su respuesta
   let cuerpoHash = null;
-  if (idempotencyKey !== undefined && idempotencyKey !== null) {
-    if (!esUuidValido(idempotencyKey)) {
-      const error = new Error('El encabezado Idempotency-Key debe ser un UUID válido');
-      error.status = 400;
-      throw error;
-    }
-
-    cuerpoHash = calcularHashCuerpo(cuerpoOriginal || {
-      aulaId,
-      fecha,
-      horaInicio,
-      horaFin,
-      cantidadPersonas,
-      motivo
-    });
-
-    const clavePrevia = await IdempotencyKey.findOne({
-      where: {
-        usuarioId,
-        clave: idempotencyKey,
-        expiresAt: { [Op.gt]: new Date() }
-      }
-    });
-
-    if (clavePrevia) {
-      if (clavePrevia.cuerpoHash === cuerpoHash) {
-        return {
-          replay: true,
-          status: clavePrevia.estadoRespuesta,
-          datos: clavePrevia.cuerpoRespuesta
-        };
-      }
-      const error = new Error('La clave de idempotencia ya fue utilizada con un cuerpo diferente');
-      error.status = 422;
-      throw error;
-    }
+  if (usaIdempotencia) {
+    cuerpoHash = calcularHashCuerpo(
+      cuerpoOriginal || { aulaId, fecha, horaInicio, horaFin, cantidadPersonas, motivo }
+    );
+    const respuestaPrevia = await resolverIdempotencia({ idempotencyKey, usuarioId, cuerpoHash });
+    if (respuestaPrevia) return respuestaPrevia;
   }
 
-  // Validar que la horaInicio sea menor a horaFin
-  if (horaInicio >= horaFin) {
-    const error = new Error('La hora de inicio debe ser menor a la hora de fin');
-    error.status = 400;
-    throw error;
-  }
-
-  if (horaInicio < WORK_HOUR_START || horaFin > WORK_HOUR_END) {
-    const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
-    error.status = 400;
-    throw error;
-  }
-
-  if (esHorarioPasado(fecha, horaInicio)) {
-    const error = new Error('No se pueden realizar reservas en horarios que ya han transcurrido');
-    error.status = 400;
-    throw error;
-  }
+  // 2. Reglas de horario
+  validarHorarioSolicitado({ fecha, horaInicio, horaFin });
 
   try {
     return await sequelize.transaction(async (transaction) => {
-      // 2. Buscar el aula en la base de datos con bloqueo compartido para evitar carreras con baja
-      const aula = await Aula.findByPk(aulaId, { transaction, lock: transaction.LOCK.SHARE });
-      if (!aula) {
-        const error = new Error('El aula solicitada no existe');
-        error.status = 404;
-        throw error;
-      }
-      if (!aula.activa) {
-        const error = new Error('El aula no está activa para nuevas reservas');
-        error.status = 400;
-        throw error;
-      }
+      // 3. Aula activa, capacidad y disponibilidad
+      await verificarAulaYDisponibilidad(datosReserva, transaction);
 
-      // 3. Validar la capacidad
-      if (cantidadPersonas > aula.capacidad) {
-        const error = new Error('La cantidad de personas supera la capacidad del aula');
-        error.status = 400;
-        throw error;
-      }
-
-      // 4. Validar que no haya superposición horaria (chequeo previo amable)
-      const reservaExistente = await Reserva.findOne({
-        where: {
-          aulaId,
-          fecha,
-          estado: {
-            [Op.in]: ['pendiente', 'aprobada']
-          },
-          [Op.and]: [
-            { horaInicio: { [Op.lt]: horaFin } },
-            { horaFin: { [Op.gt]: horaInicio } }
-          ]
-        },
-        transaction
-      });
-
-      if (reservaExistente) {
-        const error = new Error('El aula ya está reservada en ese horario');
-        error.status = 400;
-        error.esSolapamiento = true;
-        throw error;
-      }
-
-      // 5. Creamos la reserva dentro de la transacción
+      // 4. Reserva e historial en la misma transacción
       const nuevaReserva = await Reserva.create(
         {
           aulaId,
@@ -144,7 +207,6 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
         { transaction }
       );
 
-      // 6. Guardamos la creación en el historial dentro de la misma transacción
       await registrarAccion(
         nuevaReserva.id,
         usuarioId,
@@ -154,81 +216,28 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
         { transaction }
       );
 
-      // 7. Si hay clave de idempotencia, registrarla dentro de la misma transacción
-      if (idempotencyKey) {
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        const reservaJson = nuevaReserva.toJSON ? nuevaReserva.toJSON() : nuevaReserva;
+      if (!usaIdempotencia) return nuevaReserva;
 
-        await sequelize.query(`
-          INSERT INTO idempotency_keys ("usuarioId", "clave", "cuerpoHash", "estadoRespuesta", "cuerpoRespuesta", "createdAt", "expiresAt")
-          VALUES (:usuarioId, :clave, :cuerpoHash, :estadoRespuesta, :cuerpoRespuesta::jsonb, NOW(), :expiresAt)
-          ON CONFLICT ("usuarioId", "clave") DO UPDATE SET
-            "cuerpoHash" = EXCLUDED."cuerpoHash",
-            "estadoRespuesta" = EXCLUDED."estadoRespuesta",
-            "cuerpoRespuesta" = EXCLUDED."cuerpoRespuesta",
-            "createdAt" = EXCLUDED."createdAt",
-            "expiresAt" = EXCLUDED."expiresAt"
-          WHERE idempotency_keys."expiresAt" < NOW()
-        `, {
-          replacements: {
-            usuarioId,
-            clave: idempotencyKey,
-            cuerpoHash,
-            estadoRespuesta: 201,
-            cuerpoRespuesta: JSON.stringify(reservaJson),
-            expiresAt
-          },
-          transaction
-        });
+      // 5. La clave se confirma junto con la reserva
+      await registrarClaveIdempotencia(
+        { usuarioId, clave: idempotencyKey, cuerpoHash, reserva: nuevaReserva },
+        transaction
+      );
 
-        return {
-          replay: false,
-          status: 201,
-          datos: nuevaReserva
-        };
-      }
-
-      return nuevaReserva;
+      return { replay: false, status: 201, datos: nuevaReserva };
     });
   } catch (err) {
-    // Solo un conflicto de solapamiento (chequeo previo o constraint 23P01) o de
-    // unicidad (23505) puede deberse a otro pedido concurrente con la misma clave que
-    // ganó la carrera. Cualquier otro error se propaga de inmediato, sin demorar la respuesta.
-    const pgCode = err?.parent?.code || err?.original?.code;
-    const posibleCarrera = err?.esSolapamiento === true || pgCode === '23P01' || pgCode === '23505';
-    if (idempotencyKey && posibleCarrera) {
-      const ESPERAS_MS = [0, 20, 40, 80];
-      for (const espera of ESPERAS_MS) {
-        if (espera > 0) {
-          await new Promise((r) => setTimeout(r, espera));
-        }
-        const claveCometida = await IdempotencyKey.findOne({
-          where: {
-            usuarioId,
-            clave: idempotencyKey,
-            expiresAt: { [Op.gt]: new Date() }
-          }
-        });
-
-        if (claveCometida) {
-          if (claveCometida.cuerpoHash === cuerpoHash) {
-            return {
-              replay: true,
-              status: claveCometida.estadoRespuesta,
-              datos: claveCometida.cuerpoRespuesta
-            };
-          }
-          const error = new Error('La clave de idempotencia ya fue utilizada con un cuerpo diferente');
-          error.status = 422;
-          throw error;
-        }
-      }
+    if (usaIdempotencia && puedeSerCarreraDeIdempotencia(err)) {
+      const respuestaDeOtroPedido = await recuperarRespuestaDeCarrera({
+        usuarioId,
+        idempotencyKey,
+        cuerpoHash
+      });
+      if (respuestaDeOtroPedido) return respuestaDeOtroPedido;
     }
 
     if (esErrorSolapamiento(err)) {
-      const error = new Error('El aula ya está reservada en ese horario');
-      error.status = 400;
-      throw error;
+      throw errorDeNegocio('El aula ya está reservada en ese horario', 400);
     }
     throw err;
   }
@@ -242,7 +251,7 @@ export const aprobarReserva = async (reservaId, usuarioIdAdmin) => {
     const reservaActual = await Reserva.findByPk(reservaId, { transaction });
 
     if (!reservaActual) {
-      const error = new Error("La reserva no existe");
+      const error = new Error('La reserva no existe');
       error.status = 404;
       throw error;
     }
@@ -250,7 +259,7 @@ export const aprobarReserva = async (reservaId, usuarioIdAdmin) => {
     // 2. Validamos el flujo de estados
     // Solo se permite pasar de 'pendiente' a 'aprobada' o 'rechazada'[cite: 67].
     if (reservaActual.estado !== 'pendiente') {
-      const error = new Error("Solo se pueden aprobar reservas pendientes");
+      const error = new Error('Solo se pueden aprobar reservas pendientes');
       error.status = 400;
       throw error;
     }
@@ -287,7 +296,7 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
     const reservaActual = await Reserva.findByPk(reservaId, { transaction });
 
     if (!reservaActual) {
-      const error = new Error("La reserva no existe");
+      const error = new Error('La reserva no existe');
       error.status = 404;
       throw error;
     }
@@ -300,7 +309,7 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
       String(reservaActual.usuarioId) === String(usuarioLogueado.id);
 
     if (!esAdmin && !esDuenio) {
-      const error = new Error("No tienes permiso para cancelar esta reserva");
+      const error = new Error('No tienes permiso para cancelar esta reserva');
       error.status = 403;
       throw error;
     }
@@ -308,7 +317,7 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
     // 3. Validación de estado
     // Solo se pueden cancelar reservas pendientes o aprobadas
     if (reservaActual.estado !== 'pendiente' && reservaActual.estado !== 'aprobada') {
-      const error = new Error("Solo se pueden cancelar reservas pendientes o aprobadas");
+      const error = new Error('Solo se pueden cancelar reservas pendientes o aprobadas');
       error.status = 400;
       throw error;
     }
@@ -337,51 +346,61 @@ export const cancelarReserva = async (reservaId, usuarioLogueado) => {
 // ==========================================
 // OBTENER RESERVAS (con filtros)
 // ==========================================
-export const obtenerReservas = async ({ fecha, estado, aulaId, q, page, limit, sortBy, order, usuario } = {}, usuarioParam) => {
+/** Filtros de búsqueda; un usuario común solo ve sus propias reservas. */
+const construirFiltros = ({ fecha, estado, aulaId, q }, usuarioActual, esAdmin) => {
   const where = {};
+
+  if (usuarioActual && !esAdmin) where.usuarioId = usuarioActual.id;
+  if (fecha) where.fecha = fecha;
+  if (estado) where.estado = estado;
+  if (aulaId) where.aulaId = aulaId;
+  if (q) where.motivo = { [Op.like]: `%${q}%` };
+
+  return where;
+};
+
+/** Paginación acotada: página mínima 1 y hasta 100 filas por página. */
+const resolverPaginacion = (page, limit) => {
+  const paginaPedida = parseInt(page, 10);
+  const limitePedido = parseInt(limit, 10);
+
+  const pagina = Number.isNaN(paginaPedida) || paginaPedida < 1 ? 1 : paginaPedida;
+  const porPagina =
+    Number.isNaN(limitePedido) || limitePedido < 1 ? 10 : Math.min(limitePedido, 100);
+
+  return { pagina, porPagina };
+};
+
+/** Solo se aceptan columnas y direcciones de una lista blanca. */
+const resolverOrden = (sortBy, order) => {
+  const columna = SORT_BY_PERMITIDOS.includes(sortBy) ? sortBy : 'createdAt';
+  const pedida = typeof order === 'string' ? order.toUpperCase() : '';
+  const direccion = pedida === 'ASC' || pedida === 'DESC' ? pedida : 'DESC';
+
+  return [[columna, direccion]];
+};
+
+/** Los datos del solicitante solo se incluyen para administradores. */
+const includeSolicitante = (esAdmin) =>
+  esAdmin ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }] : [];
+
+export const obtenerReservas = async (filtros = {}, usuarioParam) => {
+  const { page, limit, sortBy, order, usuario } = filtros;
   const usuarioActual = usuarioParam || usuario;
-  const esAdmin = usuarioActual && usuarioActual.rol === 'admin';
+  const esAdmin = Boolean(usuarioActual && usuarioActual.rol === 'admin');
 
-  if (usuarioActual && !esAdmin) {
-    where.usuarioId = usuarioActual.id;
-  }
-
-  if (fecha)   where.fecha   = fecha;
-  if (estado)  where.estado  = estado;
-  if (aulaId)  where.aulaId  = aulaId;
-  if (q)       where.motivo  = { [Op.like]: `%${q}%` };
-
-  const parsedPage  = parseInt(page, 10);
-  const pagina      = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-
-  const parsedLimit = parseInt(limit, 10);
-  const porPagina   = Number.isNaN(parsedLimit) || parsedLimit < 1
-    ? 10
-    : Math.min(parsedLimit, 100);
-
-  const columna     = SORT_BY_PERMITIDOS.includes(sortBy) ? sortBy : 'createdAt';
-  const orderUpper  = typeof order === 'string' ? order.toUpperCase() : '';
-  const direccion   = orderUpper === 'ASC' || orderUpper === 'DESC' ? orderUpper : 'DESC';
-
-  const include = esAdmin
-    ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }]
-    : [];
+  const { pagina, porPagina } = resolverPaginacion(page, limit);
 
   const { count, rows } = await Reserva.findAndCountAll({
-    where,
-    include,
+    where: construirFiltros(filtros, usuarioActual, esAdmin),
+    include: includeSolicitante(esAdmin),
     distinct: true,
-    order:  [[columna, direccion]],
-    limit:  porPagina,
+    order: resolverOrden(sortBy, order),
+    limit: porPagina,
     offset: (pagina - 1) * porPagina
   });
 
-  return {
-    total:    count,
-    pagina,
-    porPagina,
-    datos:    rows
-  };
+  return { total: count, pagina, porPagina, datos: rows };
 };
 
 // ==========================================
@@ -418,7 +437,6 @@ export const rechazarReserva = async (reservaId, usuarioIdAdmin) => {
     return reservaActual;
   });
 };
-
 
 // ==========================================
 // OBTENER RESERVA POR ID
@@ -463,118 +481,96 @@ export const obtenerHistorialDeReserva = async (reservaId, usuario) => {
 // ==========================================
 // EDITAR RESERVA
 // ==========================================
+const CAMPOS_EDITABLES = ['aulaId', 'fecha', 'horaInicio', 'horaFin', 'cantidadPersonas', 'motivo'];
+
+/** Valores resultantes de aplicar los cambios pedidos sobre la reserva actual. */
+const combinarCambios = (reserva, datos) => {
+  const resultado = {};
+  for (const campo of CAMPOS_EDITABLES) {
+    resultado[campo] = datos[campo] !== undefined ? datos[campo] : reserva[campo];
+  }
+  return resultado;
+};
+
+const validarDatosEdicion = (valores) => {
+  if (
+    !Number.isInteger(Number(valores.cantidadPersonas)) ||
+    Number(valores.cantidadPersonas) <= 0
+  ) {
+    throw errorDeNegocio('La cantidad de personas debe ser un número entero mayor a 0', 400);
+  }
+  if (typeof valores.motivo !== 'string' || valores.motivo.trim().length === 0) {
+    throw errorDeNegocio('El motivo no puede estar vacío', 400);
+  }
+
+  validarHorarioSolicitado({
+    fecha: valores.fecha,
+    horaInicio: valores.horaInicio,
+    horaFin: valores.horaFin
+  });
+};
+
+/** Igual que en el alta, pero ignorando la propia reserva al buscar conflictos. */
+const verificarAulaYDisponibilidadAlEditar = async (reservaId, valores, transaction) => {
+  const aula = await Aula.findByPk(valores.aulaId, { transaction, lock: transaction.LOCK.SHARE });
+  if (!aula) {
+    throw errorDeNegocio('El aula solicitada no existe', 404);
+  }
+  if (!aula.activa) {
+    throw errorDeNegocio('El aula no está activa para nuevas reservas', 400);
+  }
+  if (valores.cantidadPersonas > aula.capacidad) {
+    throw errorDeNegocio('La cantidad de personas supera la capacidad del aula', 400);
+  }
+
+  const conflicto = await Reserva.findOne({
+    where: {
+      id: { [Op.ne]: reservaId },
+      aulaId: valores.aulaId,
+      fecha: valores.fecha,
+      estado: { [Op.in]: ['pendiente', 'aprobada'] },
+      [Op.and]: [
+        { horaInicio: { [Op.lt]: valores.horaFin } },
+        { horaFin: { [Op.gt]: valores.horaInicio } }
+      ]
+    },
+    transaction
+  });
+
+  if (conflicto) {
+    throw errorDeNegocio('El aula ya está reservada en ese horario', 400);
+  }
+};
+
+const datosParaHistorial = (reserva) => ({
+  fecha: reserva.fecha,
+  horaInicio: reserva.horaInicio,
+  horaFin: reserva.horaFin,
+  cantidadPersonas: reserva.cantidadPersonas,
+  motivo: reserva.motivo
+});
+
 export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
   try {
     return await sequelize.transaction(async (transaction) => {
       const reserva = await Reserva.findByPk(reservaId, { transaction });
 
       if (!reserva) {
-        const error = new Error('La reserva no existe');
-        error.status = 404;
-        throw error;
+        throw errorDeNegocio('La reserva no existe', 404);
       }
-
       if (reserva.estado === 'cancelada' || reserva.estado === 'rechazada') {
-        const error = new Error('No se puede editar una reserva cancelada o rechazada');
-        error.status = 400;
-        throw error;
+        throw errorDeNegocio('No se puede editar una reserva cancelada o rechazada', 400);
       }
 
-      const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas, motivo } = datos;
+      const valores = combinarCambios(reserva, datos);
+      validarDatosEdicion(valores);
+      await verificarAulaYDisponibilidadAlEditar(reservaId, valores, transaction);
 
-      // Tomamos los valores nuevos o los actuales si son undefined
-      const nuevoAulaId   = aulaId           !== undefined ? aulaId           : reserva.aulaId;
-      const nuevaFecha    = fecha            !== undefined ? fecha            : reserva.fecha;
-      const nuevaInicio   = horaInicio       !== undefined ? horaInicio       : reserva.horaInicio;
-      const nuevaFin      = horaFin          !== undefined ? horaFin          : reserva.horaFin;
-      const nuevaCantidad = cantidadPersonas !== undefined ? cantidadPersonas : reserva.cantidadPersonas;
-      const nuevoMotivo   = motivo           !== undefined ? motivo           : reserva.motivo;
+      const valorAnterior = datosParaHistorial(reserva);
 
-      if (!Number.isInteger(Number(nuevaCantidad)) || Number(nuevaCantidad) <= 0) {
-        const error = new Error('La cantidad de personas debe ser un número entero mayor a 0');
-        error.status = 400;
-        throw error;
+      for (const campo of CAMPOS_EDITABLES) {
+        if (datos[campo] !== undefined) reserva[campo] = datos[campo];
       }
-
-      if (typeof nuevoMotivo !== 'string' || nuevoMotivo.trim().length === 0) {
-        const error = new Error('El motivo no puede estar vacío');
-        error.status = 400;
-        throw error;
-      }
-
-      if (nuevaInicio >= nuevaFin) {
-        const error = new Error('La hora de inicio debe ser menor a la hora de fin');
-        error.status = 400;
-        throw error;
-      }
-
-      // Validar horario laboral mediante configuración
-      if (nuevaInicio < WORK_HOUR_START || nuevaFin > WORK_HOUR_END) {
-        const error = new Error(`Las reservas solo se permiten entre las ${WORK_HOUR_START} y las ${WORK_HOUR_END}`);
-        error.status = 400;
-        throw error;
-      }
-
-      if (esHorarioPasado(nuevaFecha, nuevaInicio)) {
-        const error = new Error('No se pueden realizar reservas en horarios que ya han transcurrido');
-        error.status = 400;
-        throw error;
-      }
-
-      // Validar existencia, estado activo y capacidad del aula con bloqueo compartido
-      const aula = await Aula.findByPk(nuevoAulaId, { transaction, lock: transaction.LOCK.SHARE });
-      if (!aula) {
-        const error = new Error('El aula solicitada no existe');
-        error.status = 404;
-        throw error;
-      }
-      if (!aula.activa) {
-        const error = new Error('El aula no está activa para nuevas reservas');
-        error.status = 400;
-        throw error;
-      }
-      if (nuevaCantidad > aula.capacidad) {
-        const error = new Error('La cantidad de personas supera la capacidad del aula');
-        error.status = 400;
-        throw error;
-      }
-
-      // Detectar superposición ignorando la propia reserva (chequeo previo amable)
-      const conflicto = await Reserva.findOne({
-        where: {
-          id:     { [Op.ne]: reservaId },
-          aulaId: nuevoAulaId,
-          fecha:  nuevaFecha,
-          estado: { [Op.in]: ['pendiente', 'aprobada'] },
-          [Op.and]: [
-            { horaInicio: { [Op.lt]: nuevaFin   } },
-            { horaFin:    { [Op.gt]: nuevaInicio } }
-          ]
-        },
-        transaction
-      });
-
-      if (conflicto) {
-        const error = new Error('El aula ya está reservada en ese horario');
-        error.status = 400;
-        throw error;
-      }
-
-      const valorAnterior = {
-        fecha:            reserva.fecha,
-        horaInicio:       reserva.horaInicio,
-        horaFin:          reserva.horaFin,
-        cantidadPersonas: reserva.cantidadPersonas,
-        motivo:           reserva.motivo
-      };
-
-      // Aplicar cambios usando !== undefined
-      if (aulaId           !== undefined) reserva.aulaId           = aulaId;
-      if (fecha            !== undefined) reserva.fecha            = fecha;
-      if (horaInicio       !== undefined) reserva.horaInicio       = horaInicio;
-      if (horaFin          !== undefined) reserva.horaFin          = horaFin;
-      if (cantidadPersonas !== undefined) reserva.cantidadPersonas = cantidadPersonas;
-      if (motivo           !== undefined) reserva.motivo           = motivo;
 
       await reserva.save({ transaction });
 
@@ -583,7 +579,7 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
         usuarioIdAdmin,
         'edicion',
         valorAnterior,
-        { fecha: reserva.fecha, horaInicio: reserva.horaInicio, horaFin: reserva.horaFin, cantidadPersonas: reserva.cantidadPersonas, motivo: reserva.motivo },
+        datosParaHistorial(reserva),
         { transaction }
       );
 
@@ -591,9 +587,7 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
     });
   } catch (err) {
     if (esErrorSolapamiento(err)) {
-      const error = new Error('El aula ya está reservada en ese horario');
-      error.status = 400;
-      throw error;
+      throw errorDeNegocio('El aula ya está reservada en ese horario', 400);
     }
     throw err;
   }
@@ -602,16 +596,14 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
 // ==========================================
 // RESUMEN ADMINISTRATIVO
 // ==========================================
-export const obtenerResumen = async (usuario) => {
-  const fechaHoy = hoyArgentina();
-  const horaAhora = horaActualArgentina();
-  const esAdmin = usuario && usuario.rol === 'admin';
+const ESTADOS_POSIBLES = ['aprobada', 'pendiente', 'rechazada', 'cancelada'];
+const HORAS_OPERATIVAS_POR_DIA = 14; // franja operativa entre 08:00 y 22:00
 
-  const includeProximas = esAdmin
-    ? [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre', 'email'] }]
-    : [];
+const totalDeFila = (item) => parseInt(item.dataValues?.total || item.total, 10) || 0;
 
-  const [porEstado, porAula, proximasHoy, todasAulas] = await Promise.all([
+/** Consultas agregadas que alimentan el panel administrativo. */
+const consultarAgregadosResumen = (fechaHoy, horaAhora, esAdmin) =>
+  Promise.all([
     // Total por estado
     Reserva.findAll({
       attributes: ['estado', [sequelize.fn('COUNT', sequelize.col('id')), 'total']],
@@ -620,18 +612,18 @@ export const obtenerResumen = async (usuario) => {
     // Reservas por aula (las más usadas)
     Reserva.findAll({
       attributes: ['aulaId', [sequelize.fn('COUNT', sequelize.col('id')), 'total']],
-      group:  ['aulaId'],
-      order:  [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
-      limit:  5
+      group: ['aulaId'],
+      order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
+      limit: 5
     }),
     // Próximas reservas del día
     Reserva.findAll({
       where: {
         estado: { [Op.in]: ['pendiente', 'aprobada'] },
-        fecha:  fechaHoy,
+        fecha: fechaHoy,
         horaInicio: { [Op.gte]: horaAhora }
       },
-      include: includeProximas,
+      include: includeSolicitante(esAdmin),
       order: [['horaInicio', 'ASC']],
       limit: 10
     }),
@@ -643,30 +635,44 @@ export const obtenerResumen = async (usuario) => {
     })
   ]);
 
-  // 1. Distribución de estados con porcentajes
-  const totalReservas = porEstado.reduce(
-    (acc, curr) => acc + (parseInt(curr.dataValues?.total || curr.total, 10) || 0),
-    0
-  );
-  const mapaEstados = new Map(
-    porEstado.map((item) => [item.estado, parseInt(item.dataValues?.total || item.total, 10) || 0])
-  );
-  const estadosPosibles = ['aprobada', 'pendiente', 'rechazada', 'cancelada'];
-  const distribucionEstados = estadosPosibles.map((est) => {
-    const cantidad = mapaEstados.get(est) || 0;
-    const porcentaje = totalReservas > 0 ? Math.round((cantidad / totalReservas) * 100) : 0;
+/** Cantidad y porcentaje de reservas en cada estado. */
+const calcularDistribucionEstados = (porEstado) => {
+  const totalReservas = porEstado.reduce((acc, fila) => acc + totalDeFila(fila), 0);
+  const mapaEstados = new Map(porEstado.map((item) => [item.estado, totalDeFila(item)]));
+
+  const distribucionEstados = ESTADOS_POSIBLES.map((estado) => {
+    const cantidad = mapaEstados.get(estado) || 0;
     return {
-      estado: est,
+      estado,
       cantidad,
-      porcentaje
+      porcentaje: totalReservas > 0 ? Math.round((cantidad / totalReservas) * 100) : 0
     };
   });
 
-  // 2. Tasa de ocupación por aula en el mes actual
-  const inicioMes = `${fechaHoy.slice(0, 7)}-01`;
-  const [anioHoy, mesHoy] = fechaHoy.split('-').map(Number);
-  const ultimoDiaMes = new Date(Date.UTC(anioHoy, mesHoy, 0)).getUTCDate();
-  const finMes = `${fechaHoy.slice(0, 7)}-${String(ultimoDiaMes).padStart(2, '0')}`;
+  return { totalReservas, distribucionEstados };
+};
+
+/** Primer y último día del mes de la fecha indicada, más su cantidad de días. */
+const limitesDelMes = (fechaHoy) => {
+  const [anio, mes] = fechaHoy.split('-').map(Number);
+  const ultimoDia = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+
+  return {
+    inicioMes: `${fechaHoy.slice(0, 7)}-01`,
+    finMes: `${fechaHoy.slice(0, 7)}-${String(ultimoDia).padStart(2, '0')}`,
+    ultimoDia
+  };
+};
+
+const horasEntre = (horaInicio, horaFin) => {
+  const [hI, mI] = String(horaInicio).split(':').map(Number);
+  const [hF, mF] = String(horaFin).split(':').map(Number);
+  return Math.max(0, (hF * 60 + mF - (hI * 60 + mI)) / 60);
+};
+
+/** Horas reservadas por aula en el mes actual sobre las horas operativas. */
+const calcularTasaOcupacion = async (fechaHoy, aulas) => {
+  const { inicioMes, finMes, ultimoDia } = limitesDelMes(fechaHoy);
 
   const reservasMes = await Reserva.findAll({
     where: {
@@ -676,49 +682,53 @@ export const obtenerResumen = async (usuario) => {
     attributes: ['aulaId', 'horaInicio', 'horaFin']
   });
 
-  const calcularHoras = (hInicio, hFin) => {
-    const [hI, mI] = String(hInicio).split(':').map(Number);
-    const [hF, mF] = String(hFin).split(':').map(Number);
-    return Math.max(0, (hF * 60 + mF - (hI * 60 + mI)) / 60);
-  };
+  const horasPorAula = new Map();
+  for (const reserva of reservasMes) {
+    const acumuladas = horasPorAula.get(reserva.aulaId) || 0;
+    horasPorAula.set(reserva.aulaId, acumuladas + horasEntre(reserva.horaInicio, reserva.horaFin));
+  }
 
-  const horasOcupadasPorAula = new Map();
-  reservasMes.forEach((r) => {
-    const duracion = calcularHoras(r.horaInicio, r.horaFin);
-    const prev = horasOcupadasPorAula.get(r.aulaId) || 0;
-    horasOcupadasPorAula.set(r.aulaId, prev + duracion);
-  });
+  const horasOperativasMes = ultimoDia * HORAS_OPERATIVAS_POR_DIA;
 
-  // Horas operativas disponibles en el mes (14 hs diarias operativas entre 08:00 y 22:00)
-  const horasOperativasMes = ultimoDiaMes * 14;
-
-  const tasaOcupacionAulas = todasAulas.map((a) => {
-    const horasOcupadas = horasOcupadasPorAula.get(a.id) || 0;
-    const tasa = horasOperativasMes > 0
-      ? Math.min(100, Math.round((horasOcupadas / horasOperativasMes) * 100))
-      : 0;
+  return aulas.map((aula) => {
+    const horasOcupadas = horasPorAula.get(aula.id) || 0;
     return {
-      aulaId: a.id,
-      nombre: a.nombre,
-      capacidad: a.capacidad,
-      ubicacion: a.ubicacion,
+      aulaId: aula.id,
+      nombre: aula.nombre,
+      capacidad: aula.capacidad,
+      ubicacion: aula.ubicacion,
       horasOcupadas: Number(horasOcupadas.toFixed(1)),
       horasDisponibles: horasOperativasMes,
-      tasaOcupacion: tasa
+      tasaOcupacion:
+        horasOperativasMes > 0
+          ? Math.min(100, Math.round((horasOcupadas / horasOperativasMes) * 100))
+          : 0
     };
   });
+};
 
-  // 3. Aulas de mayor demanda
-  const mapaTotalReservasAula = new Map(
-    porAula.map((item) => [item.aulaId, parseInt(item.dataValues?.total || item.total, 10) || 0])
-  );
-  const aulasMayorDemanda = [...tasaOcupacionAulas]
-    .map((item) => ({
-      ...item,
-      totalReservas: mapaTotalReservasAula.get(item.aulaId) || 0
-    }))
+/** Aulas ordenadas por horas ocupadas y, a igualdad, por cantidad de reservas. */
+const calcularAulasMayorDemanda = (tasaOcupacionAulas, porAula) => {
+  const totalPorAula = new Map(porAula.map((item) => [item.aulaId, totalDeFila(item)]));
+
+  return [...tasaOcupacionAulas]
+    .map((item) => ({ ...item, totalReservas: totalPorAula.get(item.aulaId) || 0 }))
     .sort((a, b) => b.horasOcupadas - a.horasOcupadas || b.totalReservas - a.totalReservas)
     .slice(0, 5);
+};
+
+export const obtenerResumen = async (usuario) => {
+  const fechaHoy = hoyArgentina();
+  const esAdmin = Boolean(usuario && usuario.rol === 'admin');
+
+  const [porEstado, porAula, proximasHoy, todasAulas] = await consultarAgregadosResumen(
+    fechaHoy,
+    horaActualArgentina(),
+    esAdmin
+  );
+
+  const { totalReservas, distribucionEstados } = calcularDistribucionEstados(porEstado);
+  const tasaOcupacionAulas = await calcularTasaOcupacion(fechaHoy, todasAulas);
 
   return {
     porEstado,
@@ -726,7 +736,7 @@ export const obtenerResumen = async (usuario) => {
     proximasHoy,
     distribucionEstados,
     tasaOcupacionAulas,
-    aulasMayorDemanda,
+    aulasMayorDemanda: calcularAulasMayorDemanda(tasaOcupacionAulas, porAula),
     totalReservas
   };
 };

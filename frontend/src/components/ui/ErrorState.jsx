@@ -29,16 +29,10 @@ export default function ErrorState({
         <AlertCircle size={24} strokeWidth={1.75} />
       </span>
       <h3 className={styles.titulo}>{textoTitulo}</h3>
-      {textoDescripcion ? (
-        <p className={styles.descripcion}>{textoDescripcion}</p>
-      ) : null}
+      {textoDescripcion ? <p className={styles.descripcion}>{textoDescripcion}</p> : null}
       {mostrarReintentar ? (
         <div className={styles.acciones}>
-          <Button
-            variante="secundario"
-            icono={RotateCw}
-            onClick={() => manejadorReintentar?.()}
-          >
+          <Button variante="secundario" icono={RotateCw} onClick={() => manejadorReintentar?.()}>
             {textoReintentar}
           </Button>
         </div>
@@ -46,4 +40,3 @@ export default function ErrorState({
     </div>
   );
 }
-

@@ -185,11 +185,7 @@ export default function GuiaEstilos() {
             ayuda="Solo se listan las aulas activas."
             obligatorio
           >
-            <Select
-              placeholder="Elija un aula"
-              opciones={OPCIONES_AULAS}
-              defaultValue="1"
-            />
+            <Select placeholder="Elija un aula" opciones={OPCIONES_AULAS} defaultValue="1" />
           </Field>
 
           <Field
@@ -227,11 +223,7 @@ export default function GuiaEstilos() {
             Datos tabulares alineados a la izquierda con números y horarios en formato tabular.
           </p>
         </div>
-        <Table
-          ariaLabel="Ejemplo de reservas"
-          columnas={COLUMNAS_DEMO}
-          datos={DATOS_DEMO}
-        />
+        <Table ariaLabel="Ejemplo de reservas" columnas={COLUMNAS_DEMO} datos={DATOS_DEMO} />
         <h3>Esqueleto de tabla (TablaSkeleton)</h3>
         <TablaSkeleton
           filas={3}
@@ -324,11 +316,7 @@ export default function GuiaEstilos() {
               tecla Escape lo cierra y el foco regresa al botón disparador.
             </p>
             <div>
-              <Button
-                variante="peligro"
-                icono={Trash2}
-                onClick={() => setDialogoAbierto(true)}
-              >
+              <Button variante="peligro" icono={Trash2} onClick={() => setDialogoAbierto(true)}>
                 Abrir diálogo de confirmación
               </Button>
             </div>
@@ -349,4 +337,3 @@ export default function GuiaEstilos() {
     </main>
   );
 }
-

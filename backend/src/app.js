@@ -23,13 +23,15 @@ if (env.TRUST_PROXY_HOPS > 0) {
 
 app.use(helmet());
 
-app.use(cors({
-  origin: env.CORS_ORIGINS,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
-  exposedHeaders: ['Idempotent-Replay', 'Retry-After'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: env.CORS_ORIGINS,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+    exposedHeaders: ['Idempotent-Replay', 'Retry-After'],
+    credentials: true
+  })
+);
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));

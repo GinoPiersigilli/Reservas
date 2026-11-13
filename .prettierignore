@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-e2e
+coverage
+backend/backups
+docs/seguridad/evidencia
+e2e/playwright-report
+e2e/test-results
+package-lock.json
+
+# Datos de demostración y migraciones: las columnas alineadas a mano
+# documentan el esquema y se conservan tal cual.
+backend/db/seeders
+backend/db/migrations

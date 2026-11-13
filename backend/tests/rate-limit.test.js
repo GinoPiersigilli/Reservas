@@ -38,20 +38,14 @@ describe('SEC-RATELIMIT: Protección contra abusos y Missing Rate Limiting', () 
       expect(res1.status).toBe(200);
 
       // Pedidos a /api/aulas (cubierto por limiteGeneral)
-      const res2 = await request(app)
-        .get('/api/aulas')
-        .set('X-Forwarded-For', testIp);
+      const res2 = await request(app).get('/api/aulas').set('X-Forwarded-For', testIp);
       expect(res2.status).not.toBe(429);
 
-      const res3 = await request(app)
-        .get('/api/aulas')
-        .set('X-Forwarded-For', testIp);
+      const res3 = await request(app).get('/api/aulas').set('X-Forwarded-For', testIp);
       expect(res3.status).not.toBe(429);
 
       // Pedido 3 a /api/aulas -> excede el límite de 2 -> 429
-      const res4 = await request(app)
-        .get('/api/aulas')
-        .set('X-Forwarded-For', testIp);
+      const res4 = await request(app).get('/api/aulas').set('X-Forwarded-For', testIp);
 
       expect(res4.status).toBe(429);
       expect(res4.headers['retry-after']).toBeDefined();
@@ -60,9 +54,7 @@ describe('SEC-RATELIMIT: Protección contra abusos y Missing Rate Limiting', () 
       expect(res4.body.error).toMatch(/demasiadas solicitudes/i);
 
       // Verificamos que /api/health NUNCA recibe 429 incluso con la IP bloqueada
-      const resHealth = await request(app)
-        .get('/api/health')
-        .set('X-Forwarded-For', testIp);
+      const resHealth = await request(app).get('/api/health').set('X-Forwarded-For', testIp);
 
       expect(resHealth.status).toBe(200);
       expect(resHealth.body.status).toBe('ok');
@@ -107,16 +99,10 @@ describe('SEC-RATELIMIT: Protección contra abusos y Missing Rate Limiting', () 
 
       const testIp = '198.51.100.80';
 
-      const res1 = await request(app)
-        .post('/api/reservas')
-        .set('X-Forwarded-For', testIp)
-        .send({});
+      const res1 = await request(app).post('/api/reservas').set('X-Forwarded-For', testIp).send({});
       expect(res1.status).toBe(401);
 
-      const res2 = await request(app)
-        .post('/api/reservas')
-        .set('X-Forwarded-For', testIp)
-        .send({});
+      const res2 = await request(app).post('/api/reservas').set('X-Forwarded-For', testIp).send({});
       expect(res2.status).toBe(429);
       expect(res2.headers['retry-after']).toBeDefined();
     });
@@ -128,10 +114,7 @@ describe('SEC-RATELIMIT: Protección contra abusos y Missing Rate Limiting', () 
       const ip2 = '198.51.100.92';
 
       // IP 1 consume su único intento
-      await request(app)
-        .patch('/api/aulas/1/desactivar')
-        .set('X-Forwarded-For', ip1)
-        .send({});
+      await request(app).patch('/api/aulas/1/desactivar').set('X-Forwarded-For', ip1).send({});
 
       // IP 1 bloqueada
       const resIp1Bloqueada = await request(app)

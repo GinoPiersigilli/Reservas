@@ -51,4 +51,3 @@ export default function EstadoBadge({ estado, status, className = '', ...rest })
     </span>
   );
 }
-

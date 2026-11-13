@@ -1,12 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarPlus } from 'lucide-react';
-import {
-  Button,
-  EmptyState,
-  ErrorState,
-  TablaSkeleton
-} from '../components/ui/index.js';
+import { Button, EmptyState, ErrorState, TablaSkeleton } from '../components/ui/index.js';
 import FiltrosReservas from '../components/FiltrosReservas.jsx';
 import TablaReservas from '../components/TablaReservas.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -117,9 +112,7 @@ export default function Reservas() {
   return (
     <div className={styles.pagina}>
       <header className={styles.cabecera}>
-        <h1>
-          {esAdmin ? TEXTOS.reservas.tituloAdmin : TEXTOS.reservas.tituloUsuario}
-        </h1>
+        <h1>{esAdmin ? TEXTOS.reservas.tituloAdmin : TEXTOS.reservas.tituloUsuario}</h1>
         <Button
           variante="primario"
           icono={CalendarPlus}
@@ -131,9 +124,7 @@ export default function Reservas() {
 
       <FiltrosReservas onFiltrar={handleFiltros} aulas={aulas} />
 
-      {cargando ? (
-        <TablaSkeleton filas={5} cabeceras={cabecerasSkeleton} />
-      ) : null}
+      {cargando ? <TablaSkeleton filas={5} cabeceras={cabecerasSkeleton} /> : null}
 
       {!cargando && error ? (
         <ErrorState
@@ -193,10 +184,7 @@ export default function Reservas() {
                     key={num}
                     type="button"
                     aria-current={esActiva ? 'page' : undefined}
-                    className={[
-                      styles.botonPagina,
-                      esActiva ? styles.botonPaginaActivo : ''
-                    ]
+                    className={[styles.botonPagina, esActiva ? styles.botonPaginaActivo : '']
                       .filter(Boolean)
                       .join(' ')}
                     onClick={() => setPagina(num)}

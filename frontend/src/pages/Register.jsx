@@ -34,12 +34,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   const { isLoaded, signUp } = useSignUp();
-  const {
-    redirigiendoGoogle,
-    errorGoogle,
-    setErrorGoogle,
-    iniciarOAuth
-  } = useGoogleOAuth({
+  const { redirigiendoGoogle, errorGoogle, setErrorGoogle, iniciarOAuth } = useGoogleOAuth({
     authResource: signUp,
     isLoaded,
     defaultErrorMessage: TEXTOS.registro.errorGoogle
@@ -96,7 +91,10 @@ export default function Register() {
       });
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'No se pudo completar el registro.';
-      if (errorMsg.toLowerCase().includes('email') || errorMsg.toLowerCase().includes('ya existe')) {
+      if (
+        errorMsg.toLowerCase().includes('email') ||
+        errorMsg.toLowerCase().includes('ya existe')
+      ) {
         setErroresCampo({ email: 'Este email ya está registrado.' });
         setErrorGeneral(errorMsg);
       } else {

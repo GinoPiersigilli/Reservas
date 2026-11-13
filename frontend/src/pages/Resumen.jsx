@@ -154,22 +154,20 @@ const Resumen = () => {
   const mapaPorEstado = new Map(
     (resumen.porEstado || []).map((item) => [item.estado, Number(item.total) || 0])
   );
-  const totalReservas = resumen.totalReservas ?? Array.from(mapaPorEstado.values()).reduce(
-    (acc, actual) => acc + actual,
-    0
-  );
+  const totalReservas =
+    resumen.totalReservas ??
+    Array.from(mapaPorEstado.values()).reduce((acc, actual) => acc + actual, 0);
   const cantidadPendientes =
-    colaPendientes.length > 0
-      ? colaPendientes.length
-      : mapaPorEstado.get('pendiente') || 0;
+    colaPendientes.length > 0 ? colaPendientes.length : mapaPorEstado.get('pendiente') || 0;
 
-  const distribucionEstados = Array.isArray(resumen.distribucionEstados) && resumen.distribucionEstados.length > 0
-    ? resumen.distribucionEstados
-    : ORDEN_ESTADOS.map((estadoKey) => {
-        const cantidad = mapaPorEstado.get(estadoKey) || 0;
-        const porcentaje = totalReservas > 0 ? Math.round((cantidad / totalReservas) * 100) : 0;
-        return { estado: estadoKey, cantidad, porcentaje };
-      });
+  const distribucionEstados =
+    Array.isArray(resumen.distribucionEstados) && resumen.distribucionEstados.length > 0
+      ? resumen.distribucionEstados
+      : ORDEN_ESTADOS.map((estadoKey) => {
+          const cantidad = mapaPorEstado.get(estadoKey) || 0;
+          const porcentaje = totalReservas > 0 ? Math.round((cantidad / totalReservas) * 100) : 0;
+          return { estado: estadoKey, cantidad, porcentaje };
+        });
 
   const tasaOcupacion = Array.isArray(resumen.tasaOcupacionAulas) ? resumen.tasaOcupacionAulas : [];
 
@@ -189,18 +187,12 @@ const Resumen = () => {
     {
       key: 'aula',
       titulo: 'Aula',
-      render: (r) => (
-        <span className={styles.nombreAula}>
-          {obtenerNombreAula(r)}
-        </span>
-      )
+      render: (r) => <span className={styles.nombreAula}>{obtenerNombreAula(r)}</span>
     },
     {
       key: 'fecha',
       titulo: 'Fecha',
-      render: (r) => (
-        <span className={styles.textoTabular}>{formatearFecha(r.fecha)}</span>
-      )
+      render: (r) => <span className={styles.textoTabular}>{formatearFecha(r.fecha)}</span>
     },
     {
       key: 'horario',
@@ -215,12 +207,10 @@ const Resumen = () => {
       key: 'solicitante',
       titulo: 'Solicitante',
       render: (r) => {
-        const nombre = r.usuario?.nombre || r.usuarioNombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : '—');
+        const nombre =
+          r.usuario?.nombre || r.usuarioNombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : '—');
         return (
-          <span
-            className={styles.solicitanteCelda}
-            title={r.usuario?.email || nombre}
-          >
+          <span className={styles.solicitanteCelda} title={r.usuario?.email || nombre}>
             {nombre}
           </span>
         );
@@ -258,19 +248,13 @@ const Resumen = () => {
     {
       key: 'aula',
       titulo: 'Aula',
-      render: (a) => (
-        <span className={styles.nombreAula}>
-          {obtenerNombreAula(a)}
-        </span>
-      )
+      render: (a) => <span className={styles.nombreAula}>{obtenerNombreAula(a)}</span>
     },
     {
       key: 'total',
       titulo: 'Reservas',
       align: 'right',
-      render: (a) => (
-        <span className={styles.valorCompacto}>{a.total ?? a.totalReservas}</span>
-      )
+      render: (a) => <span className={styles.valorCompacto}>{a.total ?? a.totalReservas}</span>
     }
   ];
 
@@ -328,17 +312,21 @@ const Resumen = () => {
                   <span className={styles.separadorHoy} aria-hidden="true">
                     ·
                   </span>
-                  <span className={styles.nombreAula}>
-                    {obtenerNombreAula(r)}
-                  </span>
+                  <span className={styles.nombreAula}>{obtenerNombreAula(r)}</span>
                   <span className={styles.separadorHoy} aria-hidden="true">
                     ·
                   </span>
                   <span
                     className={styles.solicitanteHoy}
-                    title={r.usuario?.email || (r.usuario?.nombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : undefined))}
+                    title={
+                      r.usuario?.email ||
+                      r.usuario?.nombre ||
+                      (r.usuarioId ? `Usuario #${r.usuarioId}` : undefined)
+                    }
                   >
-                    {r.usuario?.nombre || r.usuarioNombre || (r.usuarioId ? `Usuario #${r.usuarioId}` : '—')}
+                    {r.usuario?.nombre ||
+                      r.usuarioNombre ||
+                      (r.usuarioId ? `Usuario #${r.usuarioId}` : '—')}
                   </span>
                   {r.motivo ? (
                     <>
@@ -368,9 +356,7 @@ const Resumen = () => {
             <h2 id="titulo-analitica-ocupacion" className={styles.tituloSeccion}>
               Métricas de gestión y ocupación mensual
             </h2>
-            <span className={styles.contador}>
-              {totalReservas} reservas analizadas
-            </span>
+            <span className={styles.contador}>{totalReservas} reservas analizadas</span>
           </div>
           <div className={styles.grillaMetricas}>
             {tasaOcupacion.map((item) => (
@@ -416,9 +402,7 @@ const Resumen = () => {
               </div>
             ))}
             <div className={styles.filaCompacta}>
-              <dt className={[styles.etiquetaCompacta, styles.etiquetaTotal].join(' ')}>
-                Total
-              </dt>
+              <dt className={[styles.etiquetaCompacta, styles.etiquetaTotal].join(' ')}>Total</dt>
               <dd className={styles.valorCompacto}>{totalReservas}</dd>
             </div>
           </dl>
@@ -430,9 +414,7 @@ const Resumen = () => {
           </h2>
           {(!resumen.aulasMayorDemanda || resumen.aulasMayorDemanda.length === 0) &&
           (!resumen.porAula || resumen.porAula.length === 0) ? (
-            <p className={styles.lineaVacia}>
-              No hay registros de uso de aulas disponibles.
-            </p>
+            <p className={styles.lineaVacia}>No hay registros de uso de aulas disponibles.</p>
           ) : (
             <Table
               ariaLabel="Aulas más reservadas"
@@ -461,9 +443,7 @@ const Resumen = () => {
             : TEXTOS.dialogos.rechazarDescripcion
         }
         textoConfirmar={
-          confirmacion?.tipo === 'aprobar'
-            ? TEXTOS.acciones.aprobar
-            : TEXTOS.acciones.rechazar
+          confirmacion?.tipo === 'aprobar' ? TEXTOS.acciones.aprobar : TEXTOS.acciones.rechazar
         }
         textoCancelar={TEXTOS.acciones.cancelar}
         variante={confirmacion?.tipo === 'aprobar' ? 'primario' : 'peligro'}

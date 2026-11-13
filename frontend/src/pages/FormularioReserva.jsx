@@ -3,11 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Button, Field, Input, Select, Toast } from '../components/ui/index.js';
 import GrillaDisponibilidad from '../components/GrillaDisponibilidad.jsx';
-import {
-  HORA_FIN_JORNADA,
-  HORA_INICIO_JORNADA,
-  obtenerHoyArgentina
-} from '../config/horarios.js';
+import { HORA_FIN_JORNADA, HORA_INICIO_JORNADA, obtenerHoyArgentina } from '../config/horarios.js';
 import * as aulaService from '../services/aula.service.js';
 import { getReserva, crearReserva, editarReserva } from '../services/reservas.service.js';
 import { TEXTOS } from '../textos.js';
@@ -190,10 +186,7 @@ export default function FormularioReserva() {
     if (form.horaInicio && form.horaFin) {
       if (form.horaInicio >= form.horaFin) {
         nuevosErrores.horaFin = 'La hora de inicio debe ser menor a la hora de fin.';
-      } else if (
-        form.horaInicio < HORA_INICIO_JORNADA ||
-        form.horaFin > HORA_FIN_JORNADA
-      ) {
+      } else if (form.horaInicio < HORA_INICIO_JORNADA || form.horaFin > HORA_FIN_JORNADA) {
         nuevosErrores.horaFin = `Las reservas solo se permiten entre las ${HORA_INICIO_JORNADA} y las ${HORA_FIN_JORNADA}.`;
       }
     }
@@ -236,29 +229,20 @@ export default function FormularioReserva() {
       }
     } catch (err) {
       const mensajeServidor = err.response?.data?.error;
-      setError(
-        mensajeServidor ||
-          'Ocurrió un error al guardar la reserva. Intente de nuevo.'
-      );
+      setError(mensajeServidor || 'Ocurrió un error al guardar la reserva. Intente de nuevo.');
     } finally {
       setCargando(false);
     }
   };
 
-  const pasoActual = !form.fecha || !form.aulaId
-    ? 1
-    : !form.horaInicio || !form.horaFin
-      ? 2
-      : 3;
+  const pasoActual = !form.fecha || !form.aulaId ? 1 : !form.horaInicio || !form.horaFin ? 2 : 3;
 
   const duracionTexto = calcularDuracionTexto(form.horaInicio, form.horaFin);
 
   return (
     <div className={styles.pagina}>
       <header className={styles.cabecera}>
-        <h1>
-          {esEdicion ? TEXTOS.formulario.tituloEditar : TEXTOS.formulario.tituloNueva}
-        </h1>
+        <h1>{esEdicion ? TEXTOS.formulario.tituloEditar : TEXTOS.formulario.tituloNueva}</h1>
         <ol className={styles.pasos} aria-label="Pasos para reservar">
           <li
             className={[
@@ -271,11 +255,7 @@ export default function FormularioReserva() {
             aria-current={pasoActual === 1 ? 'step' : undefined}
           >
             <span className={styles.numeroPaso}>
-              {pasoActual > 1 ? (
-                <Check size={14} aria-hidden="true" />
-              ) : (
-                '1'
-              )}
+              {pasoActual > 1 ? <Check size={14} aria-hidden="true" /> : '1'}
             </span>
             <span>{TEXTOS.formulario.paso1}</span>
           </li>
@@ -290,19 +270,12 @@ export default function FormularioReserva() {
             aria-current={pasoActual === 2 ? 'step' : undefined}
           >
             <span className={styles.numeroPaso}>
-              {pasoActual > 2 ? (
-                <Check size={14} aria-hidden="true" />
-              ) : (
-                '2'
-              )}
+              {pasoActual > 2 ? <Check size={14} aria-hidden="true" /> : '2'}
             </span>
             <span>{TEXTOS.formulario.paso2}</span>
           </li>
           <li
-            className={[
-              styles.pasoItem,
-              pasoActual === 3 ? styles.pasoActivo : ''
-            ]
+            className={[styles.pasoItem, pasoActual === 3 ? styles.pasoActivo : '']
               .filter(Boolean)
               .join(' ')}
             aria-current={pasoActual === 3 ? 'step' : undefined}
@@ -324,12 +297,7 @@ export default function FormularioReserva() {
               error={erroresCampo.fecha}
               obligatorio
             >
-              <Input
-                type="date"
-                name="fecha"
-                value={form.fecha}
-                onChange={handleChange}
-              />
+              <Input type="date" name="fecha" value={form.fecha} onChange={handleChange} />
             </Field>
 
             <Field
@@ -349,9 +317,7 @@ export default function FormularioReserva() {
                 onChange={handleChange}
                 disabled={aulaCargando}
               >
-                <option value="">
-                  {aulaCargando ? 'Cargando aulas…' : 'Elija un aula'}
-                </option>
+                <option value="">{aulaCargando ? 'Cargando aulas…' : 'Elija un aula'}</option>
                 {aulas.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.nombre}
@@ -450,8 +416,7 @@ export default function FormularioReserva() {
           <div className={styles.resumenSeleccion} aria-live="polite">
             <span className={styles.tituloResumen}>Resumen de la solicitud</span>
             <p className={styles.lineaResumen}>
-              Seleccionado:{' '}
-              {aulaSeleccionada ? aulaSeleccionada.nombre : 'Sin aula elegida'} ·{' '}
+              Seleccionado: {aulaSeleccionada ? aulaSeleccionada.nombre : 'Sin aula elegida'} ·{' '}
               {form.fecha ? formatearFecha(form.fecha) : 'Sin fecha'} ·{' '}
               {form.horaInicio && form.horaFin
                 ? `${form.horaInicio} a ${form.horaFin}${
@@ -461,9 +426,7 @@ export default function FormularioReserva() {
             </p>
             {form.cantidadPersonas || form.motivo ? (
               <p className={styles.detalleResumen}>
-                {form.cantidadPersonas
-                  ? `${form.cantidadPersonas} personas`
-                  : ''}
+                {form.cantidadPersonas ? `${form.cantidadPersonas} personas` : ''}
                 {form.cantidadPersonas && form.motivo ? ' · ' : ''}
                 {form.motivo ? form.motivo : ''}
               </p>
@@ -472,15 +435,9 @@ export default function FormularioReserva() {
 
           <div className={styles.acciones}>
             <Button type="submit" variante="primario" cargando={cargando} disabled={cargando}>
-              {esEdicion
-                ? TEXTOS.acciones.guardarCambios
-                : TEXTOS.acciones.reservarAula}
+              {esEdicion ? TEXTOS.acciones.guardarCambios : TEXTOS.acciones.reservarAula}
             </Button>
-            <Button
-              type="button"
-              variante="secundario"
-              onClick={() => navigate('/reservas')}
-            >
+            <Button type="button" variante="secundario" onClick={() => navigate('/reservas')}>
               {TEXTOS.acciones.cancelar}
             </Button>
           </div>

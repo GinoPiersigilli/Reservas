@@ -26,16 +26,27 @@ try {
 }
 
 if (!dbName || !dbName.endsWith('_bench')) {
-  console.error('\x1b[31m%s\x1b[0m', '=========================================================================');
+  console.error(
+    '\x1b[31m%s\x1b[0m',
+    '========================================================================='
+  );
   console.error('\x1b[31m%s\x1b[0m', 'ERROR CRÍTICO DE SEGURIDAD: OPERACIÓN ABORTADA');
-  console.error('\x1b[31m%s\x1b[0m', `Este benchmark solo puede ejecutarse contra una base de datos cuyo nombre termine en "_bench".`);
+  console.error(
+    '\x1b[31m%s\x1b[0m',
+    `Este benchmark solo puede ejecutarse contra una base de datos cuyo nombre termine en "_bench".`
+  );
   console.error('\x1b[31m%s\x1b[0m', `Base de datos detectada: "${dbName}"`);
   console.error('\x1b[31m%s\x1b[0m', 'Por favor configure DATABASE_URL_BENCH=.../nombre_bench');
-  console.error('\x1b[31m%s\x1b[0m', '=========================================================================');
+  console.error(
+    '\x1b[31m%s\x1b[0m',
+    '========================================================================='
+  );
   process.exit(1);
 }
 
-console.log(`\x1b[32m[SEGURIDAD OK]\x1b[0m Conectando a base de datos de benchmark segura: "${dbName}"`);
+console.log(
+  `\x1b[32m[SEGURIDAD OK]\x1b[0m Conectando a base de datos de benchmark segura: "${dbName}"`
+);
 
 const sequelize = new Sequelize(benchUrl, {
   dialect: 'postgres',
@@ -130,7 +141,9 @@ async function inicializarEsquema() {
   `);
 
   console.log('Truncando datos previos en la base bench...');
-  await sequelize.query('TRUNCATE TABLE idempotency_keys, historial_reservas, reservas, aulas, usuarios RESTART IDENTITY CASCADE;');
+  await sequelize.query(
+    'TRUNCATE TABLE idempotency_keys, historial_reservas, reservas, aulas, usuarios RESTART IDENTITY CASCADE;'
+  );
 }
 
 // =========================================================================
@@ -144,17 +157,25 @@ async function sembrarDatos() {
   for (let i = 1; i <= 50; i++) {
     const piso = Math.ceil(i / 10);
     const capacidad = 20 + (i % 8) * 10;
-    aulasSql.push(`('Aula ${i}', 'Pabellón ${String.fromCharCode(65 + (i % 4))}, Piso ${piso}', ${capacidad}, '{"proyector":true,"wifi":true}'::jsonb, true)`);
+    aulasSql.push(
+      `('Aula ${i}', 'Pabellón ${String.fromCharCode(65 + (i % 4))}, Piso ${piso}', ${capacidad}, '{"proyector":true,"wifi":true}'::jsonb, true)`
+    );
   }
-  await sequelize.query(`INSERT INTO aulas (nombre, ubicacion, capacidad, recursos, activa) VALUES ${aulasSql.join(',')};`);
+  await sequelize.query(
+    `INSERT INTO aulas (nombre, ubicacion, capacidad, recursos, activa) VALUES ${aulasSql.join(',')};`
+  );
 
   // 1000 Usuarios
   console.log('Insertando 1000 usuarios...');
   const usuariosSql = [];
   for (let i = 1; i <= 1000; i++) {
-    usuariosSql.push(`('Docente ${i}', 'docente_${i}@utnfrc.edu.ar', '$2b$10$abcdefghijklmnopqrstuu', 'usuario', true)`);
+    usuariosSql.push(
+      `('Docente ${i}', 'docente_${i}@utnfrc.edu.ar', '$2b$10$abcdefghijklmnopqrstuu', 'usuario', true)`
+    );
   }
-  await sequelize.query(`INSERT INTO usuarios (nombre, email, "passwordHash", rol, activo) VALUES ${usuariosSql.join(',')};`);
+  await sequelize.query(
+    `INSERT INTO usuarios (nombre, email, "passwordHash", rol, activo) VALUES ${usuariosSql.join(',')};`
+  );
 
   console.log('\n--- 3. Generando 200.000 reservas verosímiles en lotes ---');
   const t0 = Date.now();
@@ -177,7 +198,15 @@ async function sembrarDatos() {
     'Taller de Redes de Información'
   ];
 
-  const estados = ['aprobada', 'aprobada', 'aprobada', 'aprobada', 'cancelada', 'rechazada', 'pendiente'];
+  const estados = [
+    'aprobada',
+    'aprobada',
+    'aprobada',
+    'aprobada',
+    'cancelada',
+    'rechazada',
+    'pendiente'
+  ];
 
   // Fecha base: 2024-01-01 (800 días hacia adelante = hasta 2026-03-10)
   // 50 aulas * 800 días * 5 franjas = 200.000 reservas exactamente!
@@ -204,7 +233,9 @@ async function sembrarDatos() {
         const estado = estados[(d * 5 + f) % estados.length];
         const personas = 15 + ((d + a) % 25);
 
-        lote.push(`(${a}, ${usuarioId}, '${fechaStr}', '${franja.ini}', '${franja.fin}', ${personas}, '${motivo}', '${estado}', NOW(), NOW())`);
+        lote.push(
+          `(${a}, ${usuarioId}, '${fechaStr}', '${franja.ini}', '${franja.fin}', ${personas}, '${motivo}', '${estado}', NOW(), NOW())`
+        );
 
         if (lote.length >= BATCH_SIZE) {
           await sequelize.query(`
@@ -212,7 +243,9 @@ async function sembrarDatos() {
             VALUES ${lote.join(',')};
           `);
           insertadas += lote.length;
-          process.stdout.write(`\rProgreso: ${insertadas.toLocaleString()} / 200,000 reservas insertadas...`);
+          process.stdout.write(
+            `\rProgreso: ${insertadas.toLocaleString()} / 200,000 reservas insertadas...`
+          );
           lote = [];
         }
       }
@@ -228,7 +261,9 @@ async function sembrarDatos() {
   }
 
   const duracion = ((Date.now() - t0) / 1000).toFixed(1);
-  console.log(`\n\x1b[32m[ÉXITO]\x1b[0m ${insertadas.toLocaleString()} reservas insertadas en ${duracion}s.`);
+  console.log(
+    `\n\x1b[32m[ÉXITO]\x1b[0m ${insertadas.toLocaleString()} reservas insertadas en ${duracion}s.`
+  );
 
   console.log('Ejecutando ANALYZE para actualizar estadísticas de PostgreSQL...');
   await sequelize.query('ANALYZE reservas; ANALYZE aulas; ANALYZE usuarios;');
@@ -238,7 +273,9 @@ async function sembrarDatos() {
 // 4. EXPLAIN (ANALYZE, BUFFERS) DE LAS 5 CONSULTAS CRÍTICAS
 // =========================================================================
 async function ejecutarExplain(nombre, sql) {
-  const [results] = await sequelize.query(`EXPLAIN (ANALYZE, BUFFERS, COSTS, TIMING, SUMMARY) ${sql}`);
+  const [results] = await sequelize.query(
+    `EXPLAIN (ANALYZE, BUFFERS, COSTS, TIMING, SUMMARY) ${sql}`
+  );
   const lineas = results.map((r) => r['QUERY PLAN']);
   const planCompleto = lineas.join('\n');
 
@@ -339,7 +376,9 @@ async function evaluarIndiceNuevo(resultadosBase) {
   console.log(`  EVALUACIÓN DE ÍNDICE COMPUESTO: ("aulaId", fecha)`);
   console.log(`=============================================================`);
   console.log('Creando índice: reservas_aula_fecha_idx...');
-  await sequelize.query('CREATE INDEX IF NOT EXISTS reservas_aula_fecha_idx ON reservas ("aulaId", fecha);');
+  await sequelize.query(
+    'CREATE INDEX IF NOT EXISTS reservas_aula_fecha_idx ON reservas ("aulaId", fecha);'
+  );
   await sequelize.query('ANALYZE reservas;');
 
   const resultadosConIndice = await correrBenchmarks('Con Índice Compuesto ("aulaId", fecha)');
@@ -355,7 +394,9 @@ async function evaluarIndiceNuevo(resultadosBase) {
     const despues = resultadosConIndice[i];
     const diff = (base.execTime - despues.execTime).toFixed(3);
     const pct = (((base.execTime - despues.execTime) / base.execTime) * 100).toFixed(1);
-    console.log(`| ${base.nombre} | ${base.execTime} ms | ${despues.execTime} ms | ${diff > 0 ? `+${pct}% más rápido` : `${pct}%`} |`);
+    console.log(
+      `| ${base.nombre} | ${base.execTime} ms | ${despues.execTime} ms | ${diff > 0 ? `+${pct}% más rápido` : `${pct}%`} |`
+    );
   }
 }
 

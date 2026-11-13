@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-e2e
 dist-ssr
 *.local
 .env
@@ -35,3 +36,8 @@ backend/backups/*
 *.dump
 *.sql.gz
 coverage/
+
+# Pruebas E2E (Playwright)
+e2e/test-results/
+e2e/playwright-report/
+e2e/.auth/

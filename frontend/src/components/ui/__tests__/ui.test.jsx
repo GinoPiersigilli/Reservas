@@ -274,19 +274,14 @@ describe('Componentes base de UI (src/components/ui/)', () => {
       expect(
         screen.getByRole('heading', { name: /Guía de estilos y componentes base/i })
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('heading', { name: /Botones \(Button\)/i })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Botones \(Button\)/i })).toBeInTheDocument();
       expect(
         screen.getByRole('heading', { name: /Indicadores de estado \(EstadoBadge\)/i })
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('heading', { name: /Campos y controles/i })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Campos y controles/i })).toBeInTheDocument();
       expect(
         screen.getByRole('heading', { name: /Tabla de datos y esqueleto de carga/i })
       ).toBeInTheDocument();
     });
   });
 });
-

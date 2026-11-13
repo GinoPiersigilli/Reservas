@@ -12,7 +12,10 @@ describe('SEC-TEST-01: guarda de seguridad en globalSetup para DATABASE_URL_TEST
   it('throws clear error if database name does not end in _test', () => {
     const invalidUrl = 'postgres://postgres:password@localhost:5432/reservas_dev';
     expect(() => {
-      validarDatabaseUrlTest(invalidUrl, 'postgres://postgres:password@localhost:5432/reservas_prod');
+      validarDatabaseUrlTest(
+        invalidUrl,
+        'postgres://postgres:password@localhost:5432/reservas_prod'
+      );
     }).toThrow(/debe terminar obligatoriamente en '_test'/);
   });
 

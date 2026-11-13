@@ -10,12 +10,12 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 
 ## Capturas de Pantalla
 
-| Grilla de Disponibilidad Horaria | Panel Administrativo |
-|---|---|
+| Grilla de Disponibilidad Horaria                                          | Panel Administrativo                                |
+| ------------------------------------------------------------------------- | --------------------------------------------------- |
 | ![Grilla de disponibilidad](docs/img/nueva-reserva-grilla-escritorio.png) | ![Panel admin](docs/img/panel-admin-escritorio.png) |
 
-| Listado y Filtros de Reservas | Grilla en Modo Oscuro |
-|---|---|
+| Listado y Filtros de Reservas                                  | Grilla en Modo Oscuro                                    |
+| -------------------------------------------------------------- | -------------------------------------------------------- |
 | ![Listado de reservas](docs/img/reservas-admin-escritorio.png) | ![Modo oscuro](docs/img/nueva-reserva-grilla-oscuro.png) |
 
 ---
@@ -23,6 +23,7 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 ## Problema que Resuelve y Funcionalidades por Rol
 
 Elimina la "reserva a ciegas" mediante una grilla visual en bloques de 30 minutos (08:00 a 22:00) y previene la doble reserva física a nivel de base de datos.
+
 - **Docentes y Estudiantes (`usuario`):** Consultan disponibilidad en tiempo real, seleccionan franjas horarias libres con dos clics, gestionan sus solicitudes y cancelan reservas activas.
 - **Personal Administrativo (`admin`):** Cola priorizada de solicitudes pendientes, aprobación/rechazo con confirmación, edición integral de reservas, ABM completo de aulas con control de concurrencia y auditoría, visualización de solicitantes y panel analítico de métricas de ocupación y demanda de aulas.
 
@@ -63,6 +64,7 @@ graph LR
 ## Seguridad y Riesgos Aceptados
 
 El análisis exhaustivo de seguridad se detalla en [docs/SEGURIDAD.md](docs/SEGURIDAD.md). Riesgos aceptados y mitigados:
+
 - **Almacenamiento de JWT local en `localStorage`:** Mitigado con política CSP estricta en Nginx (sin `'unsafe-inline'` en `script-src`), cookies HttpOnly planificadas para evolución futura.
 - **Directiva `'unsafe-inline'` en `style-src`:** Requerida por el SDK `@clerk/clerk-react` para inyectar hojas de estilo; aislada de la ejecución de scripts.
 
@@ -88,6 +90,7 @@ npm run dev --prefix frontend
 ```
 
 > **Credenciales de demostración local** (generadas exclusivamente mediante el seeder para pruebas locales):
+>
 > - Administrador: `admin@utnfrc.edu.ar` / `admin123`
 > - Usuario docente: `david@utnfrc.edu.ar` / `user123`
 
@@ -96,11 +99,28 @@ npm run dev --prefix frontend
 ## Tests y Verificación
 
 ```bash
-npm test --prefix backend                  # Pruebas unitarias, concurrencia y contratos (Jest)
-npm test --prefix frontend                 # Pruebas de componentes y accesibilidad axe (Vitest)
+npm test --prefix backend                  # 172 pruebas de API: negocio, concurrencia, idempotencia (Jest)
+npm test --prefix frontend                 # 77 pruebas de componentes y accesibilidad axe (Vitest)
+npm run format:check                       # Formato del repositorio (Prettier)
 node frontend/scripts/verificar-contraste.js # Validación contractual de contraste WCAG 2.1 AA
 node frontend/scripts/capturar-pantallas.mjs # Verificación responsive automatizada con Chrome/Brave
 ```
+
+Pruebas de extremo a extremo (19 casos sobre 7 flujos completos). Playwright
+levanta la API y el frontend compilado por sí mismo:
+
+```bash
+cd e2e && npm ci && npx playwright install --with-deps chromium
+DATABASE_URL_E2E=postgres://usuario:clave@localhost:5432/reservas_e2e npm test
+```
+
+Pruebas de carga con [k6](carga/README.md) (manuales, requieren el binario de k6):
+
+```bash
+k6 run carga/disponibilidad.js
+```
+
+Estrategia completa, decisiones y límites de complejidad: [docs/CALIDAD.md](docs/CALIDAD.md).
 
 ---
 
@@ -109,7 +129,7 @@ node frontend/scripts/capturar-pantallas.mjs # Verificación responsive automati
 - **Terminación TLS/HTTPS:** Debe configurarse un proxy reverso con certificados SSL válidos delante de Nginx.
 - **Copias de Seguridad:** Scripts automatizados `scripts/backup-db.sh` y `scripts/restore-db.sh` con retención de 7 días.
 
-Documentación técnica completa: [Arquitectura](docs/ARQUITECTURA.md) | [Diseño UI/UX](docs/DISENO.md) | [Guía de Despliegue](docs/DEPLOY.md) | [Seguridad](docs/SEGURIDAD.md).
+Documentación técnica completa: [Arquitectura](docs/ARQUITECTURA.md) | [Diseño UI/UX](docs/DISENO.md) | [Calidad y pruebas](docs/CALIDAD.md) | [Rendimiento](docs/RENDIMIENTO.md) | [Guía de Despliegue](docs/DEPLOY.md) | [Seguridad](docs/SEGURIDAD.md).
 
 ---
 

@@ -27,19 +27,13 @@ export default function EmptyState({
   };
 
   return (
-    <div
-      className={[styles.contenedor, className].filter(Boolean).join(' ')}
-      {...rest}
-    >
+    <div className={[styles.contenedor, className].filter(Boolean).join(' ')} {...rest}>
       <span className={styles.icono} aria-hidden="true">
         {renderIcono()}
       </span>
       <h3 className={styles.titulo}>{textoTitulo}</h3>
-      {textoDescripcion ? (
-        <p className={styles.descripcion}>{textoDescripcion}</p>
-      ) : null}
+      {textoDescripcion ? <p className={styles.descripcion}>{textoDescripcion}</p> : null}
       {nodoAccion ? <div className={styles.accion}>{nodoAccion}</div> : null}
     </div>
   );
 }
-

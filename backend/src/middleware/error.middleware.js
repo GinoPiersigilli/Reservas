@@ -4,121 +4,166 @@ import crypto from 'crypto';
 export const sanitizarMensaje = (texto = '') => {
   if (typeof texto !== 'string') return '';
   return texto
-    .replace(/(password|contrasena|contraseña|jwt_secret|secret|token)\s*[:=]\s*['"]?[^'"\s,;]+['"]?/gi, '$1=[REDACTED]')
+    .replace(
+      /(password|contrasena|contraseña|jwt_secret|secret|token)\s*[:=]\s*['"]?[^'"\s,;]+['"]?/gi,
+      '$1=[REDACTED]'
+    )
     .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
     .replace(/eyJ[A-Za-z0-9_-]{10,}/g, '[REDACTED]');
 };
 
-export const manejadorErrores = (err, req, res, _next) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const correlationId = req.id || req.headers?.['x-correlation-id'] || crypto.randomUUID();
+const codigoPg = (err) => err.parent?.code || err.original?.code;
 
-  // 1. Logging seguro de errores (SEC-CFG-03)
-  const mensajeLimpio = sanitizarMensaje(err.message || 'Error desconocido');
-  if (isProduction) {
-    // En producción: solo registrar correlationId y mensaje saneado; NUNCA err.stack ni req.body
-    console.error(`[Error ${correlationId}] ${mensajeLimpio}`);
-  } else if (process.env.NODE_ENV !== 'test') {
-    // En desarrollo: registrar traza completa
+const textoConstraint = (err) =>
+  (err.parent?.constraint || err.original?.constraint || err.index || '').toLowerCase();
+
+const tienePath = (err, path) =>
+  Array.isArray(err.errors) && err.errors.some((e) => e.path === path);
+
+/** Registra el error sin exponer secretos ni cuerpos de petición. */
+const registrarError = (err, correlationId, esProduccion) => {
+  if (esProduccion) {
+    // En producción: solo correlationId y mensaje saneado; NUNCA err.stack ni req.body
+    console.error(
+      `[Error ${correlationId}] ${sanitizarMensaje(err.message || 'Error desconocido')}`
+    );
+    return;
+  }
+  if (process.env.NODE_ENV !== 'test') {
     console.error(err.stack);
   }
+};
 
-  // 2. Manejo de payload que excede el límite permitido (SEC-CFG-02)
+/** Cuerpo de la petición por encima del límite permitido (SEC-CFG-02). */
+const mapearPayloadExcedido = (err) => {
   if (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413) {
-    return res.status(413).json({
-      error: 'El cuerpo de la petición excede el tamaño máximo permitido'
-    });
+    return {
+      status: 413,
+      cuerpo: { error: 'El cuerpo de la petición excede el tamaño máximo permitido' }
+    };
   }
+  return null;
+};
 
-  // 2b. Manejo de saturación del pool de conexiones de base de datos (503 con Retry-After)
-  if (
+/** Saturación del pool de conexiones: 503 con Retry-After en lugar de 500. */
+const mapearPoolSaturado = (err) => {
+  const esTimeoutDePool =
     err.name === 'SequelizeConnectionAcquireTimeoutError' ||
     err.name === 'ConnectionAcquireTimeoutError' ||
     err.name === 'TimeoutError' ||
-    (typeof err.message === 'string' && /ResourceRequest timed out|Connection acquire timeout/i.test(err.message))
-  ) {
-    res.setHeader('Retry-After', '2');
-    return res.status(503).json({
-      error: 'El servidor se encuentra temporalmente sobrecargado, intente más tarde'
-    });
-  }
+    (typeof err.message === 'string' &&
+      /ResourceRequest timed out|Connection acquire timeout/i.test(err.message));
 
-  // 3. Mapeo de errores de constraints de Sequelize / PostgreSQL
-  const pgCode = err.parent?.code || err.original?.code;
+  if (!esTimeoutDePool) return null;
 
-  if (err.name === 'SequelizeExclusionConstraintError' || pgCode === '23P01') {
-    return res.status(400).json({
-      error: 'El aula ya está reservada en ese horario'
-    });
-  }
-
-  if (err.name === 'SequelizeUniqueConstraintError' || pgCode === '23505') {
-    const constraint = (err.parent?.constraint || err.original?.constraint || '').toLowerCase();
-    const esEmail =
-      Boolean(err.fields?.email) ||
-      constraint.includes('email') ||
-      (Array.isArray(err.errors) && err.errors.some((e) => e.path === 'email'));
-
-    const esAulaNombre =
-      constraint.includes('aulas_nombre') ||
-      (Array.isArray(err.errors) && err.errors.some((e) => e.path === 'nombre'));
-
-    if (esAulaNombre) {
-      return res.status(409).json({
-        error: 'Ya existe un aula con ese nombre'
-      });
-    }
-
-    return res.status(400).json({
-      error: esEmail ? 'El email ya está registrado' : 'Ya existe un registro con esos datos únicos'
-    });
-  }
-
-  if (err.name === 'SequelizeForeignKeyConstraintError' || pgCode === '23503') {
-    const constraint = (err.parent?.constraint || err.original?.constraint || err.index || '').toLowerCase();
-    const detail = (err.parent?.detail || err.original?.detail || '').toLowerCase();
-    const fields = Array.isArray(err.fields) ? err.fields.join(',').toLowerCase() : '';
-
-    if (constraint.includes('aula') || detail.includes('aulas') || fields.includes('aulaid')) {
-      return res.status(404).json({
-        error: 'El aula solicitada no existe'
-      });
-    }
-
-    if (constraint.includes('usuario') || detail.includes('usuarios') || fields.includes('usuarioid')) {
-      return res.status(400).json({
-        error: 'El usuario indicado no existe'
-      });
-    }
-
-    return res.status(400).json({
-      error: 'Referencia a un recurso inexistente'
-    });
-  }
-
-  // 4. Código de estado HTTP
-  const statusCode = err.status || err.statusCode || 500;
-
-  // 5. Respuesta al cliente
-  if (statusCode >= 500) {
-    if (isProduction) {
-      return res.status(500).json({
-        error: 'Error interno del servidor',
-        correlationId
-      });
-    }
-    return res.status(500).json({
-      error: err.message || 'Error interno del servidor',
-      correlationId
-    });
-  }
-
-  const payload = {
-    error: err.message || 'Error en la petición'
+  return {
+    status: 503,
+    cabeceras: { 'Retry-After': '2' },
+    cuerpo: { error: 'El servidor se encuentra temporalmente sobrecargado, intente más tarde' }
   };
-  if (err.reservasAfectadas !== undefined) payload.reservasAfectadas = err.reservasAfectadas;
-  if (err.detalle !== undefined) payload.detalle = err.detalle;
-  if (err.capacidadMaximaRequerida !== undefined) payload.capacidadMaximaRequerida = err.capacidadMaximaRequerida;
+};
 
-  return res.status(statusCode).json(payload);
+/** Solapamiento de reservas garantizado por la restricción de exclusión. */
+const mapearSolapamiento = (err) => {
+  if (err.name === 'SequelizeExclusionConstraintError' || codigoPg(err) === '23P01') {
+    return { status: 400, cuerpo: { error: 'El aula ya está reservada en ese horario' } };
+  }
+  return null;
+};
+
+/** Violaciones de unicidad: email de usuario o nombre de aula. */
+const mapearUnicidad = (err) => {
+  if (err.name !== 'SequelizeUniqueConstraintError' && codigoPg(err) !== '23505') return null;
+
+  const constraint = textoConstraint(err);
+
+  if (constraint.includes('aulas_nombre') || tienePath(err, 'nombre')) {
+    return { status: 409, cuerpo: { error: 'Ya existe un aula con ese nombre' } };
+  }
+
+  const esEmail =
+    Boolean(err.fields?.email) || constraint.includes('email') || tienePath(err, 'email');
+
+  return {
+    status: 400,
+    cuerpo: {
+      error: esEmail ? 'El email ya está registrado' : 'Ya existe un registro con esos datos únicos'
+    }
+  };
+};
+
+/** Violaciones de integridad referencial: aula o usuario inexistente. */
+const mapearClaveForanea = (err) => {
+  if (err.name !== 'SequelizeForeignKeyConstraintError' && codigoPg(err) !== '23503') return null;
+
+  const constraint = textoConstraint(err);
+  const detalle = (err.parent?.detail || err.original?.detail || '').toLowerCase();
+  const campos = Array.isArray(err.fields) ? err.fields.join(',').toLowerCase() : '';
+  const menciona = (aguja, alternativa, campo) =>
+    constraint.includes(aguja) || detalle.includes(alternativa) || campos.includes(campo);
+
+  if (menciona('aula', 'aulas', 'aulaid')) {
+    return { status: 404, cuerpo: { error: 'El aula solicitada no existe' } };
+  }
+  if (menciona('usuario', 'usuarios', 'usuarioid')) {
+    return { status: 400, cuerpo: { error: 'El usuario indicado no existe' } };
+  }
+  return { status: 400, cuerpo: { error: 'Referencia a un recurso inexistente' } };
+};
+
+const MAPEADORES = [
+  mapearPayloadExcedido,
+  mapearPoolSaturado,
+  mapearSolapamiento,
+  mapearUnicidad,
+  mapearClaveForanea
+];
+
+/** Errores internos: en producción nunca se filtra el mensaje original. */
+const respuestaErrorInterno = (err, correlationId, esProduccion) => ({
+  status: 500,
+  cuerpo: {
+    error: esProduccion
+      ? 'Error interno del servidor'
+      : err.message || 'Error interno del servidor',
+    correlationId
+  }
+});
+
+/** Errores de negocio (4xx): se conservan los datos extra que aporte el servicio. */
+const respuestaErrorCliente = (err, statusCode) => {
+  const cuerpo = { error: err.message || 'Error en la petición' };
+  if (err.reservasAfectadas !== undefined) cuerpo.reservasAfectadas = err.reservasAfectadas;
+  if (err.detalle !== undefined) cuerpo.detalle = err.detalle;
+  if (err.capacidadMaximaRequerida !== undefined) {
+    cuerpo.capacidadMaximaRequerida = err.capacidadMaximaRequerida;
+  }
+  return { status: statusCode, cuerpo };
+};
+
+export const manejadorErrores = (err, req, res, _next) => {
+  const esProduccion = process.env.NODE_ENV === 'production';
+  const correlationId = req.id || req.headers?.['x-correlation-id'] || crypto.randomUUID();
+
+  registrarError(err, correlationId, esProduccion);
+
+  let respuesta = null;
+  for (const mapear of MAPEADORES) {
+    respuesta = mapear(err);
+    if (respuesta) break;
+  }
+
+  if (!respuesta) {
+    const statusCode = err.status || err.statusCode || 500;
+    respuesta =
+      statusCode >= 500
+        ? respuestaErrorInterno(err, correlationId, esProduccion)
+        : respuestaErrorCliente(err, statusCode);
+  }
+
+  for (const [nombre, valor] of Object.entries(respuesta.cabeceras || {})) {
+    res.setHeader(nombre, valor);
+  }
+
+  return res.status(respuesta.status).json(respuesta.cuerpo);
 };

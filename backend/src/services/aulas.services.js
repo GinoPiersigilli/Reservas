@@ -126,6 +126,59 @@ export const crearAula = async (datos, usuarioIdAdmin) => {
   });
 };
 
+/** El nombre del aula es único sin distinguir mayúsculas. */
+const verificarNombreDisponible = async (id, nombre, transaction) => {
+  if (nombre === undefined) return;
+
+  const duplicada = await Aula.findOne({
+    where: {
+      id: { [Op.ne]: id },
+      [Op.and]: sequelize.where(
+        sequelize.fn('LOWER', sequelize.col('nombre')),
+        nombre.trim().toLowerCase()
+      )
+    },
+    transaction
+  });
+
+  if (duplicada) {
+    const error = new Error('Ya existe un aula con ese nombre');
+    error.status = 409;
+    throw error;
+  }
+};
+
+/** La capacidad no puede quedar por debajo de las reservas futuras ya aceptadas. */
+const verificarCapacidadSuficiente = async (id, capacidad, transaction) => {
+  if (capacidad === undefined) return;
+
+  const nuevaCapacidad = Number(capacidad);
+  const reservasFuturas = await Reserva.findAll({
+    where: {
+      aulaId: id,
+      fecha: { [Op.gte]: hoyArgentina() },
+      estado: { [Op.in]: ['pendiente', 'aprobada'] }
+    },
+    attributes: ['id', 'cantidadPersonas', 'fecha', 'horaInicio'],
+    transaction
+  });
+
+  const maxPersonas = reservasFuturas.reduce((max, r) => Math.max(max, r.cantidadPersonas), 0);
+  if (nuevaCapacidad >= maxPersonas) return;
+
+  const error = new Error(
+    'No se puede reducir la capacidad por debajo de las reservas futuras existentes'
+  );
+  error.status = 409;
+  error.capacidadMaximaRequerida = maxPersonas;
+  error.detalle = {
+    capacidadSolicitada: nuevaCapacidad,
+    capacidadMaximaRequerida: maxPersonas,
+    reservasAfectadas: reservasFuturas.filter((r) => r.cantidadPersonas > nuevaCapacidad).length
+  };
+  throw error;
+};
+
 export const editarAula = async (id, datos, usuarioIdAdmin) => {
   return await sequelize.transaction(async (transaction) => {
     const aula = await Aula.findByPk(id, {
@@ -139,49 +192,8 @@ export const editarAula = async (id, datos, usuarioIdAdmin) => {
       throw error;
     }
 
-    if (datos.nombre !== undefined) {
-      const nombreTrim = datos.nombre.trim();
-      const duplicada = await Aula.findOne({
-        where: {
-          id: { [Op.ne]: id },
-          [Op.and]: sequelize.where(sequelize.fn('LOWER', sequelize.col('nombre')), nombreTrim.toLowerCase())
-        },
-        transaction
-      });
-
-      if (duplicada) {
-        const error = new Error('Ya existe un aula con ese nombre');
-        error.status = 409;
-        throw error;
-      }
-    }
-
-    if (datos.capacidad !== undefined) {
-      const nuevaCapacidad = Number(datos.capacidad);
-      const hoy = hoyArgentina();
-      const reservasFuturas = await Reserva.findAll({
-        where: {
-          aulaId: id,
-          fecha: { [Op.gte]: hoy },
-          estado: { [Op.in]: ['pendiente', 'aprobada'] }
-        },
-        attributes: ['id', 'cantidadPersonas', 'fecha', 'horaInicio'],
-        transaction
-      });
-
-      const maxPersonas = reservasFuturas.reduce((max, r) => Math.max(max, r.cantidadPersonas), 0);
-      if (nuevaCapacidad < maxPersonas) {
-        const error = new Error('No se puede reducir la capacidad por debajo de las reservas futuras existentes');
-        error.status = 409;
-        error.capacidadMaximaRequerida = maxPersonas;
-        error.detalle = {
-          capacidadSolicitada: nuevaCapacidad,
-          capacidadMaximaRequerida: maxPersonas,
-          reservasAfectadas: reservasFuturas.filter((r) => r.cantidadPersonas > nuevaCapacidad).length
-        };
-        throw error;
-      }
-    }
+    await verificarNombreDisponible(id, datos.nombre, transaction);
+    await verificarCapacidadSuficiente(id, datos.capacidad, transaction);
 
     const valorAnterior = {
       nombre: aula.nombre,
@@ -206,20 +218,19 @@ export const editarAula = async (id, datos, usuarioIdAdmin) => {
       activa: aula.activa
     };
 
-    await registrarAccionAula(
-      aula.id,
-      usuarioIdAdmin,
-      'edicion',
-      valorAnterior,
-      valorNuevo,
-      { transaction }
-    );
+    await registrarAccionAula(aula.id, usuarioIdAdmin, 'edicion', valorAnterior, valorNuevo, {
+      transaction
+    });
 
     return aula;
   });
 };
 
-export const desactivarAula = async (id, { cancelarReservasFuturas, motivo } = {}, usuarioIdAdmin) => {
+export const desactivarAula = async (
+  id,
+  { cancelarReservasFuturas, motivo } = {},
+  usuarioIdAdmin
+) => {
   return await sequelize.transaction(async (transaction) => {
     const aula = await Aula.findByPk(id, {
       transaction,

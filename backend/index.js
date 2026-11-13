@@ -6,7 +6,8 @@ import './src/models/index.js';
 const PORT = env.PORT;
 
 if (env.NODE_ENV !== 'test') {
-  sequelize.authenticate()
+  sequelize
+    .authenticate()
     .then(() => {
       console.log('Conexión a PostgreSQL establecida correctamente.');
       app.listen(PORT, () => {

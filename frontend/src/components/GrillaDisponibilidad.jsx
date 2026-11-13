@@ -76,10 +76,7 @@ export default function GrillaDisponibilidad({
         let colIdxFin = i + 1;
         while (
           colIdxFin < BLOQUES.length &&
-          esMismaOcupacion(
-            obtenerOcupacionBloque(aulaId, BLOQUES[colIdxFin]),
-            ocupacion
-          )
+          esMismaOcupacion(obtenerOcupacionBloque(aulaId, BLOQUES[colIdxFin]), ocupacion)
         ) {
           colIdxFin++;
         }
@@ -129,10 +126,7 @@ export default function GrillaDisponibilidad({
         inicioMin: horaAMinutos(f.horaInicio),
         finMin: horaAMinutos(f.horaFin),
         rangoTexto: `${f.horaInicio.slice(0, 5)}–${f.horaFin.slice(0, 5)}`,
-        nombreEstado:
-          f.estado === 'pendiente'
-            ? TEXTOS.estados.pendiente
-            : TEXTOS.estados.aprobada
+        nombreEstado: f.estado === 'pendiente' ? TEXTOS.estados.pendiente : TEXTOS.estados.aprobada
       }))
       .filter((f) => !Number.isNaN(f.inicioMin) && !Number.isNaN(f.finMin))
       .sort((a, b) => a.inicioMin - b.inicioMin);
@@ -202,6 +196,23 @@ export default function GrillaDisponibilidad({
     });
   };
 
+  /**
+   * Mueve el foco al botón de la columna más próxima a `colIdx`.
+   * Devuelve false cuando la fila no tiene ninguna franja seleccionable.
+   */
+  const enfocarColumnaMasCercana = (botones, colIdx) => {
+    if (botones.length === 0) return false;
+
+    const masCercano = botones.reduce((mejor, candidato) => {
+      const distanciaMejor = Math.abs(Number(mejor.dataset.col) - colIdx);
+      const distanciaCandidato = Math.abs(Number(candidato.dataset.col) - colIdx);
+      return distanciaCandidato < distanciaMejor ? candidato : mejor;
+    });
+
+    masCercano.focus();
+    return true;
+  };
+
   const manejarKeyDown = (evento, filaIdx, colIdx) => {
     const teclas = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'];
     if (!teclas.includes(evento.key)) return;
@@ -211,9 +222,7 @@ export default function GrillaDisponibilidad({
     if (evento.key === 'ArrowRight' || evento.key === 'ArrowLeft') {
       const direccion = evento.key === 'ArrowRight' ? 1 : -1;
       const botonesFila = Array.from(
-        grillaRef.current?.querySelectorAll(
-          `button[data-fila="${filaIdx}"]:not(:disabled)`
-        ) || []
+        grillaRef.current?.querySelectorAll(`button[data-fila="${filaIdx}"]:not(:disabled)`) || []
       );
       const ordenados = botonesFila
         .map((b) => ({ elemento: b, col: Number(b.dataset.col) }))
@@ -233,25 +242,13 @@ export default function GrillaDisponibilidad({
       const direccionFila = evento.key === 'ArrowDown' ? 1 : -1;
       let targetFila = filaIdx + direccionFila;
 
+      // Se salta hacia la primera fila que tenga alguna franja seleccionable.
       while (targetFila >= 0 && targetFila < aulas.length) {
         const botonesTarget = Array.from(
-          grillaRef.current?.querySelectorAll(
-            `button[data-fila="${targetFila}"]:not(:disabled)`
-          ) || []
+          grillaRef.current?.querySelectorAll(`button[data-fila="${targetFila}"]:not(:disabled)`) ||
+            []
         );
-        if (botonesTarget.length > 0) {
-          let masCercano = botonesTarget[0];
-          let menorDistancia = Math.abs(Number(masCercano.dataset.col) - colIdx);
-          for (let i = 1; i < botonesTarget.length; i++) {
-            const dist = Math.abs(Number(botonesTarget[i].dataset.col) - colIdx);
-            if (dist < menorDistancia) {
-              menorDistancia = dist;
-              masCercano = botonesTarget[i];
-            }
-          }
-          masCercano.focus();
-          return;
-        }
+        if (enfocarColumnaMasCercana(botonesTarget, colIdx)) return;
         targetFila += direccionFila;
       }
     }
@@ -260,10 +257,7 @@ export default function GrillaDisponibilidad({
   const tramosAulaActiva = aulaActiva && fecha ? calcularTramosCompactos(aulaActiva.id) : null;
 
   return (
-    <section
-      aria-label="Grilla de disponibilidad horaria"
-      className={styles.contenedor}
-    >
+    <section aria-label="Grilla de disponibilidad horaria" className={styles.contenedor}>
       <div className={styles.cabecera}>
         <div className={styles.leyenda}>
           <span className={styles.itemLeyenda}>
@@ -322,10 +316,7 @@ export default function GrillaDisponibilidad({
                       key={h.hora}
                       scope="col"
                       colSpan={2}
-                      className={[
-                        styles.thHora,
-                        esHoraActual ? styles.thHoraAhora : ''
-                      ]
+                      className={[styles.thHora, esHoraActual ? styles.thHoraAhora : '']
                         .filter(Boolean)
                         .join(' ')}
                     >
@@ -378,9 +369,7 @@ export default function GrillaDisponibilidad({
                             className={[
                               styles.tdCelda,
                               styles.tdOcupada,
-                              seg.colIdx % 2 === 0
-                                ? styles.tdBordeHora
-                                : styles.tdBordeMedia,
+                              seg.colIdx % 2 === 0 ? styles.tdBordeHora : styles.tdBordeMedia,
                               esBloqueAhora ? styles.tdCeldaAhora : ''
                             ]
                               .filter(Boolean)
@@ -394,14 +383,10 @@ export default function GrillaDisponibilidad({
                               aria-label={ariaLabel}
                               className={[
                                 styles.bloqueOcupado,
-                                esPendiente
-                                  ? styles.bloquePendiente
-                                  : styles.bloqueAprobado
+                                esPendiente ? styles.bloquePendiente : styles.bloqueAprobado
                               ].join(' ')}
                             >
-                              <span className={styles.textoRangoOcupado}>
-                                {rangoTexto}
-                              </span>
+                              <span className={styles.textoRangoOcupado}>{rangoTexto}</span>
                             </button>
                           </td>
                         );
@@ -432,9 +417,7 @@ export default function GrillaDisponibilidad({
                           className={[
                             styles.tdCelda,
                             styles.tdLibre,
-                            seg.colIdx % 2 === 0
-                              ? styles.tdBordeHora
-                              : styles.tdBordeMedia,
+                            seg.colIdx % 2 === 0 ? styles.tdBordeHora : styles.tdBordeMedia,
                             esBloqueAhora ? styles.tdCeldaAhora : ''
                           ]
                             .filter(Boolean)
@@ -448,13 +431,9 @@ export default function GrillaDisponibilidad({
                             disabled={Boolean(cargando || seg.esPasado)}
                             aria-label={ariaLabel}
                             aria-pressed={seg.estaSeleccionada}
-                            className={[styles.celdaBoton, claseEstado]
-                              .filter(Boolean)
-                              .join(' ')}
+                            className={[styles.celdaBoton, claseEstado].filter(Boolean).join(' ')}
                             onClick={() => manejarClickCelda(aula, seg.bloque)}
-                            onKeyDown={(e) =>
-                              manejarKeyDown(e, filaIdx, seg.colIdx)
-                            }
+                            onKeyDown={(e) => manejarKeyDown(e, filaIdx, seg.colIdx)}
                           />
                         </td>
                       );
@@ -509,9 +488,7 @@ export default function GrillaDisponibilidad({
             {aulaActiva && tramosAulaActiva ? (
               <article className={styles.tarjetaAulaCompacta}>
                 <header className={styles.encabezadoAulaCompacta}>
-                  <h3 className={styles.nombreAulaCompacta}>
-                    {aulaActiva.nombre}
-                  </h3>
+                  <h3 className={styles.nombreAulaCompacta}>{aulaActiva.nombre}</h3>
                   <p className={styles.metaAulaCompacta}>
                     Capacidad: {aulaActiva.capacidad} personas
                     {aulaActiva.ubicacion ? ` · ${aulaActiva.ubicacion}` : ''}
@@ -573,9 +550,7 @@ export default function GrillaDisponibilidad({
                               type="button"
                               className={[
                                 styles.botonTramoLibre,
-                                esTramoSeleccionado
-                                  ? styles.botonTramoSeleccionado
-                                  : ''
+                                esTramoSeleccionado ? styles.botonTramoSeleccionado : ''
                               ]
                                 .filter(Boolean)
                                 .join(' ')}
@@ -593,9 +568,7 @@ export default function GrillaDisponibilidad({
                                 Libre {tramo.horaInicio}–{tramo.horaFin}
                               </span>
                               <span className={styles.accionTramoLibre}>
-                                {esTramoSeleccionado
-                                  ? 'Seleccionado'
-                                  : 'Elegir tramo'}
+                                {esTramoSeleccionado ? 'Seleccionado' : 'Elegir tramo'}
                               </span>
                             </button>
                           </li>

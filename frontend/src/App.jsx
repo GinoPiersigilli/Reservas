@@ -14,9 +14,7 @@ import NotFound from './pages/NotFound.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 
-const GuiaEstilos = import.meta.env.DEV
-  ? lazy(() => import('./pages/GuiaEstilos.jsx'))
-  : null;
+const GuiaEstilos = import.meta.env.DEV ? lazy(() => import('./pages/GuiaEstilos.jsx')) : null;
 
 function App() {
   return (

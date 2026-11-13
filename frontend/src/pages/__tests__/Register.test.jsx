@@ -134,7 +134,9 @@ describe('Register page', () => {
       vi.advanceTimersByTime(20000);
     });
 
-    expect(screen.getByText('No se completó el ingreso con Google. Intente de nuevo.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No se completó el ingreso con Google. Intente de nuevo.')
+    ).toBeInTheDocument();
     expect(botonGoogle).not.toBeDisabled();
     expect(botonGoogle).toHaveAttribute('aria-busy', 'false');
 

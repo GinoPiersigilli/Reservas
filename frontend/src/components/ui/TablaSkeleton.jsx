@@ -13,9 +13,7 @@ export default function TablaSkeleton({
 }) {
   const numFilas = rows ?? filas;
   const listaCabeceras = headers || cabeceras;
-  const numColumnas = Array.isArray(listaCabeceras)
-    ? listaCabeceras.length
-    : columns ?? columnas;
+  const numColumnas = Array.isArray(listaCabeceras) ? listaCabeceras.length : (columns ?? columnas);
 
   return (
     <div
@@ -55,4 +53,3 @@ export default function TablaSkeleton({
     </div>
   );
 }
-

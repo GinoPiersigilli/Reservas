@@ -18,7 +18,9 @@ export const canonicalJsonStringify = (obj) => {
     return '[' + obj.map(canonicalJsonStringify).join(',') + ']';
   }
   const keys = Object.keys(obj).sort();
-  return '{' + keys.map((k) => `${JSON.stringify(k)}:${canonicalJsonStringify(obj[k])}`).join(',') + '}';
+  return (
+    '{' + keys.map((k) => `${JSON.stringify(k)}:${canonicalJsonStringify(obj[k])}`).join(',') + '}'
+  );
 };
 
 export const calcularHashCuerpo = (cuerpo) => {

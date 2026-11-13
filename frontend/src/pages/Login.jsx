@@ -37,12 +37,7 @@ export default function Login() {
   const mensajeInicial = location.state?.mensaje || null;
 
   const { isLoaded, signIn } = useSignIn();
-  const {
-    redirigiendoGoogle,
-    errorGoogle,
-    setErrorGoogle,
-    iniciarOAuth
-  } = useGoogleOAuth({
+  const { redirigiendoGoogle, errorGoogle, setErrorGoogle, iniciarOAuth } = useGoogleOAuth({
     authResource: signIn,
     isLoaded,
     defaultErrorMessage: TEXTOS.login.errorGoogle
@@ -126,12 +121,7 @@ export default function Login() {
         ) : null}
 
         <form onSubmit={handleSubmitLocal} className={styles.formulario} noValidate>
-          <Field
-            id="email"
-            etiqueta={TEXTOS.login.correo}
-            error={erroresCampo.email}
-            obligatorio
-          >
+          <Field id="email" etiqueta={TEXTOS.login.correo} error={erroresCampo.email} obligatorio>
             <Input
               type="email"
               name="email"
