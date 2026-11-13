@@ -86,7 +86,7 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
     aulaService.getDisponibilidadAula.mockResolvedValue({ data: [] });
   });
 
-  it('verifies all color pairs in tokens.css meet WCAG AA and match Section 3 of DISENO_PROPUESTA.md', () => {
+  it('verifies all color pairs in tokens.css meet the WCAG 2.1 AA contrast thresholds', () => {
     const resultados = verificarParesTokens();
     expect(resultados.length).toBeGreaterThanOrEqual(10);
     for (const par of resultados) {

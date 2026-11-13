@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
 
-  /* Colores base (Sección 3 — DISENO_PROPUESTA.md) */
+  /* Colores base. Los contrastes se verifican en frontend/scripts/verificar-contraste.js */
   --fondo: #f5f6f8;
   --superficie: #ffffff;
   --tinta: #1b2430;

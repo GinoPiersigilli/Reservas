@@ -211,10 +211,6 @@
   cursor: pointer;
 }
 
-.telonMovil {
-  display: none;
-}
-
 /* Entre la tablet y el escritorio chico la barra lateral se vuelve un riel de
    iconos: 240 px fijos para cuatro destinos le sacaban ancho a la grilla
    horaria, que es lo que hay que poder leer. Los textos se ocultan a la vista
