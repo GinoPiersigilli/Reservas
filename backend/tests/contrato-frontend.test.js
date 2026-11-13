@@ -411,6 +411,91 @@ describe('Contrato Frontend-Backend: Replicación exacta de peticiones del clien
     });
   });
 
+  describe('Códigos de conflicto: 409 y no 400 (ADR 0006)', () => {
+    // Un pedido bien formado que choca con el estado responde 409; el 400 queda
+    // para los pedidos mal formados. Sin esta prueba la convención se pierde:
+    // los tres caminos nacen en archivos distintos y es fácil que uno vuelva a
+    // 400 sin que nada falle.
+
+    it('devuelve 409 cuando el horario ya está reservado', async () => {
+      const cuerpo = {
+        aulaId: aulaActiva.id,
+        fecha: fechaFutura(6),
+        horaInicio: '10:00',
+        horaFin: '12:00',
+        cantidadPersonas: 20,
+        motivo: 'Clase de consulta'
+      };
+
+      const primera = await request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`)
+        .send(cuerpo);
+      expect(primera.status).toBe(201);
+
+      const segunda = await request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(cuerpo);
+
+      expect(segunda.status).toBe(409);
+      expect(segunda.body.error).toMatch(/ya está reservada en ese horario/i);
+    });
+
+    it('devuelve 409 cuando el nombre de aula ya existe', async () => {
+      const res = await request(app)
+        .post('/api/aulas')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nombre: aulaActiva.nombre,
+          capacidad: 30,
+          tipo: 'Teórica',
+          ubicacion: 'Pabellón Norte'
+        });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatch(/ya existe un aula con ese nombre/i);
+    });
+
+    it('devuelve 409 al dar de baja un aula con reservas futuras sin cancelarlas', async () => {
+      const creada = await request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`)
+        .send({
+          aulaId: aulaActiva.id,
+          fecha: fechaFutura(7),
+          horaInicio: '14:00',
+          horaFin: '16:00',
+          cantidadPersonas: 20,
+          motivo: 'Defensa de tesina'
+        });
+      expect(creada.status).toBe(201);
+
+      const res = await request(app)
+        .patch(`/api/aulas/${aulaActiva.id}/desactivar`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
+
+      expect(res.status).toBe(409);
+    });
+
+    it('mantiene 400 para un pedido mal formado, que es un problema del pedido', async () => {
+      const res = await request(app)
+        .post('/api/reservas')
+        .set('Authorization', `Bearer ${usuarioToken}`)
+        .send({
+          aulaId: aulaActiva.id,
+          fecha: fechaFutura(6),
+          horaInicio: '12:00',
+          horaFin: '10:00',
+          cantidadPersonas: 20,
+          motivo: 'Horario invertido'
+        });
+
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe('CORS: cabeceras que el frontend realmente envía', () => {
     // El frontend manda Idempotency-Key al crear una reserva y X-Request-Id en
     // todas las peticiones. Si CORS no las permite, el navegador bloquea la

@@ -55,8 +55,17 @@ Tres detalles deliberados:
 
 El backend conserva una comprobación previa, pero solo para devolver un mensaje
 claro: la garantía es de la base. El manejador de errores traduce el código
-`23P01` de PostgreSQL a un 400 con el texto "El aula ya está reservada en ese
-horario".
+`23P01` de PostgreSQL a un **409 Conflict** con el texto "El aula ya está
+reservada en ese horario". Es 409 y no 400 porque el pedido está bien formado:
+lo que falla es que choca con el estado actual del recurso. Un 400 le diría a
+quien integra la API que revise el cuerpo del pedido, cuando lo que tiene que
+hacer es elegir otra franja.
+
+Cuánto aporta la restricción está medido: al quitarla de la migración y volver a
+correr la prueba de concurrencia, **29 de 100 pedidos simultáneos** por la misma
+aula y el mismo horario llegan a crear una reserva. La comprobación previa
+detiene a los otros 71, pero no cierra la ventana de carrera; la restricción
+sí.
 
 ## Consecuencias
 

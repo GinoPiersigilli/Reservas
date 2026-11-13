@@ -378,7 +378,7 @@ describe('Fase 11 — Idempotencia en Creación de Reservas (POST /api/reservas)
       .send(payload);
     const duracion = Date.now() - inicio;
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/ya está reservada en ese horario/i);
     expect(duracion).toBeLessThan(500);
   });

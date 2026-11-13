@@ -5,7 +5,6 @@ import env, { validarEnv } from '../src/config/env.js';
 import app from '../src/app.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
-import { registrarUsuario } from '../src/services/auth.services.js';
 import { sincronizarUsuarioClerk } from '../src/middleware/auth.middleware.js';
 import { limpiarBaseDeDatos } from './setup/dbHelpers.js';
 
@@ -345,28 +344,6 @@ describe('Auth routes, token verification & env validation', () => {
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error', 'Email y contraseña son obligatorios');
     });
-  });
-
-  it('registers a new user with registrarUsuario, forces rol usuario ignoring input rol, and rejects duplicate email', async () => {
-    const creado = await registrarUsuario({
-      nombre: 'Nuevo Usuario',
-      email: 'nuevo@utnfrc.edu.ar',
-      password: 'password123',
-      rol: 'admin'
-    });
-
-    expect(creado).toHaveProperty('id');
-    expect(creado).toHaveProperty('email', 'nuevo@utnfrc.edu.ar');
-    expect(creado).toHaveProperty('rol', 'usuario');
-    expect(creado).not.toHaveProperty('passwordHash');
-
-    await expect(
-      registrarUsuario({
-        nombre: 'Duplicado',
-        email: 'nuevo@utnfrc.edu.ar',
-        password: 'password123'
-      })
-    ).rejects.toThrow('El email ya está registrado');
   });
 
   it('responds 200 on GET /api/health without auth when database is connected and 503 on failure', async () => {

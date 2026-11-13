@@ -82,20 +82,21 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     const respuestas = await Promise.all(promesas);
 
     const aprobadas201 = respuestas.filter((r) => r.status === 201);
-    const rechazadas400 = respuestas.filter((r) => r.status === 400);
+    const rechazadas409 = respuestas.filter((r) => r.status === 409);
     const errores5xx = respuestas.filter((r) => r.status >= 500);
 
     // 1. Exactamente una creada con 201
     expect(aprobadas201.length).toBe(1);
 
-    // 2. Exactamente 99 rechazadas con 400 (horario ocupado)
-    expect(rechazadas400.length).toBe(99);
+    // 2. Exactamente 99 rechazadas con 409 (conflicto con el estado: el
+    //    horario ya está ocupado)
+    expect(rechazadas409.length).toBe(99);
 
     // 3. Cero respuestas 5xx
     expect(errores5xx.length).toBe(0);
 
-    // 4. Cada 400 contiene el mensaje amigable de horario ocupado
-    rechazadas400.forEach((r) => {
+    // 4. Cada 409 contiene el mensaje amigable de horario ocupado
+    rechazadas409.forEach((r) => {
       expect(r.body.error).toMatch(/ya está reservada en ese horario/i);
     });
 
@@ -161,13 +162,13 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     const respuestas = await Promise.all(promesas);
 
     const creadas201 = respuestas.filter((r) => r.status === 201);
-    const rechazadas400 = respuestas.filter((r) => r.status === 400);
+    const rechazadas409 = respuestas.filter((r) => r.status === 409);
     const errores5xx = respuestas.filter((r) => r.status >= 500);
 
     // Exactamente 10 reservas creadas (1 por franja)
     expect(creadas201.length).toBe(10);
     // Exactamente 90 solicitudes rechazadas
-    expect(rechazadas400.length).toBe(90);
+    expect(rechazadas409.length).toBe(90);
     // Cero errores 5xx
     expect(errores5xx.length).toBe(0);
 

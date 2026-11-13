@@ -493,7 +493,7 @@ describe('Reservas API', () => {
         motivo: 'Superposición de prueba'
       });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect(response.body).toHaveProperty('error', 'El aula ya está reservada en ese horario');
   });
 
@@ -532,7 +532,7 @@ describe('Reservas API', () => {
         motivo: 'Intento conflictivo'
       });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect(response.body).toHaveProperty('error', 'El aula ya está reservada en ese horario');
   });
 
@@ -579,7 +579,7 @@ describe('Reservas API', () => {
 
     const respuestas = await Promise.all(promesas);
     const creadas = respuestas.filter((r) => r.status === 201);
-    const rechazadas = respuestas.filter((r) => r.status === 400);
+    const rechazadas = respuestas.filter((r) => r.status === 409);
 
     expect(creadas).toHaveLength(1);
     expect(rechazadas).toHaveLength(9);
@@ -635,7 +635,7 @@ describe('Reservas API', () => {
           horaFin: '13:00'
         });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(409);
       expect(response.body).toHaveProperty('error', 'El aula ya está reservada en ese horario');
     } finally {
       findOneSpy.mockRestore();
@@ -1007,7 +1007,7 @@ describe('Reservas API', () => {
       resUnique,
       () => {}
     );
-    expect(resUnique.status).toHaveBeenCalledWith(400);
+    expect(resUnique.status).toHaveBeenCalledWith(409);
     expect(resUnique.json).toHaveBeenCalledWith({ error: 'El email ya está registrado' });
 
     const resFkAula = crearResMock();

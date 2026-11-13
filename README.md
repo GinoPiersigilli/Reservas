@@ -13,7 +13,7 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 > application-level checks, and this is verified under 100 concurrent requests.
 > Retries and double clicks are absorbed by an HTTP `Idempotency-Key` protocol,
 > and every state change is written to an append-only audit trail inside the
-> same transaction. Covered by 198 API tests, 112 component tests and 20
+> same transaction. Covered by 201 API tests, 112 component tests and 20
 > end-to-end flows, with Trivy, Semgrep, CodeQL and Gitleaks running on every
 > push. The interface and the documentation are in Spanish; the code, including
 > identifiers and comments, is in Spanish as well, since that is the language of
@@ -71,7 +71,7 @@ graph LR
 
 ## Decisiones Técnicas Destacadas
 
-- **Inmunidad a la Doble Reserva y Concurrencia Extrema:** Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`) con rangos `tsrange` semiabiertos `[inicio, fin)`. Validado bajo pruebas de carga con **100 pedidos simultáneos** de usuarios distintos donde exactamente 1 triunfa con 201 y 99 son rechazados con 400 sin inconsistencias ni filas huérfanas.
+- **Inmunidad a la Doble Reserva y Concurrencia Extrema:** Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`) con rangos `tsrange` semiabiertos `[inicio, fin)`. Validado bajo pruebas de carga con **100 pedidos simultáneos** de usuarios distintos donde exactamente 1 triunfa con 201 y 99 son rechazados con 409 sin inconsistencias ni filas huérfanas.
 - **Idempotencia Transaccional (`Idempotency-Key`):** Protocolo de idempotencia HTTP para `POST /api/reservas` con clave UUID, hash SHA-256 del cuerpo canónico, retención de 24 horas y reemisión de respuestas guardadas (`Idempotent-Replay: true`) ante reintentos de red o doble clic.
 - **Rendimiento Comprobado sobre 200.000 Registros:** Benchmark exhaustivo documentado en [docs/RENDIMIENTO.md](docs/RENDIMIENTO.md) con `EXPLAIN (ANALYZE, BUFFERS)`, verificación GiST en 50 microsegundos y aceleración del 71.3% en consultas de disponibilidad mediante índice compuesto.
 - **Control Temporal e Intradiario:** Validación defensiva que rechaza solicitudes en fechas pasadas y en horarios ya transcurridos del día corriente en el huso oficial (`America/Argentina/Cordoba`).

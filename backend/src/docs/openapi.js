@@ -341,11 +341,10 @@ export const openapi = {
               'application/json': { schema: { $ref: '#/components/schemas/Reserva' } }
             }
           },
-          400: respuestaError(
-            'Datos inválidos, aula inactiva, capacidad insuficiente u horario ocupado'
-          ),
+          400: respuestaError('Datos inválidos, aula inactiva o capacidad insuficiente'),
           401: ERRORES_COMUNES[401],
           404: ERRORES_COMUNES[404],
+          409: respuestaError('El aula ya está reservada en ese horario'),
           422: respuestaError('La clave de idempotencia ya se usó con otro cuerpo'),
           429: ERRORES_COMUNES[429],
           503: ERRORES_COMUNES[503]
@@ -439,6 +438,7 @@ export const openapi = {
             }
           },
           400: respuestaError('La reserva no está pendiente o el horario ya transcurrió'),
+          409: respuestaError('El aula ya está reservada en ese horario'),
           401: ERRORES_COMUNES[401],
           403: ERRORES_COMUNES[403],
           404: ERRORES_COMUNES[404],
@@ -459,6 +459,7 @@ export const openapi = {
             }
           },
           400: respuestaError('La reserva no está pendiente'),
+          409: respuestaError('El aula ya está reservada en ese horario'),
           401: ERRORES_COMUNES[401],
           403: ERRORES_COMUNES[403],
           404: ERRORES_COMUNES[404],

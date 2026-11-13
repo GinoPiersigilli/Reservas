@@ -137,7 +137,7 @@ const verificarAulaYDisponibilidad = async (datos, transaction) => {
   });
 
   if (reservaExistente) {
-    throw errorDeNegocio('El aula ya está reservada en ese horario', 400, { esSolapamiento: true });
+    throw errorDeNegocio('El aula ya está reservada en ese horario', 409, { esSolapamiento: true });
   }
 };
 
@@ -237,7 +237,7 @@ export const crearNuevaReserva = async (datosReserva, opciones = {}) => {
     }
 
     if (esErrorSolapamiento(err)) {
-      throw errorDeNegocio('El aula ya está reservada en ese horario', 400);
+      throw errorDeNegocio('El aula ya está reservada en ese horario', 409);
     }
     throw err;
   }
@@ -542,7 +542,7 @@ const verificarAulaYDisponibilidadAlEditar = async (reservaId, valores, transact
   });
 
   if (conflicto) {
-    throw errorDeNegocio('El aula ya está reservada en ese horario', 400);
+    throw errorDeNegocio('El aula ya está reservada en ese horario', 409);
   }
 };
 
@@ -591,7 +591,7 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
     });
   } catch (err) {
     if (esErrorSolapamiento(err)) {
-      throw errorDeNegocio('El aula ya está reservada en ese horario', 400);
+      throw errorDeNegocio('El aula ya está reservada en ese horario', 409);
     }
     throw err;
   }
