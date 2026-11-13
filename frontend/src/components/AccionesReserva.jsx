@@ -1,38 +1,75 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { aprobarReserva, rechazarReserva, cancelarReserva } from '../services/reservas.service.js';
+import { aprobarReserva, cancelarReserva, rechazarReserva } from '../services/reservas.service.js';
 import { TEXTOS } from '../textos.js';
 import Button from './ui/Button.jsx';
 import ConfirmDialog from './ui/ConfirmDialog.jsx';
 import styles from './AccionesReserva.module.css';
 
+const ESTADOS_ACTIVOS = ['pendiente', 'aprobada'];
+
+/**
+ * Cada acción con su permiso, su diálogo de confirmación y el llamado a la API.
+ * El backend vuelve a verificar los permisos: esto solo decide qué se muestra.
+ */
+const ACCIONES = {
+  aprobar: {
+    etiqueta: TEXTOS.acciones.aprobar,
+    variante: 'primario',
+    titulo: TEXTOS.dialogos.aprobarTitulo,
+    descripcion: TEXTOS.dialogos.aprobarDescripcion,
+    mensajeExito: TEXTOS.reservas.aprobadaExito,
+    ejecutar: aprobarReserva,
+    permitida: ({ esAdmin, estado }) => esAdmin && estado === 'pendiente'
+  },
+  rechazar: {
+    etiqueta: TEXTOS.acciones.rechazar,
+    variante: 'peligro',
+    titulo: TEXTOS.dialogos.rechazarTitulo,
+    descripcion: TEXTOS.dialogos.rechazarDescripcion,
+    mensajeExito: TEXTOS.reservas.rechazadaExito,
+    ejecutar: rechazarReserva,
+    permitida: ({ esAdmin, estado }) => esAdmin && estado === 'pendiente'
+  },
+  cancelar: {
+    etiqueta: TEXTOS.acciones.cancelarReserva,
+    variante: 'peligro',
+    titulo: TEXTOS.dialogos.cancelarTitulo,
+    descripcion: TEXTOS.dialogos.cancelarDescripcion,
+    mensajeExito: TEXTOS.reservas.canceladaExito,
+    ejecutar: cancelarReserva,
+    // El solicitante puede cancelar la suya; un administrador, cualquiera.
+    permitida: ({ esAdmin, esPropietario, estado }) =>
+      (esAdmin || esPropietario) && ESTADOS_ACTIVOS.includes(estado)
+  }
+};
+
+const puedeEditar = ({ esAdmin, estado }) => esAdmin && ESTADOS_ACTIVOS.includes(estado);
+
 const AccionesReserva = ({ reserva, usuario, onAccion }) => {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [dialogoActivo, setDialogoActivo] = useState(null); // 'aprobar' | 'rechazar' | 'cancelar' | null
+  const [dialogoActivo, setDialogoActivo] = useState(null);
 
-  const esAdmin = usuario?.rol === 'admin';
-  const esPropietario = usuario?.id === reserva.usuarioId;
-  const { estado } = reserva;
+  const contexto = {
+    esAdmin: usuario?.rol === 'admin',
+    esPropietario: usuario?.id === reserva.usuarioId,
+    estado: reserva.estado
+  };
 
-  const puedeAprobar = esAdmin && estado === 'pendiente';
-  const puedeRechazar = esAdmin && estado === 'pendiente';
-  const puedeEditar = esAdmin && (estado === 'pendiente' || estado === 'aprobada');
-  const puedeCancelar =
-    (esAdmin || esPropietario) && (estado === 'pendiente' || estado === 'aprobada');
+  const disponibles = Object.entries(ACCIONES).filter(([, accion]) => accion.permitida(contexto));
+  const mostrarEditar = puedeEditar(contexto);
 
-  if (!puedeAprobar && !puedeRechazar && !puedeEditar && !puedeCancelar) {
-    return null;
-  }
+  if (disponibles.length === 0 && !mostrarEditar) return null;
 
-  const ejecutarAccion = async (accionFn, mensajeExito) => {
+  const ejecutar = async (accion) => {
     setCargando(true);
     setError(null);
     try {
-      await accionFn();
+      await accion.ejecutar(reserva.id);
       setDialogoActivo(null);
-      onAccion?.(mensajeExito);
+      onAccion?.(accion.mensajeExito);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo completar la acción.');
     } finally {
@@ -49,7 +86,7 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
       ) : null}
 
       <div className={styles.botones}>
-        {puedeEditar ? (
+        {mostrarEditar ? (
           <Button
             variante="secundario"
             disabled={cargando}
@@ -59,78 +96,32 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
           </Button>
         ) : null}
 
-        {puedeAprobar ? (
+        {disponibles.map(([clave, accion]) => (
           <Button
-            variante="primario"
+            key={clave}
+            variante={accion.variante}
             disabled={cargando}
-            onClick={() => setDialogoActivo('aprobar')}
+            onClick={() => setDialogoActivo(clave)}
           >
-            {TEXTOS.acciones.aprobar}
+            {accion.etiqueta}
           </Button>
-        ) : null}
-
-        {puedeRechazar ? (
-          <Button
-            variante="peligro"
-            disabled={cargando}
-            onClick={() => setDialogoActivo('rechazar')}
-          >
-            {TEXTOS.acciones.rechazar}
-          </Button>
-        ) : null}
-
-        {puedeCancelar ? (
-          <Button
-            variante="peligro"
-            disabled={cargando}
-            onClick={() => setDialogoActivo('cancelar')}
-          >
-            {TEXTOS.acciones.cancelarReserva}
-          </Button>
-        ) : null}
+        ))}
       </div>
 
-      <ConfirmDialog
-        abierto={dialogoActivo === 'aprobar'}
-        titulo={TEXTOS.dialogos.aprobarTitulo}
-        descripcion={TEXTOS.dialogos.aprobarDescripcion}
-        textoConfirmar={TEXTOS.acciones.aprobar}
-        textoCancelar={TEXTOS.acciones.cancelar}
-        variante="primario"
-        cargando={cargando}
-        onCancelar={() => setDialogoActivo(null)}
-        onConfirmar={() =>
-          ejecutarAccion(() => aprobarReserva(reserva.id), TEXTOS.reservas.aprobadaExito)
-        }
-      />
-
-      <ConfirmDialog
-        abierto={dialogoActivo === 'rechazar'}
-        titulo={TEXTOS.dialogos.rechazarTitulo}
-        descripcion={TEXTOS.dialogos.rechazarDescripcion}
-        textoConfirmar={TEXTOS.acciones.rechazar}
-        textoCancelar={TEXTOS.acciones.cancelar}
-        variante="peligro"
-        cargando={cargando}
-        onCancelar={() => setDialogoActivo(null)}
-        onConfirmar={() =>
-          ejecutarAccion(() => rechazarReserva(reserva.id), TEXTOS.reservas.rechazadaExito)
-        }
-      />
-
-      <ConfirmDialog
-        abierto={dialogoActivo === 'cancelar'}
-        titulo={TEXTOS.dialogos.cancelarTitulo}
-        descripcion={TEXTOS.dialogos.cancelarDescripcion}
-        textoConfirmar={TEXTOS.acciones.cancelarReserva}
-        textoCancelar={TEXTOS.acciones.cancelar}
-        variante="peligro"
-        cargando={cargando}
-        onCancelar={() => setDialogoActivo(null)}
-        onConfirmar={() =>
-          ejecutarAccion(() => cancelarReserva(reserva.id), TEXTOS.reservas.canceladaExito)
-        }
-      />
+      {disponibles.map(([clave, accion]) => (
+        <ConfirmDialog
+          key={clave}
+          abierto={dialogoActivo === clave}
+          titulo={accion.titulo}
+          descripcion={accion.descripcion}
+          textoConfirmar={accion.etiqueta}
+          textoCancelar={TEXTOS.acciones.cancelar}
+          variante={accion.variante}
+          cargando={cargando}
+          onCancelar={() => setDialogoActivo(null)}
+          onConfirmar={() => ejecutar(accion)}
+        />
+      ))}
     </div>
   );
 };
