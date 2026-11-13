@@ -175,22 +175,6 @@
   gap: var(--espacio-3);
 }
 
-.bloqueCompacto {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espacio-3);
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.valorCompacto {
-  margin: 0;
-  font-weight: var(--peso-semibold);
-  color: var(--tinta);
-  font-variant-numeric: tabular-nums;
-}
-
 /* Ocupación: una sola lista de barras comparables entre sí. En tarjetas
    separadas cada barra tenía su propio ancho y dejaban de ser comparables. */
 .panelOcupacion {

@@ -1,5 +1,5 @@
 /**
- * Textos centralizados de la interfaz — Español neutro formal (Sección 9 de DISENO_PROPUESTA.md).
+ * Textos centralizados de la interfaz, en español neutro formal.
  * Reglas:
  * - Mayúscula solo al inicio de la oración o en nombres propios.
  * - Verbos en infinitivo en botones de acción ("Reservar aula", "Guardar cambios", "Cancelar reserva").
@@ -9,13 +9,10 @@
 
 export const TEXTOS = {
   app: {
-    titulo: 'Reservas de aulas',
-    subtituloLogin: 'Ingrese con su cuenta',
-    descripcion: 'Sistema institucional de reservas de aulas y consulta de disponibilidad horaria.'
+    titulo: 'Reservas de aulas'
   },
   navegacion: {
     reservasAdmin: 'Reservas',
-    reservasUsuario: 'Mis reservas',
     nuevaReserva: 'Nueva reserva',
     panel: 'Panel',
     aulas: 'Aulas',
@@ -45,9 +42,6 @@ export const TEXTOS = {
     confirmar: 'Confirmar',
     reintentar: 'Reintentar',
     limpiarFiltros: 'Limpiar filtros',
-    cerrar: 'Cerrar',
-    ingresar: 'Ingresar',
-    crearCuenta: 'Crear cuenta',
     anterior: 'Anterior',
     siguiente: 'Siguiente',
     cargando: 'Procesando…'
@@ -89,7 +83,6 @@ export const TEXTOS = {
     errorTitulo: 'Error al cargar las reservas',
     errorDescripcion: 'No se pudieron cargar las reservas. Revise la conexión e intente de nuevo.',
     creadaExito: 'Reserva creada.',
-    actualizadaExito: 'Cambios guardados.',
     aprobadaExito: 'Reserva aprobada.',
     rechazadaExito: 'Reserva rechazada.',
     canceladaExito: 'Reserva cancelada.'
@@ -157,8 +150,6 @@ export const TEXTOS = {
     sinPendientes: 'No hay solicitudes pendientes de aprobación.',
     hoyTitulo: 'Hoy',
     sinReservasHoy: 'No hay reservas programadas para hoy.',
-    totalesEstado: 'Totales por estado',
-    aulasMasReservadas: 'Aulas más reservadas',
     errorCarga: 'No se pudo cargar el resumen administrativo. Intente de nuevo.'
   },
   noEncontrado: {
@@ -172,9 +163,7 @@ export const TEXTOS = {
     tablaCargando: 'Cargando datos de la tabla',
     errorTitulo: 'No se pudo completar la carga',
     errorDescripcion: 'Revise la conexión e intente de nuevo.',
-    cerrarNotificacion: 'Cerrar notificación',
-    cerrarDialogo: 'Cerrar diálogo',
-    campoObligatorio: 'Obligatorio'
+    cerrarNotificacion: 'Cerrar notificación'
   },
   tema: {
     cambiarOscuro: 'Cambiar a modo oscuro',

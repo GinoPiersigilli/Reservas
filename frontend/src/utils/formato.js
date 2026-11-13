@@ -1,5 +1,5 @@
 /**
- * Utilidades de formato de fecha y hora — dd/mm/aaaa y 24 h (Sección 9 de DISENO_PROPUESTA.md).
+ * Utilidades de formato de fecha y hora: dd/mm/aaaa y reloj de 24 h.
  *
  * Las fechas de una reserva son días de calendario (`aaaa-mm-dd`), no instantes:
  * se arman con `new Date(anio, mes - 1, dia)` para que el navegador no las

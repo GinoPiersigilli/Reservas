@@ -1,5 +1,5 @@
 /**
- * Configuración única de la franja horaria laboral y resolución de la grilla (Sección 6 de DISENO_PROPUESTA.md).
+ * Configuración única de la franja horaria laboral y la resolución de la grilla.
  */
 
 export const HORA_INICIO_JORNADA = '08:00';
