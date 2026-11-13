@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../soporte/fixtures.js';
 import { CREDENCIALES, iniciarSesion } from '../soporte/ayudas.js';
 
 test.describe('Flujo 1 — Inicio de sesión', () => {
