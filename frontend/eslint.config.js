@@ -19,13 +19,25 @@ export default defineConfig([
     }
   },
   {
-    // En componentes de presentación la longitud la domina el JSX, por lo que
-    // se limita el anidamiento (que sí esconde errores) y se deja la
-    // complejidad ciclomática medida y documentada en docs/CALIDAD.md.
-    files: ['src/**/*.{js,jsx}'],
+    // Módulos de lógica (.js): mismos límites que el backend.
+    files: ['src/**/*.js'],
+    ignores: ['src/**/__tests__/**'],
+    rules: {
+      complexity: ['error', 12],
+      'max-depth': ['error', 4],
+      'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }]
+    }
+  },
+  {
+    // Componentes (.jsx): la complejidad ciclomática cuenta cada condicional
+    // del JSX, así que para ellos se limita el tamaño y el anidamiento, que es
+    // lo que de verdad señala un componente que hace demasiadas cosas.
+    // El razonamiento está en docs/CALIDAD.md.
+    files: ['src/**/*.jsx'],
     ignores: ['src/**/__tests__/**', 'src/test-utils.jsx'],
     rules: {
-      'max-depth': ['error', 4]
+      'max-depth': ['error', 4],
+      'max-lines-per-function': ['error', { max: 200, skipBlankLines: true, skipComments: true }]
     }
   },
   {

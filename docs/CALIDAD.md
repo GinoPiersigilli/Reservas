@@ -126,19 +126,56 @@ cambiar su comportamiento (las pruebas del backend siguen pasando):
 | `obtenerReservas`         | complejidad 19                  | Filtros, paginación y orden separados                       |
 | Validadores de reserva    | complejidad 26 y 27, duplicados | Un validador por campo, compartido entre alta y edición     |
 
-En el frontend se aplica `max-depth` (4), que es el límite que detecta errores
-reales. La complejidad ciclomática está medida pero **no** forzada: en los
-componentes de presentación la domina la API de props duplicada en español e
-inglés (`titulo || title`, `abierto || open`, …), cuya mitad inglesa no usa
-ningún componente de la aplicación. Valores actuales:
+En el frontend los límites se aplican según lo que contiene cada archivo:
 
-| Componente             | Complejidad | Líneas |
-| ---------------------- | ----------- | ------ |
-| `Field`                | 27          | 79     |
-| `ConfirmDialog`        | 23          | 153    |
-| `Table`                | 23          | 110    |
-| `GrillaDisponibilidad` | 22          | 551    |
-| `Button`               | 21          | 95     |
+| Archivos                                                         | Reglas                                                      | Por qué                                               |
+| ---------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| `src/**/*.js` (lógica: hooks, validaciones, cálculos, servicios) | `complexity` 12, `max-lines-per-function` 80, `max-depth` 4 | Los mismos que el backend: es código con ramas reales |
+| `src/**/*.jsx` (componentes)                                     | `max-lines-per-function` 200, `max-depth` 4                 | Ver más abajo                                         |
+
+En un componente, la complejidad ciclomática cuenta **cada condicional del
+JSX**: un `{error ? <Toast/> : null}` suma lo mismo que una rama de negocio. Un
+umbral bajo ahí no premia código más simple, premia partir el markup en
+fragmentos arbitrarios. Lo que sí señala un componente que hace demasiadas
+cosas es su tamaño y su anidamiento, y eso es lo que se limita. La lógica se
+mueve a archivos `.js`, donde el límite de complejidad sí aplica: por eso la
+grilla tiene sus cálculos en `grillaCalculos.js` y los formularios su
+validación en `validarAula.js` y `validarReserva.js`.
+
+Activar estos límites obligó a reorganizar el frontend. Los archivos grandes se
+dividieron en piezas con una sola responsabilidad, sin cambiar el
+comportamiento (las 92 pruebas de componentes y las 19 de extremo a extremo
+siguen pasando):
+
+| Antes                               | Después                                                                                                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `GrillaDisponibilidad` (591 líneas) | Orquestador (187) + vista de escritorio (202) + vista compacta (165) + `grillaCalculos.js` (155) + `useNavegacionGrilla` (79) |
+| `Resumen` (458)                     | Página (179) + `usePanel` + `metricasPanel.js` + columnas + 3 secciones                                                       |
+| `Aulas` (531)                       | Página (273) + `useAulas` + `validarAula.js` + 2 diálogos + filtros + columnas                                                |
+| `FormularioReserva` (448)           | Página (149) + `useDatosFormulario` + `validarReserva.js` + pasos + campos + resumen                                          |
+| `GuiaEstilos` (339)                 | Página (49) + 7 secciones + datos de demostración                                                                             |
+| `DetalleReserva` (199)              | Página (84) + `useReservaDetalle` + ficha + migas                                                                             |
+
+Además se eliminó la **API de props duplicada** de los componentes base. Cada
+uno aceptaba el mismo dato con dos nombres (`titulo` y `title`, `abierto` y
+`open`, `cargando` y `loading`, …) y la mitad inglesa no la usaba ningún
+componente de la aplicación: era superficie muerta que inflaba la complejidad y
+obligaba a elegir entre dos convenciones en cada uso. Quedó una sola, en
+español, igual que el resto del código. La complejidad de los componentes base
+bajó en consecuencia (`Field` 27 → 11, `Table` 23 → 11, `ConfirmDialog` 23 → 6,
+`Button` 21 → 7), y el manejo de foco de las ventanas modales quedó en un hook
+reutilizable (`useTrampaDeFoco`).
+
+Las definiciones de columnas de las tablas también usaban dos convenciones a la
+vez (`key`/`clave`, `align: 'right'`/`alineacion: 'derecha'`) según la página:
+ahora hay una sola.
+
+---------------------- | ----------- | ------ |
+| `Field` | 27 | 79 |
+| `ConfirmDialog` | 23 | 153 |
+| `Table` | 23 | 110 |
+| `GrillaDisponibilidad` | 22 | 551 |
+| `Button` | 21 | 95 |
 
 Eliminar esa API duplicada y dividir `GrillaDisponibilidad`, `Aulas` y
 `FormularioReserva` (más de 400 líneas cada uno) queda pendiente; recién
@@ -192,7 +229,15 @@ código:
    detectaron las pruebas de extremo a extremo, con el diagnóstico mostrando
    "No se pudieron cargar las reservas". Corregido en `app.js`, con una prueba
    de contrato que ahora verifica cada cabecera que el frontend envía.
-4. **El límite de intentos de inicio de sesión estaba fijo en el código.** Los
+4. **Dos notificaciones se mostraban con el estilo equivocado.** El detalle de
+   una reserva y el panel pasaban `variante="exito"` y `variante={...}` a
+   `Toast`, que no tiene esa propiedad: la correcta es `tipo`. El resultado era
+   que un aviso de éxito y uno de error se veían como informativos, con el
+   icono y el color neutros, y el de error perdía además su `role="alert"`, por
+   lo que un lector de pantalla no lo anunciaba con prioridad. Lo hizo evidente
+   quitar la API de props duplicada, que hasta entonces tapaba el nombre
+   equivocado en silencio.
+5. **El límite de intentos de inicio de sesión estaba fijo en el código.** Los
    demás límites se configuran por variables de entorno desde la fase 10;
    este no, lo que además impedía automatizar los flujos. Ahora usa
    `RATE_LIMIT_LOGIN_MAX` (10 por defecto, como antes) y el mismo helper que
