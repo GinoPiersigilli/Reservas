@@ -1,16 +1,9 @@
 // src/middleware/error.middleware.js
 import crypto from 'crypto';
+import logger from '../utils/logger.js';
+import { sanitizarMensaje } from '../utils/sanitizar.js';
 
-export const sanitizarMensaje = (texto = '') => {
-  if (typeof texto !== 'string') return '';
-  return texto
-    .replace(
-      /(password|contrasena|contraseña|jwt_secret|secret|token)\s*[:=]\s*['"]?[^'"\s,;]+['"]?/gi,
-      '$1=[REDACTED]'
-    )
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
-    .replace(/eyJ[A-Za-z0-9_-]{10,}/g, '[REDACTED]');
-};
+export { sanitizarMensaje };
 
 const codigoPg = (err) => err.parent?.code || err.original?.code;
 
@@ -20,18 +13,37 @@ const textoConstraint = (err) =>
 const tienePath = (err, path) =>
   Array.isArray(err.errors) && err.errors.some((e) => e.path === path);
 
-/** Registra el error sin exponer secretos ni cuerpos de petición. */
-const registrarError = (err, correlationId, esProduccion) => {
-  if (esProduccion) {
-    // En producción: solo correlationId y mensaje saneado; NUNCA err.stack ni req.body
-    console.error(
-      `[Error ${correlationId}] ${sanitizarMensaje(err.message || 'Error desconocido')}`
-    );
+/**
+ * Registra el error sin exponer secretos ni cuerpos de petición.
+ *
+ * En producción nunca se registra la traza: el id de correlación es lo que
+ * permite unir el error que vio la persona con la línea del log.
+ */
+const registrarError = (err, req, correlationId, esProduccion) => {
+  const log = req.log || logger.hijo({ requestId: correlationId });
+  const status = err.status || err.statusCode || 500;
+  const mensaje = sanitizarMensaje(err.message || 'Error desconocido');
+
+  // Un 4xx es un pedido mal formado, no una falla del servidor: queda como
+  // aviso y sin traza, para que los errores reales no se pierdan entre ellos.
+  if (status < 500) {
+    log.warn('peticion rechazada', { nombre: err.name, status, detalle: mensaje });
     return;
   }
+
+  // Línea de texto además del JSON: es el formato que verifica la prueba de
+  // SEC-CFG-03 y el que permite buscar un id concreto a simple vista.
   if (process.env.NODE_ENV !== 'test') {
-    console.error(err.stack);
+    console.error(`[Error ${correlationId}] ${mensaje}`);
   }
+
+  log.error('error no controlado', {
+    nombre: err.name,
+    status,
+    codigoPg: err.parent?.code || err.original?.code,
+    detalle: mensaje,
+    traza: esProduccion ? undefined : err.stack
+  });
 };
 
 /** Cuerpo de la petición por encima del límite permitido (SEC-CFG-02). */
@@ -145,7 +157,7 @@ export const manejadorErrores = (err, req, res, _next) => {
   const esProduccion = process.env.NODE_ENV === 'production';
   const correlationId = req.id || req.headers?.['x-correlation-id'] || crypto.randomUUID();
 
-  registrarError(err, correlationId, esProduccion);
+  registrarError(err, req, correlationId, esProduccion);
 
   let respuesta = null;
   for (const mapear of MAPEADORES) {

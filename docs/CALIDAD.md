@@ -7,13 +7,13 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 
 ## 1. Pirámide de pruebas
 
-| Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                 | Dónde corre                        |
-| ------------------ | ------------------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Integración de API | Jest + Supertest               | 172 pruebas            | Reglas de negocio, autorización, concurrencia, idempotencia, límites de peticiones, errores de PostgreSQL | CI (job `backend`)                 |
-| Componentes        | Vitest + Testing Library + axe | 77 pruebas             | Render, interacción, accesibilidad, contrato con la API                                                   | CI (job `frontend`)                |
-| Extremo a extremo  | Playwright                     | 19 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                        | CI (job `e2e`)                     |
-| Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                    | Manual (ver `carga/README.md`)     |
-| Volumen de datos   | Script propio                  | 1 benchmark            | Planes de consulta con 200.000 reservas                                                                   | Manual (ver `docs/RENDIMIENTO.md`) |
+| Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
+| ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Integración de API | Jest + Supertest               | 198 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
+| Componentes        | Vitest + Testing Library + axe | 77 pruebas             | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
+| Extremo a extremo  | Playwright                     | 19 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
+| Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
+| Volumen de datos   | Script propio                  | 1 benchmark            | Planes de consulta con 200.000 reservas                                                                             | Manual (ver `docs/RENDIMIENTO.md`) |
 
 No se persigue un porcentaje de cobertura: las pruebas se eligen por el error
 que detectan. Las tres que motivaron correcciones reales están al final de esta
@@ -113,7 +113,7 @@ En el backend, donde vive la lógica de negocio, ESLint falla si el código de
 | `max-depth`              | 4      | El anidamiento profundo esconde errores de condición          |
 
 Activar estos límites obligó a dividir seis funciones que los excedían, sin
-cambiar su comportamiento (las 172 pruebas del backend siguen pasando):
+cambiar su comportamiento (las pruebas del backend siguen pasando):
 
 | Función                   | Antes                           | Después                                                     |
 | ------------------------- | ------------------------------- | ----------------------------------------------------------- |
@@ -147,7 +147,30 @@ de fijar uno a la medida del código actual.
 
 ---
 
-## 5. Errores que estas pruebas encontraron
+## 5. Pruebas de observabilidad y de contrato
+
+Dos conjuntos agregados en la fase 13, que verifican cosas que normalmente no se
+prueban y se descubren en producción:
+
+- **`tests/observabilidad.test.js`** (15 casos): que el identificador de
+  petición se genere, se respete solo si es un UUID y se devuelva en la
+  cabecera; que el `correlationId` de un error 500 sea ese mismo identificador;
+  que los registros salgan como JSON con nivel, ruta declarada, estado y
+  duración; que **no** contengan secretos ni claves sensibles; que las sondas de
+  liveness y readiness respondan lo que corresponde, incluida una base que no
+  contesta a tiempo; y que una consulta lenta quede registrada y una rápida no.
+- **`tests/openapi.test.js`** (6 casos): valida la especificación con
+  `@apidevtools/swagger-parser` y la **compara con las rutas que Express tiene
+  registradas**, en los dos sentidos. La prueba falla si se agrega un endpoint
+  sin documentarlo o si queda documentado uno que ya no existe, de modo que la
+  documentación no pueda desactualizarse en silencio.
+- **Contrato de CORS** (en `tests/contrato-frontend.test.js`): el preflight debe
+  permitir cada cabecera que el frontend realmente envía. Esta prueba existe
+  porque esa falla ya ocurrió (ver más abajo).
+
+---
+
+## 6. Errores que estas pruebas encontraron
 
 Tres correcciones de esta fase salieron de escribir las pruebas, no de leer el
 código:
@@ -161,7 +184,15 @@ código:
    de aprobar, pero el detalle de la reserva aprobaba con un solo clic. Los
    textos del diálogo ya existían sin usarse. Unificado en
    `AccionesReserva.jsx`.
-3. **El límite de intentos de inicio de sesión estaba fijo en el código.** Los
+3. **Una cabecera nueva rompió toda la aplicación, y solo el E2E lo vio.** Al
+   agregar el identificador de petición, el frontend empezó a enviar
+   `X-Request-Id`, que no estaba en los `allowedHeaders` de CORS. Las 198
+   pruebas de API seguían pasando —supertest no aplica CORS—, pero en el
+   navegador el preflight fallaba y **ninguna** pantalla cargaba datos. Lo
+   detectaron las pruebas de extremo a extremo, con el diagnóstico mostrando
+   "No se pudieron cargar las reservas". Corregido en `app.js`, con una prueba
+   de contrato que ahora verifica cada cabecera que el frontend envía.
+4. **El límite de intentos de inicio de sesión estaba fijo en el código.** Los
    demás límites se configuran por variables de entorno desde la fase 10;
    este no, lo que además impedía automatizar los flujos. Ahora usa
    `RATE_LIMIT_LOGIN_MAX` (10 por defecto, como antes) y el mismo helper que

@@ -16,7 +16,23 @@ export const registrarOnUnauthorized = (fn) => {
 
 export const MENSAJE_SESION_EXPIRADA = 'Su sesión expiró o fue desactivada. Ingrese nuevamente.';
 
+/**
+ * Identificador de la petición. El backend lo respeta si es un UUID y lo
+ * devuelve en la cabecera X-Request-Id, de modo que un problema reportado por
+ * una persona pueda rastrearse en los logs del servidor.
+ */
+const nuevoRequestId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return null;
+  }
+};
+
 api.interceptors.request.use(async (config) => {
+  const requestId = nuevoRequestId();
+  if (requestId) config.headers['X-Request-Id'] = requestId;
+
   try {
     if (_tokenFn) {
       const token = await _tokenFn();

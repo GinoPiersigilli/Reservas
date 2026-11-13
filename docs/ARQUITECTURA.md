@@ -204,7 +204,10 @@ Todos los endpoints bajo `/api/reservas` y `/api/aulas/:id/disponibilidad` requi
 
 | Método  | Endpoint                        | Roles Permitidos   | Descripción                                                                                  |
 | ------- | ------------------------------- | ------------------ | -------------------------------------------------------------------------------------------- |
-| `GET`   | `/api/health`                   | Público            | Verificación de estado del servicio y conexión a PostgreSQL                                  |
+| `GET`   | `/api/health`                   | Público            | Estado del servicio y de la base (histórico; equivale a readiness)                           |
+| `GET`   | `/api/health/live`              | Público            | Liveness: el proceso responde. No consulta la base de datos                                  |
+| `GET`   | `/api/health/ready`             | Público            | Readiness: el servicio puede atender tráfico (verifica la base con límite de 2 s)            |
+| `GET`   | `/api/docs/ui`                  | Público (solo dev) | Documentación OpenAPI navegable. No se monta si `NODE_ENV=production`                        |
 | `POST`  | `/api/auth/login`               | Público            | Inicio de sesión local con tasa limitada (rate limit)                                        |
 | `GET`   | `/api/aulas`                    | Usuario, Admin     | Lista de aulas activas (para admin admite `?incluirInactivas=true` para auditoría y gestión) |
 | `POST`  | `/api/aulas`                    | Solo Admin         | Creación de aula con nombre único (case-insensitive), capacidad 1-1000 y auditoría           |
@@ -339,6 +342,8 @@ El sistema parametriza su configuración exclusivamente a través de variables d
 - `WORK_HOUR_START`
 - `WORK_HOUR_END`
 - `LOG_SQL`
+- `LOG_LEVEL`
+- `SLOW_QUERY_MS`
 - `DATABASE_SSL`
 - `DB_POOL_MAX`
 - `DB_POOL_MIN`
@@ -394,6 +399,57 @@ Se implementó la suite de benchmark `backend/scripts/benchmark-db.js`, equipada
 
 El backend implementa una defensa en profundidad contra abusos y denegación de servicio mediante tres limitadores complementarios basados en `express-rate-limit`:
 
-1. **Límite General por IP (`limiteGeneral`):** Protege globalmente la raíz `/api` (300 peticiones cada 15 min), eximiendo de rate limiting a `/api/health` para preservar el monitoreo de infraestructura.
+1. **Límite General por IP (`limiteGeneral`):** Protege globalmente la raíz `/api` (300 peticiones cada 15 min), eximiendo de rate limiting a las sondas bajo `/api/health` (`/`, `/live` y `/ready`) para preservar el monitoreo de infraestructura.
 2. **Límite de Modificaciones por IP (`limiteEscrituras`):** Aplicado explícitamente antes de `verificarToken` en todas las rutas `POST`, `PUT` y `PATCH` de aulas y reservas, satisfaciendo los requerimientos de análisis estático SAST de CodeQL.
 3. **Límite de Modificaciones por Usuario Autenticado (`limiteEscriturasUsuario`):** Aplicado tras la autenticación para limitar escrituras por cuenta/usuario (`req.usuario.id`), impidiendo que un usuario distribuya peticiones abusivas a través de proxies rotativos. Configurable vía `RATE_LIMIT_USUARIO_*` y con respuestas estandarizadas `429 Too Many Requests` en español con encabezado `Retry-After`.
+
+---
+
+## 8. Observabilidad y Operación
+
+### 8.1 Registros estructurados e identificador de petición
+
+Cada petición recibe un identificador propio (`src/middleware/observabilidad.middleware.js`):
+
+- Si el cliente envía `X-Request-Id` o `X-Correlation-Id` **con formato UUID**, se respeta, de modo que una operación pueda seguirse desde el navegador hasta la base. Un valor con otro formato se descarta y se genera uno nuevo: aceptar texto arbitrario permitiría inyectar líneas falsas en los logs.
+- El identificador se devuelve siempre en la cabecera `X-Request-Id`, queda disponible en `req.id` y viaja en el logger de la petición (`req.log`), por lo que **todo** lo que se registre durante esa petición lo lleva.
+- El frontend genera un UUID por petición en su interceptor de axios, así el identificador del log coincide con la acción del usuario.
+- Cuando un error 500 devuelve `correlationId` al cliente, ese valor **es** el `requestId` de los logs: alcanza para encontrar la petición completa.
+
+Los registros son una línea JSON por evento en la salida estándar (`src/utils/logger.js`), con los niveles `debug`, `info`, `warn`, `error` y `silent` controlados por `LOG_LEVEL` (en las pruebas, `silent`). Se eligió un logger propio en vez de pino o winston; el razonamiento y su punto de quiebre están en el [ADR 0005](adr/0005-logger-propio.md).
+
+Todo lo que se registra pasa por el saneado de secretos de `SEC-CFG-03` y por una lista de claves que nunca se escriben (`password`, `authorization`, `token`, `secret`, `cookie`). En producción no se registra la traza de los errores: solo el identificador y el mensaje saneado.
+
+Ejemplo de una petición y de un error, ya en el formato que indexa cualquier recolector:
+
+```json
+{"hora":"2026-11-13T04:20:22.650Z","nivel":"info","mensaje":"peticion","requestId":"992a64c8-…","metodo":"GET","ruta":"/api/reservas/:id","estado":200,"duracionMs":12.4,"usuarioId":3}
+{"hora":"2026-11-13T04:20:23.118Z","nivel":"error","mensaje":"error no controlado","requestId":"6bc4242e-…","nombre":"SequelizeConnectionError","status":500,"detalle":"connection refused"}
+```
+
+La ruta que se registra es la **declarada** (`/api/reservas/:id`), no la real: así los logs agrupan por endpoint y no filtran identificadores ni parámetros de consulta.
+
+### 8.2 Liveness y readiness
+
+| Sonda                   | Qué responde                                          | Uso                                                                                 |
+| ----------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `GET /api/health/live`  | 200 mientras el proceso viva. **No** consulta la base | Sonda de reinicio del orquestador                                                   |
+| `GET /api/health/ready` | 200 si la base responde en menos de 2 s; 503 si no    | Decidir si el contenedor recibe tráfico; es la que usan los `healthcheck` de Docker |
+| `GET /api/health`       | Igual que readiness                                   | Endpoint histórico, conservado por compatibilidad                                   |
+
+La separación importa: si la sonda de vida fallara por una base caída, el orquestador reiniciaría una y otra vez un proceso que está sano, sin arreglar el problema real. La comprobación de la base tiene su propio límite de tiempo, porque una base que acepta la conexión pero no responde dejaría la sonda colgada en lugar de informar que el servicio no está listo.
+
+### 8.3 Consultas lentas
+
+Sequelize se configura con `benchmark: true` y un registrador propio: solo se registran, en nivel `warn`, las consultas que superan `SLOW_QUERY_MS` (300 ms por omisión), con la consulta normalizada a una línea, recortada a 300 caracteres y **sin los valores enlazados**, para no volcar datos de usuarios al log. Con `LOG_SQL=true` se registran todas en nivel `debug`.
+
+Esto detecta la degradación que el benchmark de 200.000 filas no ve: una consulta que empeora con el uso real, con datos reales y bajo concurrencia.
+
+### 8.4 Documentación de la API (OpenAPI)
+
+La especificación OpenAPI 3.1 está en `src/docs/openapi.js` y se sirve **solo fuera de producción**:
+
+- `GET /api/docs/openapi.json` — la especificación.
+- `GET /api/docs/ui` — Swagger UI, servido desde `swagger-ui-dist`, declarado como dependencia de **desarrollo**: funciona sin conexión, no carga scripts de terceros y no entra en la imagen de producción (`npm ci --omit=dev`).
+
+Para que no se desactualice en silencio, `tests/openapi.test.js` valida la especificación con `@apidevtools/swagger-parser` y la compara con las rutas que Express tiene registradas: la prueba falla si se agrega un endpoint sin documentarlo o si se documenta uno que no existe.
