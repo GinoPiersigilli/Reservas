@@ -1,4 +1,9 @@
-import { calcularDuracionTexto, formatearFecha, formatearFechaHora } from '../../utils/formato.js';
+import {
+  calcularDuracionTexto,
+  etiquetaRelativa,
+  formatearFechaHora,
+  formatearJornada
+} from '../../utils/formato.js';
 import styles from '../DetalleReserva.module.css';
 
 function Dato({ etiqueta, children, destacado = false }) {
@@ -26,6 +31,18 @@ const nombreDelAula = (reserva, nombresAulas) =>
 const nombreDelSolicitante = (reserva) =>
   reserva.usuario?.nombre || reserva.usuarioNombre || `Usuario #${reserva.usuarioId}`;
 
+/** La fecha con día de la semana, y «hoy» o «mañana» cuando corresponde. */
+function FechaDeReserva({ fecha }) {
+  const relativa = etiquetaRelativa(fecha);
+
+  return (
+    <>
+      <time dateTime={String(fecha || '').slice(0, 10)}>{formatearJornada(fecha)}</time>
+      {relativa ? <span className={styles.valorSecundario}>({relativa})</span> : null}
+    </>
+  );
+}
+
 /** Datos de la reserva. El solicitante solo se muestra si corresponde verlo. */
 export default function FichaReserva({ reserva, nombresAulas, puedeVerSolicitante, children }) {
   const duracion = calcularDuracionTexto(reserva.horaInicio, reserva.horaFin);
@@ -44,7 +61,9 @@ export default function FichaReserva({ reserva, nombresAulas, puedeVerSolicitant
           {nombreDelAula(reserva, nombresAulas)}
         </Dato>
 
-        <Dato etiqueta="Fecha">{formatearFecha(reserva.fecha)}</Dato>
+        <Dato etiqueta="Fecha">
+          <FechaDeReserva fecha={reserva.fecha} />
+        </Dato>
 
         <Dato etiqueta="Horario">
           <span>

@@ -1,0 +1,162 @@
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-8);
+}
+
+.jornada {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+}
+
+/* El encabezado de jornada es la unidad de lectura: fecha completa, en serif,
+   sobre una línea que la separa de los tramos del día. */
+.encabezado {
+  display: flex;
+  align-items: baseline;
+  gap: var(--espacio-3);
+  margin: 0;
+  padding-bottom: var(--espacio-2);
+  border-bottom: var(--borde-ancho) solid var(--borde);
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-semibold);
+  line-height: var(--linea-titulo);
+  color: var(--tinta);
+}
+
+.relativa {
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  color: var(--tinta-2);
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item + .item {
+  border-top: var(--borde-ancho) solid var(--borde);
+}
+
+.enlace {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--espacio-5);
+  padding: var(--espacio-4) var(--espacio-3);
+  border-radius: var(--radio-control);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--transicion-rapida);
+}
+
+.enlace:hover {
+  background-color: var(--superficie);
+  text-decoration: none;
+}
+
+.enlace:focus-visible {
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: var(--foco-offset);
+}
+
+/* Tramo horario: las dos horas unidas por un trazo que dura lo que dura la
+   reserva. El color del trazo repite el del estado; el badge lo nombra. */
+.tramo {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  align-self: stretch;
+  gap: var(--espacio-1);
+  min-width: 56px;
+}
+
+.hora {
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta);
+}
+
+.trazo {
+  width: 2px;
+  min-height: var(--espacio-4);
+  align-self: stretch;
+  border-radius: 1px;
+  background-color: var(--borde-control);
+}
+
+.tramo[data-estado='aprobada'] .trazo {
+  background-color: var(--estado-aprobada-texto);
+}
+
+.tramo[data-estado='pendiente'] .trazo {
+  background-image: var(--patron-pendiente);
+  background-color: var(--estado-pendiente-texto);
+}
+
+.tramo[data-estado='rechazada'] .trazo {
+  background-color: var(--estado-rechazada-texto);
+}
+
+.tramo[data-estado='cancelada'] .trazo {
+  background-color: var(--estado-cancelada-texto);
+}
+
+/* Una reserva cancelada o rechazada sigue en la agenda, pero se lee después
+   que las vigentes. */
+.tramo[data-estado='cancelada'] .hora,
+.tramo[data-estado='rechazada'] .hora {
+  color: var(--tinta-2);
+}
+
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aula {
+  font-size: var(--texto-md);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+}
+
+.motivo {
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  overflow-wrap: anywhere;
+}
+
+.solicitante {
+  font-size: var(--texto-xs);
+  color: var(--tinta-2);
+}
+
+.lateral {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-4);
+}
+
+@media (max-width: 720px) {
+  .enlace {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--espacio-4);
+    padding: var(--espacio-4) var(--espacio-2);
+  }
+
+  /* En pantalla angosta el badge baja debajo del motivo en vez de competir
+     por el ancho con el nombre del aula. */
+  .lateral {
+    grid-column: 2;
+    justify-content: space-between;
+    margin-top: var(--espacio-2);
+  }
+}

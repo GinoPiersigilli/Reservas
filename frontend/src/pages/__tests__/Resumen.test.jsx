@@ -141,16 +141,29 @@ describe('Resumen (Panel de administración)', () => {
       </MemoryRouter>
     );
 
-    expect(
-      await screen.findByRole('heading', { name: /Métricas de gestión y ocupación mensual/i })
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Ocupación del mes/i })).toBeInTheDocument();
 
-    const seccionMetricas = screen.getByRole('region', {
-      name: /Métricas de gestión y ocupación mensual/i
-    });
+    const seccionMetricas = screen.getByRole('region', { name: /Ocupación del mes/i });
     expect(within(seccionMetricas).getByText('Aula 101')).toBeInTheDocument();
-    expect(within(seccionMetricas).getByRole('progressbar')).toHaveAttribute('value', '45');
-    expect(within(seccionMetricas).getByText(/18.5 hs reservadas/i)).toBeInTheDocument();
-    expect(screen.getByText(/\(70%\)/i)).toBeInTheDocument();
+    expect(within(seccionMetricas).getByText('45%')).toBeInTheDocument();
+    // Ocupación y demanda van en la misma fila: horas reservadas y cantidad.
+    expect(within(seccionMetricas).getByText(/18.5 h en 9 reservas/i)).toBeInTheDocument();
+    expect(within(seccionMetricas).getByText(/20 reservas analizadas/i)).toBeInTheDocument();
+  });
+
+  it('shows the breakdown by state inside the occupancy section', async () => {
+    render(
+      <MemoryRouter>
+        <Resumen />
+      </MemoryRouter>
+    );
+
+    const seccionMetricas = await screen.findByRole('region', { name: /Ocupación del mes/i });
+
+    ['Aprobadas', 'Pendientes', 'Rechazadas', 'Canceladas', 'Total'].forEach((etiqueta) => {
+      expect(within(seccionMetricas).getByText(etiqueta)).toBeInTheDocument();
+    });
+    expect(within(seccionMetricas).getByText('14')).toBeInTheDocument();
+    expect(within(seccionMetricas).getByText('20')).toBeInTheDocument();
   });
 });

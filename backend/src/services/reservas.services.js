@@ -470,8 +470,12 @@ export const obtenerReservaPorId = async (reservaId, usuario) => {
 export const obtenerHistorialDeReserva = async (reservaId, usuario) => {
   await obtenerReservaPorId(reservaId, usuario);
 
+  // El historial nombra a quien hizo cada cambio: un registro de auditoría que
+  // dice «Usuario #4» no sirve para auditar. Solo el nombre, nunca el correo,
+  // porque lo ve también quien es dueño de la reserva.
   const historial = await HistorialReserva.findAll({
     where: { reservaId },
+    include: [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre'] }],
     order: [['fechaHora', 'DESC']]
   });
 

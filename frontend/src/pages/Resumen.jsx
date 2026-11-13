@@ -8,10 +8,9 @@ import TablaSkeleton from '../components/ui/TablaSkeleton.jsx';
 import Toast from '../components/ui/Toast.jsx';
 import { usePanel } from './resumen/usePanel.js';
 import { calcularMetricas } from './resumen/metricasPanel.js';
-import { columnasPendientes, columnasPorAula } from './resumen/columnasPanel.jsx';
+import { columnasPendientes } from './resumen/columnasPanel.jsx';
 import ReservasDeHoy from './resumen/ReservasDeHoy.jsx';
 import OcupacionAulas from './resumen/OcupacionAulas.jsx';
-import TotalesPorEstado from './resumen/TotalesPorEstado.jsx';
 import styles from './Resumen.module.css';
 
 /** Textos del diálogo según la acción que se va a confirmar. */
@@ -134,32 +133,10 @@ const Resumen = () => {
       <ReservasDeHoy reservas={resumen.proximasHoy || []} nombresAulas={nombresAulas} />
 
       <OcupacionAulas
-        tasaOcupacion={metricas.tasaOcupacion}
+        ocupacion={metricas.ocupacion}
+        distribucionEstados={metricas.distribucionEstados}
         totalReservas={metricas.totalReservas}
       />
-
-      <div className={styles.grillaSecundaria}>
-        <TotalesPorEstado
-          distribucionEstados={metricas.distribucionEstados}
-          totalReservas={metricas.totalReservas}
-        />
-
-        <section className={styles.bloqueCompacto} aria-labelledby="titulo-aulas-frecuentes">
-          <h2 id="titulo-aulas-frecuentes" className={styles.tituloSeccion}>
-            {TEXTOS.panel.aulasMasReservadas}
-          </h2>
-          {metricas.aulasMasReservadas.length === 0 ? (
-            <p className={styles.lineaVacia}>No hay registros de uso de aulas disponibles.</p>
-          ) : (
-            <Table
-              ariaLabel="Aulas más reservadas"
-              columnas={columnasPorAula({ nombresAulas })}
-              datos={metricas.aulasMasReservadas}
-              claveFila="aulaId"
-            />
-          )}
-        </section>
-      </div>
 
       <ConfirmDialog
         abierto={Boolean(confirmacion)}

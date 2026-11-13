@@ -175,12 +175,6 @@
   gap: var(--espacio-3);
 }
 
-.grillaSecundaria {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--espacio-6);
-}
-
 .bloqueCompacto {
   display: flex;
   flex-direction: column;
@@ -190,39 +184,6 @@
   min-width: 0;
 }
 
-.listaCompacta {
-  margin: 0;
-  padding: var(--espacio-2) var(--espacio-4);
-  background-color: var(--superficie);
-  border: var(--borde-ancho) solid var(--borde);
-  border-radius: var(--radio-panel);
-}
-
-.filaCompacta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-4);
-  padding: var(--espacio-2) 0;
-  border-bottom: var(--borde-ancho) solid var(--borde);
-  font-size: var(--texto-sm);
-}
-
-.filaCompacta:last-child {
-  border-bottom: none;
-}
-
-.etiquetaCompacta {
-  margin: 0;
-  color: var(--tinta-2);
-  font-weight: var(--peso-regular);
-}
-
-.etiquetaTotal {
-  font-weight: var(--peso-semibold);
-  color: var(--tinta);
-}
-
 .valorCompacto {
   margin: 0;
   font-weight: var(--peso-semibold);
@@ -230,81 +191,163 @@
   font-variant-numeric: tabular-nums;
 }
 
-.porcentajeTexto {
-  font-size: var(--texto-xs);
-  color: var(--tinta-2);
-  margin-left: var(--espacio-1);
-  font-weight: var(--peso-regular);
-}
-
-.grillaMetricas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--espacio-4);
-  width: 100%;
-}
-
-.tarjetaMetrica {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espacio-3);
-  padding: var(--espacio-4);
+/* Ocupación: una sola lista de barras comparables entre sí. En tarjetas
+   separadas cada barra tenía su propio ancho y dejaban de ser comparables. */
+.panelOcupacion {
   background-color: var(--superficie);
   border: var(--borde-ancho) solid var(--borde);
   border-radius: var(--radio-panel);
 }
 
-.cabeceraTarjetaMetrica {
-  display: flex;
+.listaOcupacion {
+  list-style: none;
+  margin: 0;
+  padding: var(--espacio-2) var(--espacio-4);
+}
+
+.filaOcupacion {
+  display: grid;
+  /* El carril se acota: una barra de 700 px para mostrar un 2 % es casi toda
+     riel vacío, y la comparación entre aulas se pierde. */
+  grid-template-columns: minmax(120px, 200px) minmax(0, 240px) auto 1fr;
+  /* nombre · barra · horas y reservas · tasa al borde derecho */
   align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-2);
+  gap: var(--espacio-4);
+  padding: var(--espacio-3) 0;
+  font-size: var(--texto-sm);
 }
 
-.tasaValor {
-  font-size: var(--texto-md);
-  font-weight: var(--peso-semibold);
-  color: var(--acento);
-  font-variant-numeric: tabular-nums;
+.filaOcupacion + .filaOcupacion {
+  border-top: var(--borde-ancho) solid var(--borde);
 }
 
-.progresoOcupacion {
-  width: 100%;
-  height: 8px;
-  border-radius: var(--radio-control);
+.carrilOcupacion {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--superficie-sutil);
   overflow: hidden;
-  border: var(--borde-ancho) solid var(--borde);
-  background-color: var(--superficie-sutil);
-  accent-color: var(--acento);
 }
 
-.progresoOcupacion::-webkit-progress-bar {
-  background-color: var(--superficie-sutil);
-}
-
-.progresoOcupacion::-webkit-progress-value {
+.relleno {
+  display: block;
+  height: 100%;
+  min-inline-size: 2px;
   background-color: var(--acento);
-  border-radius: var(--radio-control);
 }
 
-.progresoOcupacion::-moz-progress-bar {
-  background-color: var(--acento);
-  border-radius: var(--radio-control);
+.cifraOcupacion {
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-inline-size: 4ch;
 }
 
-.pieTarjetaMetrica {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-2);
+.detalleOcupacion {
   font-size: var(--texto-xs);
   color: var(--tinta-2);
   font-variant-numeric: tabular-nums;
 }
 
+/* Composición por estado: una barra apilada y su leyenda, en lugar de una
+   tabla de cuatro filas con el mismo dato repetido en número y porcentaje. */
+/* La composición por estado cierra el mismo panel: es el total de las filas
+   de arriba, no un bloque aparte. */
+.bloqueEstados {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  border-top: var(--borde-ancho) solid var(--borde);
+}
+
+.barraEstados {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: var(--superficie-sutil);
+}
+
+.segmentoEstado {
+  display: block;
+  min-inline-size: 3px;
+}
+
+.segmentoEstado[data-estado='aprobada'],
+.marcaLeyenda[data-estado='aprobada'] {
+  background-color: var(--estado-aprobada-texto);
+}
+
+.segmentoEstado[data-estado='pendiente'],
+.marcaLeyenda[data-estado='pendiente'] {
+  background-image: var(--patron-pendiente);
+  background-color: var(--estado-pendiente-texto);
+}
+
+.segmentoEstado[data-estado='rechazada'],
+.marcaLeyenda[data-estado='rechazada'] {
+  background-color: var(--estado-rechazada-texto);
+}
+
+.segmentoEstado[data-estado='cancelada'],
+.marcaLeyenda[data-estado='cancelada'] {
+  background-color: var(--estado-cancelada-texto);
+}
+
+.leyendaEstados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2) var(--espacio-6);
+  margin: 0;
+}
+
+.itemLeyenda {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  font-size: var(--texto-sm);
+}
+
+.etiquetaLeyenda {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: 0;
+  color: var(--tinta-2);
+}
+
+.marcaLeyenda {
+  display: inline-block;
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 2px;
+  background-color: var(--borde-control);
+}
+
+.valorLeyenda {
+  margin: 0;
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 768px) {
-  .grillaSecundaria {
-    grid-template-columns: 1fr;
+  .filaOcupacion {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--espacio-2) var(--espacio-3);
+  }
+
+  .carrilOcupacion {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .detalleOcupacion {
+    grid-column: 1 / -1;
+    order: 4;
+    text-align: left;
   }
 
   .enlaceVer {

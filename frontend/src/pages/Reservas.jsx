@@ -8,6 +8,9 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getAulas } from '../services/aula.service.js';
 import { getReservas } from '../services/reservas.service.js';
 import { TEXTOS } from '../textos.js';
+import AgendaReservas from './reservas/AgendaReservas.jsx';
+import ConmutadorVista from './reservas/ConmutadorVista.jsx';
+import { useVistaReservas } from './reservas/useVistaReservas.js';
 import styles from './Reservas.module.css';
 
 const POR_PAGINA = 10;
@@ -26,6 +29,8 @@ export default function Reservas() {
   const [order, setOrder] = useState('DESC');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
+  const { vista, elegirVista } = useVistaReservas();
+  const esAgenda = vista === 'agenda';
 
   useEffect(() => {
     let cancelado = false;
@@ -53,11 +58,13 @@ export default function Reservas() {
     setCargando(true);
     setError(null);
     try {
+      // La agenda agrupa por jornada, así que solo tiene sentido con el
+      // listado ordenado por fecha; la tabla usa el orden que eligió quien mira.
       const params = {
         page: pagina,
         limit: POR_PAGINA,
-        sortBy,
-        order
+        sortBy: esAgenda ? 'fecha' : sortBy,
+        order: esAgenda ? 'ASC' : order
       };
       if (filtros.fecha && filtros.fecha.trim() !== '') params.fecha = filtros.fecha.trim();
       if (filtros.estado && filtros.estado.trim() !== '') params.estado = filtros.estado.trim();
@@ -79,7 +86,7 @@ export default function Reservas() {
     } finally {
       setCargando(false);
     }
-  }, [filtros, pagina, sortBy, order]);
+  }, [filtros, pagina, sortBy, order, esAgenda]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -113,13 +120,16 @@ export default function Reservas() {
     <div className={styles.pagina}>
       <header className={styles.cabecera}>
         <h1>{esAdmin ? TEXTOS.reservas.tituloAdmin : TEXTOS.reservas.tituloUsuario}</h1>
-        <Button
-          variante="primario"
-          icono={CalendarPlus}
-          onClick={() => navigate('/reservas/nueva')}
-        >
-          {TEXTOS.navegacion.nuevaReserva}
-        </Button>
+        <div className={styles.accionesCabecera}>
+          <ConmutadorVista vista={vista} onCambiar={elegirVista} />
+          <Button
+            variante="primario"
+            icono={CalendarPlus}
+            onClick={() => navigate('/reservas/nueva')}
+          >
+            {TEXTOS.navegacion.nuevaReserva}
+          </Button>
+        </div>
       </header>
 
       <FiltrosReservas onFiltrar={handleFiltros} aulas={aulas} />
@@ -152,14 +162,18 @@ export default function Reservas() {
 
       {!cargando && !error && reservas.length > 0 ? (
         <>
-          <TablaReservas
-            reservas={reservas}
-            esAdmin={esAdmin}
-            mapaAulas={mapaAulas}
-            sortBy={sortBy}
-            order={order}
-            onOrdenar={handleOrdenar}
-          />
+          {esAgenda ? (
+            <AgendaReservas reservas={reservas} esAdmin={esAdmin} mapaAulas={mapaAulas} />
+          ) : (
+            <TablaReservas
+              reservas={reservas}
+              esAdmin={esAdmin}
+              mapaAulas={mapaAulas}
+              sortBy={sortBy}
+              order={order}
+              onOrdenar={handleOrdenar}
+            />
+          )}
 
           <nav className={styles.paginacion} aria-label="Paginación de reservas">
             <span className={styles.resumenPaginacion}>

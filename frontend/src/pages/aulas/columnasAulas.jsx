@@ -1,6 +1,7 @@
 import { EstadoBadge } from '../../components/ui/index.js';
 import { TEXTOS } from '../../textos.js';
 import AccionesAula from './AccionesAula.jsx';
+import ListaRecursos from './ListaRecursos.jsx';
 import styles from '../Aulas.module.css';
 
 export const CABECERAS_AULAS = [
@@ -31,8 +32,7 @@ export const columnasAulas = ({ onEditar, onDesactivar, onReactivar }) => [
   {
     clave: 'recursos',
     titulo: TEXTOS.aulas.recursos,
-    render: (aula) =>
-      aula.recursos || <span className={styles.sinRecursos}>{TEXTOS.aulas.sinRecursos}</span>
+    render: (aula) => <ListaRecursos recursos={aula.recursos} />
   },
   {
     clave: 'estado',

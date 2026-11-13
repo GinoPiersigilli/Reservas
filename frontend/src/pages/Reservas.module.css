@@ -16,6 +16,13 @@
   border-bottom: var(--borde-ancho) solid var(--borde);
 }
 
+.accionesCabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  flex-wrap: wrap;
+}
+
 .paginacion {
   display: flex;
   align-items: center;
@@ -62,10 +69,13 @@
   background-color: var(--fondo);
 }
 
+/* La página actual es un estado, no una acción: se marca con la superficie y
+   el peso, para no gastar el azul que identifica lo que ejecuta algo. */
 .botonPaginaActivo {
-  background-color: var(--acento);
-  border-color: var(--acento);
-  color: var(--tinta-inversa);
+  background-color: var(--superficie-sutil);
+  border-color: var(--tinta-2);
+  color: var(--tinta);
+  font-weight: var(--peso-semibold);
 }
 
 @media (max-width: 768px) {

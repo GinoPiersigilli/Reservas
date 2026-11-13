@@ -1,0 +1,47 @@
+.grupo {
+  display: inline-flex;
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-control);
+  background-color: var(--superficie);
+  overflow: hidden;
+}
+
+.opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: var(--control-altura-sm);
+  padding: 0 var(--espacio-3);
+  border: 0;
+  background: none;
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--tinta-2);
+  cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    color var(--transicion-rapida);
+}
+
+.opcion + .opcion {
+  border-left: var(--borde-ancho) solid var(--borde);
+}
+
+.opcion:hover {
+  background-color: var(--fondo);
+  color: var(--tinta);
+}
+
+.opcion:focus-visible {
+  outline: var(--foco-ancho) solid var(--acento);
+  outline-offset: calc(var(--foco-offset) * -1);
+}
+
+/* La opción activa se marca con la superficie, no con el azul de acción: el
+   azul queda reservado para lo que ejecuta algo. */
+.opcionActiva {
+  background-color: var(--superficie-sutil);
+  color: var(--tinta);
+  font-weight: var(--peso-semibold);
+}

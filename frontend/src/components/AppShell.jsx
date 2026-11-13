@@ -92,24 +92,37 @@ export default function AppShell({ children }) {
           <div className={styles.marca}>{TEXTOS.app.titulo}</div>
 
           <nav className={styles.nav} aria-label="Destinos principales">
-            <NavLink to="/reservas" end className={obtenerClaseEnlace}>
+            <NavLink
+              to="/reservas"
+              end
+              className={obtenerClaseEnlace}
+              title={TEXTOS.navegacion.reservasAdmin}
+            >
               <Calendar size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>{TEXTOS.navegacion.reservasAdmin}</span>
             </NavLink>
 
-            <NavLink to="/reservas/nueva" className={obtenerClaseEnlace}>
+            <NavLink
+              to="/reservas/nueva"
+              className={obtenerClaseEnlace}
+              title={TEXTOS.navegacion.nuevaReserva}
+            >
               <CalendarPlus size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>{TEXTOS.navegacion.nuevaReserva}</span>
             </NavLink>
 
             {esAdmin ? (
               <>
-                <NavLink to="/resumen" className={obtenerClaseEnlace}>
+                <NavLink
+                  to="/resumen"
+                  className={obtenerClaseEnlace}
+                  title={TEXTOS.navegacion.panel}
+                >
                   <LayoutDashboard size={16} strokeWidth={1.75} aria-hidden="true" />
                   <span>{TEXTOS.navegacion.panel}</span>
                 </NavLink>
 
-                <NavLink to="/aulas" className={obtenerClaseEnlace}>
+                <NavLink to="/aulas" className={obtenerClaseEnlace} title={TEXTOS.navegacion.aulas}>
                   <DoorOpen size={16} strokeWidth={1.75} aria-hidden="true" />
                   <span>{TEXTOS.navegacion.aulas}</span>
                 </NavLink>
@@ -144,7 +157,12 @@ export default function AppShell({ children }) {
             <span>{labelTema}</span>
           </button>
 
-          <button type="button" className={styles.botonCerrar} onClick={() => cerrarSesion?.()}>
+          <button
+            type="button"
+            className={styles.botonCerrar}
+            title={TEXTOS.navegacion.cerrarSesion}
+            onClick={() => cerrarSesion?.()}
+          >
             <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
             <span>{TEXTOS.navegacion.cerrarSesion}</span>
           </button>

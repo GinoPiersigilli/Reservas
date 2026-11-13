@@ -119,6 +119,7 @@ export default function FormularioReserva() {
         />
 
         <GrillaDisponibilidad
+          id="paso-franja-horaria"
           aulas={aulas}
           fecha={form.fecha}
           disponibilidadPorAula={disponibilidadPorAula}
@@ -129,7 +130,7 @@ export default function FormularioReserva() {
           onSeleccionarFranja={handleSeleccionarFranja}
         />
 
-        <section className={styles.panelSeccion}>
+        <section className={styles.panelSeccion} id="paso-datos">
           <CamposHorario form={form} errores={erroresCampo} onChange={handleChange} />
 
           <ResumenSolicitud form={form} aulaSeleccionada={aulaSeleccionada} />

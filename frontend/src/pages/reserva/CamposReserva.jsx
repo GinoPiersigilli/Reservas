@@ -17,7 +17,7 @@ export function CamposPrincipales({
     : 'Elija un aula para consultar ubicación y capacidad.';
 
   return (
-    <section className={styles.panelSeccion}>
+    <section className={styles.panelSeccion} id="paso-fecha-aula">
       <div className={styles.grillaCampos}>
         <Field id="fecha" etiqueta={TEXTOS.formulario.fecha} error={errores.fecha} obligatorio>
           <Input type="date" name="fecha" value={form.fecha} onChange={onChange} />

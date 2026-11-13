@@ -59,6 +59,10 @@ Reserva.hasMany(HistorialReserva, { foreignKey: 'reservaId', onDelete: 'RESTRICT
 HistorialReserva.belongsTo(Reserva, { foreignKey: 'reservaId', onDelete: 'RESTRICT' });
 
 Usuario.hasMany(HistorialReserva, { foreignKey: 'usuarioId', onDelete: 'RESTRICT' });
-HistorialReserva.belongsTo(Usuario, { foreignKey: 'usuarioId', onDelete: 'RESTRICT' });
+HistorialReserva.belongsTo(Usuario, {
+  as: 'usuario',
+  foreignKey: 'usuarioId',
+  onDelete: 'RESTRICT'
+});
 
 export default HistorialReserva;

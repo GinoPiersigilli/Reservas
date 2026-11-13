@@ -1,6 +1,76 @@
 /**
  * Utilidades de formato de fecha y hora — dd/mm/aaaa y 24 h (Sección 9 de DISENO_PROPUESTA.md).
+ *
+ * Las fechas de una reserva son días de calendario (`aaaa-mm-dd`), no instantes:
+ * se arman con `new Date(anio, mes - 1, dia)` para que el navegador no las
+ * corra un día según la zona horaria.
  */
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+const MESES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre'
+];
+
+/** `aaaa-mm-dd` → Date local a medianoche, o null si la cadena no es una fecha. */
+export function aFechaLocal(fechaStr) {
+  if (!fechaStr) return null;
+  const partes = String(fechaStr).slice(0, 10).split('-');
+  if (partes.length !== 3) return null;
+  const [anio, mes, dia] = partes.map(Number);
+  if (!anio || !mes || !dia) return null;
+  const fecha = new Date(anio, mes - 1, dia);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
+/** Fecha de hoy como `aaaa-mm-dd`, en la zona horaria del navegador. */
+export function hoyISO(ahora = new Date()) {
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${ahora.getFullYear()}-${mes}-${dia}`;
+}
+
+/**
+ * «hoy», «mañana» o «ayer» cuando corresponde; null para cualquier otro día.
+ * Acompaña a la fecha, nunca la reemplaza.
+ */
+export function etiquetaRelativa(fechaStr, referenciaISO = hoyISO()) {
+  const fecha = aFechaLocal(fechaStr);
+  const referencia = aFechaLocal(referenciaISO);
+  if (!fecha || !referencia) return null;
+  const dias = Math.round((fecha - referencia) / 86400000);
+  if (dias === 0) return 'hoy';
+  if (dias === 1) return 'mañana';
+  if (dias === -1) return 'ayer';
+  return null;
+}
+
+/** «jueves 13 de noviembre» — encabezado de jornada en la agenda. */
+export function formatearJornada(fechaStr) {
+  const fecha = aFechaLocal(fechaStr);
+  if (!fecha) return formatearFecha(fechaStr);
+  return `${DIAS_SEMANA[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
+}
+
+/** «jue 13 nov» — donde hace falta el día de la semana pero no hay lugar. */
+export function formatearFechaCorta(fechaStr) {
+  const fecha = aFechaLocal(fechaStr);
+  if (!fecha) return formatearFecha(fechaStr);
+  const dia = DIAS_SEMANA[fecha.getDay()].slice(0, 3);
+  const mes = MESES[fecha.getMonth()].slice(0, 3);
+  return `${dia} ${fecha.getDate()} ${mes}`;
+}
 
 export function formatearFecha(fechaStr) {
   if (!fechaStr) return '—';

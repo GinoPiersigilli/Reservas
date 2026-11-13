@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Reservas from '../Reservas.jsx';
 import * as AuthContextModule from '../../context/AuthContext.jsx';
@@ -15,6 +15,9 @@ vi.mock('../../services/reservas.service.js', () => ({
 describe('Reservas page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // La vista elegida se guarda en el navegador: sin limpiarla, un test
+    // arrastraría la elección del anterior.
+    window.localStorage.clear();
     AuthContextModule.useAuth.mockReturnValue({
       usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar', rol: 'usuario' },
       cerrarSesion: vi.fn()
@@ -60,18 +63,27 @@ describe('Reservas page', () => {
 
     expect(screen.getByRole('heading', { name: 'Mis reservas' })).toBeInTheDocument();
     expect(await screen.findByText('Clase de consulta - Análisis Matemático')).toBeInTheDocument();
-    const tabla = screen.getByRole('table', { name: /Listado de reservas/i });
-    expect(within(tabla).getByText('Simulacro de parcial')).toBeInTheDocument();
-    expect(within(tabla).getByText('#10')).toBeInTheDocument();
-    expect(within(tabla).getByText('#11')).toBeInTheDocument();
-    expect(within(tabla).getByText('10/11/2026')).toBeInTheDocument();
-    expect(within(tabla).getByText('Aprobada')).toBeInTheDocument();
-    expect(within(tabla).getByText('Pendiente')).toBeInTheDocument();
-    expect(screen.queryByRole('columnheader', { name: 'Solicitante' })).not.toBeInTheDocument();
+
+    // La agenda es la vista por defecto: una jornada por día, con el tramo
+    // horario de cada reserva y su estado.
+    const agenda = screen.getByRole('region', { name: /Agenda de reservas/i });
+    expect(
+      within(agenda).getByRole('heading', { name: /martes 10 de noviembre/i })
+    ).toBeInTheDocument();
+    expect(
+      within(agenda).getByRole('heading', { name: /jueves 12 de noviembre/i })
+    ).toBeInTheDocument();
+    expect(within(agenda).getByText('Simulacro de parcial')).toBeInTheDocument();
+    expect(within(agenda).getByText('09:00')).toBeInTheDocument();
+    expect(within(agenda).getByText('11:00')).toBeInTheDocument();
+    expect(
+      within(agenda).getByRole('link', { name: /Reserva #10, Aula 1, de 09:00 a 11:00, aprobada/i })
+    ).toHaveAttribute('href', '/reservas/10');
+    expect(screen.queryByRole('table', { name: /Listado de reservas/i })).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(reservasService.getReservas).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1, limit: 10 })
+        expect.objectContaining({ page: 1, limit: 10, sortBy: 'fecha', order: 'ASC' })
       );
     });
   });
@@ -82,7 +94,7 @@ describe('Reservas page', () => {
       cerrarSesion: vi.fn()
     });
 
-    reservasService.getReservas.mockResolvedValueOnce({
+    reservasService.getReservas.mockResolvedValue({
       data: {
         total: 2,
         pagina: 1,
@@ -122,11 +134,51 @@ describe('Reservas page', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Reservas' })).toBeInTheDocument();
+
+    // En la agenda el solicitante aparece solo para administración.
+    const agenda = await screen.findByRole('region', { name: /Agenda de reservas/i });
+    expect(within(agenda).getByText('David López')).toHaveAttribute('title', 'david@utnfrc.edu.ar');
+    expect(within(agenda).getByText('Usuario #3')).toBeInTheDocument();
+
+    // Y la tabla ordenable sigue disponible con su columna Solicitante.
+    fireEvent.click(screen.getByRole('button', { name: 'Tabla' }));
+
     expect(await screen.findByRole('columnheader', { name: 'Solicitante' })).toBeInTheDocument();
-    const nombreSolicitante = screen.getByText('David López');
-    expect(nombreSolicitante).toBeInTheDocument();
-    expect(nombreSolicitante).toHaveAttribute('title', 'david@utnfrc.edu.ar');
-    expect(screen.getByText('Usuario #3')).toBeInTheDocument();
+    const tabla = screen.getByRole('table', { name: /Listado de reservas/i });
+    expect(within(tabla).getAllByText('12/11/2026')).toHaveLength(2);
+    expect(screen.queryByRole('region', { name: /Agenda de reservas/i })).not.toBeInTheDocument();
+  });
+
+  it('remembers the chosen view between visits', async () => {
+    window.localStorage.setItem('vistaReservas', 'tabla');
+
+    reservasService.getReservas.mockResolvedValueOnce({
+      data: {
+        total: 1,
+        pagina: 1,
+        porPagina: 10,
+        datos: [
+          {
+            id: 40,
+            aulaId: 1,
+            fecha: '2026-11-12',
+            horaInicio: '10:00',
+            horaFin: '12:00',
+            cantidadPersonas: 10,
+            motivo: 'Consulta Álgebra',
+            estado: 'aprobada'
+          }
+        ]
+      }
+    });
+
+    render(
+      <MemoryRouter>
+        <Reservas />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('table', { name: /Listado de reservas/i })).toBeInTheDocument();
   });
 
   it('shows empty state when there are no reservations', async () => {

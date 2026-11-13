@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import Button from '../../components/ui/Button.jsx';
 import { TEXTOS } from '../../textos.js';
-import { formatearFecha } from '../../utils/formato.js';
+import { formatearFechaCorta } from '../../utils/formato.js';
 import { nombreDeAula, nombreDeSolicitante } from './metricasPanel.js';
 import styles from '../Resumen.module.css';
 
@@ -23,7 +23,7 @@ export const columnasPendientes = ({ nombresAulas, onAprobar, onRechazar }) => [
   {
     clave: 'fecha',
     titulo: 'Fecha',
-    render: (r) => <span className={styles.textoTabular}>{formatearFecha(r.fecha)}</span>
+    render: (r) => <span className={styles.textoTabular}>{formatearFechaCorta(r.fecha)}</span>
   },
   {
     clave: 'horario',
@@ -56,19 +56,5 @@ export const columnasPendientes = ({ nombresAulas, onAprobar, onRechazar }) => [
         </Link>
       </div>
     )
-  }
-];
-
-export const columnasPorAula = ({ nombresAulas }) => [
-  {
-    clave: 'aula',
-    titulo: 'Aula',
-    render: (a) => <span className={styles.nombreAula}>{nombreDeAula(a, nombresAulas)}</span>
-  },
-  {
-    clave: 'total',
-    titulo: 'Reservas',
-    alineacion: 'derecha',
-    render: (a) => <span className={styles.valorCompacto}>{a.total ?? a.totalReservas}</span>
   }
 ];
