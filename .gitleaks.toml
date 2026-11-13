@@ -1,0 +1,20 @@
+# Configuración de Gitleaks para Reservas.
+#
+# Se conservan todas las reglas por defecto y se agrega una excepción acotada
+# para el token sintético que existe justamente para verificar que el logger
+# oculta tokens JWT (hallazgo SEC-CFG-03 de la auditoría de seguridad).
+#
+# La excepción exige el archivo Y el texto exacto de ese token, de modo que
+# cualquier otro secreto en el mismo archivo siga detectándose. A diferencia de
+# las huellas de .gitleaksignore, no depende del hash del commit, así que no se
+# rompe al reformatear el código.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Token JWT sintético usado para probar el sanitizador de mensajes de error"
+matchCondition = "AND"
+paths = ['''(?:.*/)?error-handling\.test\.js''']
+regexTarget = "line"
+regexes = ['''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.xyz''']

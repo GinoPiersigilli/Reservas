@@ -19,8 +19,10 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
   let tokens = [];
   let aulaTest;
 
-  // Jest timeout de 30 segundos para permitir que 100 transacciones completen
-  jest.setTimeout(45000);
+  // Las 100 transacciones en conflicto se serializan en la restricción de
+  // exclusión: en un runner de CI, con PostgreSQL en un contenedor, la prueba
+  // puede tardar cerca de un minuto (en local, menos de un segundo).
+  jest.setTimeout(150000);
 
   beforeAll(async () => {
     await limpiarBaseDeDatos();
