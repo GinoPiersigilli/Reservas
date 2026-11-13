@@ -44,40 +44,58 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+/** Una respuesta 401 del propio login es un error de credenciales, no una sesión vencida. */
+const esRespuestaDeLogin = (error) => {
+  const url = error.config?.url || '';
+  const metodo = (error.config?.method || '').toLowerCase();
+  return url.includes('/auth/login') && metodo === 'post';
+};
+
+/** Avisa al contexto de autenticación, sin dejar que su error tape el original. */
+const notificarSesionCaida = async () => {
+  if (typeof _onUnauthorizedFn !== 'function') return;
+  try {
+    await _onUnauthorizedFn();
+  } catch {
+    // Ignorar errores en el callback de cierre de sesión
+  }
+};
+
+/** El mensaje sobrevive a la navegación para mostrarse en la pantalla de ingreso. */
+const guardarMotivo = () => {
+  try {
+    sessionStorage.setItem('auth_error', MENSAJE_SESION_EXPIRADA);
+  } catch {
+    // sessionStorage puede estar deshabilitado
+  }
+};
+
+const irALogin = () => {
+  if (typeof window === 'undefined' || !window.location) return;
+  if ((window.location.pathname || '') === '/login') return;
+  window.location.href = '/login';
+};
+
+/**
+ * Sesión vencida o revocada: se limpia todo lo local y se vuelve al ingreso con
+ * el motivo a la vista, en lugar de dejar la pantalla con datos de una sesión
+ * que ya no existe.
+ */
+const cerrarSesionPorNoAutorizado = async () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  registrarGetToken(null);
+
+  await notificarSesionCaida();
+  guardarMotivo();
+  irALogin();
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status = error.response?.status;
-    const url = error.config?.url || '';
-    const method = (error.config?.method || '').toLowerCase();
-
-    const esLogin = url.includes('/auth/login') && method === 'post';
-
-    if (status === 401 && !esLogin) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
-      registrarGetToken(null);
-
-      if (typeof _onUnauthorizedFn === 'function') {
-        try {
-          await _onUnauthorizedFn();
-        } catch {
-          // Ignorar errores en callback de cierre de sesión
-        }
-      }
-
-      try {
-        sessionStorage.setItem('auth_error', MENSAJE_SESION_EXPIRADA);
-      } catch {
-        // Ignorar fallo de sessionStorage si está deshabilitado
-      }
-
-      if (typeof window !== 'undefined' && window.location) {
-        const currentPath = window.location.pathname || '';
-        if (currentPath !== '/login') {
-          window.location.href = '/login';
-        }
-      }
+    if (error.response?.status === 401 && !esRespuestaDeLogin(error)) {
+      await cerrarSesionPorNoAutorizado();
     }
 
     return Promise.reject(error);
