@@ -12,7 +12,6 @@ Qué hay en cada documento y cuándo conviene abrirlo.
 | [CALIDAD.md](CALIDAD.md)           | Qué se prueba y por qué: la pirámide de pruebas, los límites de complejidad y los errores que estas pruebas encontraron. |
 | [RENDIMIENTO.md](RENDIMIENTO.md)   | Mediciones sobre 200.000 registros con `EXPLAIN (ANALYZE, BUFFERS)` y el efecto de cada índice.                          |
 | [SEGURIDAD.md](SEGURIDAD.md)       | El análisis de seguridad completo: hallazgos, mitigaciones y riesgos aceptados con su justificación.                     |
-| [ESTUDIO.md](ESTUDIO.md)           | Las doce decisiones que sostienen el sistema, con su alternativa descartada, un banco de preguntas y lo que no hace.     |
 
 ## Para operarlo
 
