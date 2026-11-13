@@ -404,11 +404,16 @@ Se implementó la suite de benchmark `backend/scripts/benchmark-db.js`, equipada
 
 ### 7.4 Estrategia de Rate Limiting Multicapa
 
-El backend implementa una defensa en profundidad contra abusos y denegación de servicio mediante tres limitadores complementarios basados en `express-rate-limit`:
+El backend implementa una defensa en profundidad contra abusos y denegación de servicio mediante **cuatro** limitadores complementarios basados en `express-rate-limit`. Cada uno responde a una amenaza distinta, y por eso ninguno es redundante: el primero acota el tráfico total de una IP, el segundo encarece las escrituras antes de gastar trabajo en verificar tokens, el tercero impide que una cuenta rote de IP para esquivar al segundo, y el cuarto protege específicamente la adivinación de contraseñas.
 
 1. **Límite General por IP (`limiteGeneral`):** Protege globalmente la raíz `/api` (300 peticiones cada 15 min), eximiendo de rate limiting a las sondas bajo `/api/health` (`/`, `/live` y `/ready`) para preservar el monitoreo de infraestructura.
 2. **Límite de Modificaciones por IP (`limiteEscrituras`):** Aplicado explícitamente antes de `verificarToken` en todas las rutas `POST`, `PUT` y `PATCH` de aulas y reservas, satisfaciendo los requerimientos de análisis estático SAST de CodeQL.
 3. **Límite de Modificaciones por Usuario Autenticado (`limiteEscriturasUsuario`):** Aplicado tras la autenticación para limitar escrituras por cuenta/usuario (`req.usuario.id`), impidiendo que un usuario distribuya peticiones abusivas a través de proxies rotativos. Configurable vía `RATE_LIMIT_USUARIO_*` y con respuestas estandarizadas `429 Too Many Requests` en español con encabezado `Retry-After`.
+4. **Límite de Inicio de Sesión (`limiteLogin`):** Aplicado solo a `POST /api/auth/login`, con su propio umbral configurable (`RATE_LIMIT_LOGIN_MAX`). Es el que mitiga la adivinación de contraseñas por fuerza bruta, una amenaza que los otros tres no cubren: un atacante que prueba contraseñas hace pocas peticiones por minuto y no se acerca al límite general de 300 cada 15 minutos. Tiene umbral propio además porque las pruebas de extremo a extremo inician sesión cientos de veces desde la misma IP, y un valor fijo en el código obligaba a elegir entre una protección útil y una suite que pudiera correr.
+
+**Orden de aplicación y por qué importa.** El límite de escrituras por IP va **antes** de `verificarToken`, no después: si estuviera después, cada petición abusiva obligaría al servidor a verificar criptográficamente un token —o, con tokens de Clerk, a salir a la red— antes de ser rechazada, que es exactamente el trabajo que el límite existe para evitar. El límite por usuario, en cambio, solo puede ir después, porque necesita `req.usuario.id`. Las sondas `/api/health` se montan antes del límite general para que un sondeo cada pocos segundos no consuma cuota ajena ni empiece a devolver `429` al orquestador.
+
+**Un usuario autenticado no elude ninguna capa:** las cuatro se aplican en cadena sobre la misma petición, y la autenticación no exime de las anteriores.
 
 ---
 

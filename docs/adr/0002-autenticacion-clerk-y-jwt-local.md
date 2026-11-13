@@ -42,6 +42,38 @@ Reglas comunes a las dos vías:
   cualquiera que registre en Clerk el correo de un administrador heredaría su
   cuenta (hallazgo SEC-AUTH-05).
 
+### Quién usa cada vía
+
+- **Clerk** lo usan las personas reales en la aplicación desplegada: es la vía
+  del registro, del inicio de sesión con Google y de la recuperación de
+  contraseña, ninguno de los cuales está implementado localmente.
+- **El JWT local** lo usan las pruebas (los 206 casos de API y los 20 de
+  extremo a extremo firman sus propios tokens), el modo de desarrollo sin red,
+  y las cuentas sembradas por los seeders. No hay ruta de registro local: el
+  alta de cuentas pasa siempre por Clerk o por un seeder.
+
+### Qué pasa en cada situación
+
+| Situación                                               | Qué ocurre                                                                                                                                                      |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| La cuenta se desactiva (`activo = false`)               | La petición siguiente responde `401`, aunque el token siga vigente: el middleware relee el usuario en cada petición.                                            |
+| Se le quita el rol de administrador                     | Lo mismo: el rol efectivo sale de la base, no del token, así que el cambio vale desde la petición siguiente.                                                    |
+| El token local vence (2 h)                              | `jsonwebtoken` lo rechaza y la respuesta es `401`. El frontend borra la sesión y lleva al login.                                                                |
+| El token de Clerk vence                                 | Lo rechaza `verifyToken`; el SDK del frontend lo renueva solo mientras la sesión de Clerk siga viva.                                                            |
+| El usuario existe en Clerk pero no localmente           | Se crea la cuenta local en el momento (JIT), siempre con rol `usuario` salvo que `publicMetadata.rol` —escribible solo desde el backend de Clerk— diga `admin`. |
+| El usuario de Clerk tiene el correo de una cuenta local | Se vinculan **solo** si Clerk informa el correo como verificado.                                                                                                |
+
+### Por qué las dos vías no pueden dar privilegios distintos
+
+Porque ninguna de las dos decide privilegios. El middleware las usa únicamente
+para **establecer de qué usuario se trata**; a partir de ahí lee `rol` y
+`activo` de la base y arma `req.usuario` con esos valores. Un token local y uno
+de Clerk que identifiquen a la misma persona producen exactamente el mismo
+`req.usuario`, porque los dos terminan en la misma fila de `usuarios`.
+
+El precio es una consulta por petición, resuelta por clave primaria. Es el
+intercambio deliberado: revocación inmediata a cambio de una lectura indexada.
+
 ## Consecuencias
 
 **A favor**
