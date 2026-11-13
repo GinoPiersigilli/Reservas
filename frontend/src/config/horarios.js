@@ -27,11 +27,7 @@ export const MINUTOS_FIN_JORNADA = horaAMinutos(HORA_FIN_JORNADA);
 
 export function generarBloquesJornada() {
   const bloques = [];
-  for (
-    let min = MINUTOS_INICIO_JORNADA;
-    min < MINUTOS_FIN_JORNADA;
-    min += PASO_MINUTOS
-  ) {
+  for (let min = MINUTOS_INICIO_JORNADA; min < MINUTOS_FIN_JORNADA; min += PASO_MINUTOS) {
     bloques.push({
       inicio: minutosAHora(min),
       fin: minutosAHora(min + PASO_MINUTOS),
@@ -92,4 +88,3 @@ export function obtenerMinutosAhoraArgentina() {
   const ahora = new Date();
   return ahora.getHours() * 60 + ahora.getMinutes();
 }
-

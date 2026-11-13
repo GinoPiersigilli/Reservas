@@ -15,32 +15,56 @@ function findBrowserPath() {
     return process.env.BROWSER_PATH;
   }
   if (process.env.BROWSER_PATH) {
-    throw new Error(`El navegador especificado en BROWSER_PATH no existe: ${process.env.BROWSER_PATH}`);
+    throw new Error(
+      `El navegador especificado en BROWSER_PATH no existe: ${process.env.BROWSER_PATH}`
+    );
   }
 
   const isWindows = process.platform === 'win32';
   const isMac = process.platform === 'darwin';
 
-  const candidates = isWindows ? [
-    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
-    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google\\Chrome\\Application\\chrome.exe'),
-    path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
-    path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Microsoft\\Edge\\Application\\msedge.exe'),
-    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Microsoft\\Edge\\Application\\msedge.exe'),
-    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-    path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-  ] : isMac ? [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
-  ] : [
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/brave-browser',
-    '/usr/bin/microsoft-edge',
-  ];
+  const candidates = isWindows
+    ? [
+        path.join(
+          process.env.PROGRAMFILES || 'C:\\Program Files',
+          'Google\\Chrome\\Application\\chrome.exe'
+        ),
+        path.join(
+          process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)',
+          'Google\\Chrome\\Application\\chrome.exe'
+        ),
+        path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+        path.join(
+          process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)',
+          'Microsoft\\Edge\\Application\\msedge.exe'
+        ),
+        path.join(
+          process.env.PROGRAMFILES || 'C:\\Program Files',
+          'Microsoft\\Edge\\Application\\msedge.exe'
+        ),
+        path.join(
+          process.env.PROGRAMFILES || 'C:\\Program Files',
+          'BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+        ),
+        path.join(
+          process.env.LOCALAPPDATA || '',
+          'BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+        )
+      ]
+    : isMac
+      ? [
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+          '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser'
+        ]
+      : [
+          '/usr/bin/google-chrome',
+          '/usr/bin/google-chrome-stable',
+          '/usr/bin/chromium',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/brave-browser',
+          '/usr/bin/microsoft-edge'
+        ];
 
   for (const candidate of candidates) {
     if (candidate && fs.existsSync(candidate)) {
@@ -50,7 +74,7 @@ function findBrowserPath() {
 
   throw new Error(
     'No se encontró ningún navegador compatible (Chrome, Edge o Brave) en las rutas estándar. ' +
-    'Por favor configurá la variable de entorno BROWSER_PATH con la ruta al ejecutable de tu navegador.'
+      'Por favor configurá la variable de entorno BROWSER_PATH con la ruta al ejecutable de tu navegador.'
   );
 }
 
@@ -132,67 +156,97 @@ function startMockBackend() {
       res.end(JSON.stringify({ status: 'ok', db: 'ok' }));
     } else if (url === '/api/auth/login') {
       res.writeHead(200);
-      res.end(JSON.stringify({
-        token: 'mock-jwt-token',
-        usuario: { id: 1, nombre: 'Administrador Bedelía', email: 'admin@utnfrc.edu.ar', rol: 'admin' }
-      }));
+      res.end(
+        JSON.stringify({
+          token: 'mock-jwt-token',
+          usuario: {
+            id: 1,
+            nombre: 'Administrador Bedelía',
+            email: 'admin@utnfrc.edu.ar',
+            rol: 'admin'
+          }
+        })
+      );
     } else if (url === '/api/aulas') {
       res.writeHead(200);
-      res.end(JSON.stringify({
-        datos: [
-          { id: 1, nombre: 'Laboratorio de Informática 1', capacidad: 30, ubicacion: 'Edificio Central' },
-          { id: 2, nombre: 'Aula Magna', capacidad: 120, ubicacion: 'Edificio Central' }
-        ]
-      }));
+      res.end(
+        JSON.stringify({
+          datos: [
+            {
+              id: 1,
+              nombre: 'Laboratorio de Informática 1',
+              capacidad: 30,
+              ubicacion: 'Edificio Central'
+            },
+            { id: 2, nombre: 'Aula Magna', capacidad: 120, ubicacion: 'Edificio Central' }
+          ]
+        })
+      );
     } else if (url.includes('/disponibilidad')) {
       res.writeHead(200);
-      res.end(JSON.stringify({
-        datos: [
-          { horaInicio: '10:00', horaFin: '12:00', estado: 'aprobada' },
-          { horaInicio: '14:00', horaFin: '16:00', estado: 'pendiente' }
-        ]
-      }));
+      res.end(
+        JSON.stringify({
+          datos: [
+            { horaInicio: '10:00', horaFin: '12:00', estado: 'aprobada' },
+            { horaInicio: '14:00', horaFin: '16:00', estado: 'pendiente' }
+          ]
+        })
+      );
     } else if (url === '/api/reservas/resumen') {
       res.writeHead(200);
-      res.end(JSON.stringify({
-        totales: { total: 10, aprobadas: 6, pendientes: 3, rechazadas: 1 },
-        proximasHoy: [
-          { id: 1, motivo: 'Clase Sistemas', aula: { nombre: 'Laboratorio de Informática 1' }, horaInicio: '10:00', horaFin: '12:00', estado: 'aprobada', usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' } }
-        ],
-        topAulas: [{ aula: 'Laboratorio de Informática 1', cantidad: 5 }]
-      }));
+      res.end(
+        JSON.stringify({
+          totales: { total: 10, aprobadas: 6, pendientes: 3, rechazadas: 1 },
+          proximasHoy: [
+            {
+              id: 1,
+              motivo: 'Clase Sistemas',
+              aula: { nombre: 'Laboratorio de Informática 1' },
+              horaInicio: '10:00',
+              horaFin: '12:00',
+              estado: 'aprobada',
+              usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' }
+            }
+          ],
+          topAulas: [{ aula: 'Laboratorio de Informática 1', cantidad: 5 }]
+        })
+      );
     } else if (url.startsWith('/api/reservas/') && !url.includes('historial')) {
       res.writeHead(200);
-      res.end(JSON.stringify({
-        datos: {
-          id: 1,
-          motivo: 'Clase Práctica',
-          fecha: '2026-11-09',
-          horaInicio: '10:00',
-          horaFin: '12:00',
-          estado: 'pendiente',
-          aula: { id: 1, nombre: 'Laboratorio de Informática 1', capacidad: 30 },
-          usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' },
-          historial: []
-        }
-      }));
-    } else if (url === '/api/reservas') {
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        datos: [
-          {
+      res.end(
+        JSON.stringify({
+          datos: {
             id: 1,
             motivo: 'Clase Práctica',
             fecha: '2026-11-09',
             horaInicio: '10:00',
             horaFin: '12:00',
             estado: 'pendiente',
-            aula: { id: 1, nombre: 'Laboratorio de Informática 1' },
-            usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' }
+            aula: { id: 1, nombre: 'Laboratorio de Informática 1', capacidad: 30 },
+            usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' },
+            historial: []
           }
-        ],
-        paginacion: { total: 1, pagina: 1, limite: 10, totalPaginas: 1 }
-      }));
+        })
+      );
+    } else if (url === '/api/reservas') {
+      res.writeHead(200);
+      res.end(
+        JSON.stringify({
+          datos: [
+            {
+              id: 1,
+              motivo: 'Clase Práctica',
+              fecha: '2026-11-09',
+              horaInicio: '10:00',
+              horaFin: '12:00',
+              estado: 'pendiente',
+              aula: { id: 1, nombre: 'Laboratorio de Informática 1' },
+              usuario: { id: 2, nombre: 'David López', email: 'david@utnfrc.edu.ar' }
+            }
+          ],
+          paginacion: { total: 1, pagina: 1, limite: 10, totalPaginas: 1 }
+        })
+      );
     } else {
       res.writeHead(200);
       res.end(JSON.stringify({ datos: [] }));
@@ -251,7 +305,12 @@ async function main() {
   } catch {
     const frontendProc = spawn(
       process.execPath,
-      [path.join(ROOT, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js'), '--port', '5173', '--strictPort'],
+      [
+        path.join(ROOT, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js'),
+        '--port',
+        '5173',
+        '--strictPort'
+      ],
       {
         cwd: path.join(ROOT, 'frontend'),
         stdio: 'ignore'
@@ -286,7 +345,9 @@ async function main() {
   const idDetalle = reservaPendiente?.id || 1;
 
   const browserPath = findBrowserPath();
-  console.log(`4. Iniciando navegador headless (${path.basename(browserPath)}) con CDP en puerto 9229 y locale es-AR...`);
+  console.log(
+    `4. Iniciando navegador headless (${path.basename(browserPath)}) con CDP en puerto 9229 y locale es-AR...`
+  );
   const browserProc = spawn(
     browserPath,
     [
@@ -319,7 +380,9 @@ async function main() {
   }
   const pageTarget = targets.find((t) => t.type === 'page') || targets[0];
   if (!pageTarget || !pageTarget.webSocketDebuggerUrl) {
-    throw new Error('No se pudo obtener un target de página con webSocketDebuggerUrl del navegador');
+    throw new Error(
+      'No se pudo obtener un target de página con webSocketDebuggerUrl del navegador'
+    );
   }
   const cdp = new CDPClient(pageTarget.webSocketDebuggerUrl);
   await cdp.connect();
@@ -334,7 +397,8 @@ async function main() {
     // Si la versión no soporta setLocaleOverride, el flag --lang=es-AR ya lo define
   }
   await cdp.send('Emulation.setUserAgentOverride', {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     acceptLanguage: 'es-AR,es'
   });
 
@@ -383,9 +447,13 @@ async function main() {
         returnByValue: true
       });
       const { scrollWidth, innerWidth } = evalRes.result.value;
-      console.log(`   [Responsive ${w}px] ${ruta}: scrollWidth=${scrollWidth}, innerWidth=${innerWidth}`);
+      console.log(
+        `   [Responsive ${w}px] ${ruta}: scrollWidth=${scrollWidth}, innerWidth=${innerWidth}`
+      );
       if (scrollWidth > innerWidth) {
-        throw new Error(`Desborde horizontal en ${ruta} a ${w}px: scrollWidth=${scrollWidth} > innerWidth=${innerWidth}`);
+        throw new Error(
+          `Desborde horizontal en ${ruta} a ${w}px: scrollWidth=${scrollWidth} > innerWidth=${innerWidth}`
+        );
       }
     }
   }
@@ -438,7 +506,10 @@ async function main() {
   await goAndVerify('/reservas');
   await capture('reservas-admin-escritorio.png', 1280, 800, false);
 
-  const reservaAprobadaManiana = listaReservas.find((r) => r.estado === 'aprobada' && r.horaInicio >= '10:00' && r.horaInicio <= '12:00') || listaReservas[1];
+  const reservaAprobadaManiana =
+    listaReservas.find(
+      (r) => r.estado === 'aprobada' && r.horaInicio >= '10:00' && r.horaInicio <= '12:00'
+    ) || listaReservas[1];
   const fechaConOcupadas = reservaAprobadaManiana?.fecha || '2026-11-12';
 
   // Crear una reserva pendiente en Aula 910 (09:00 a 10:30) en la misma fecha para que la captura muestre simultáneamente bloque Aprobada (macizo), Pendiente (rayado) y Seleccionado
@@ -521,4 +592,3 @@ main().catch((err) => {
   console.error('Error en script de capturas:', err);
   process.exit(1);
 });
-

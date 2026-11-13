@@ -11,7 +11,8 @@ describe('SEC-CFG-03: Manejo y registro seguro de errores en producción', () =>
   });
 
   it('sanitiza contraseñas, secretos y tokens JWT en los mensajes de error', () => {
-    const raw = 'Fallo de autenticación con password=SuperSecret123 y token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz';
+    const raw =
+      'Fallo de autenticación con password=SuperSecret123 y token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz';
     const sanitizado = sanitizarMensaje(raw);
 
     expect(sanitizado).not.toContain('SuperSecret123');

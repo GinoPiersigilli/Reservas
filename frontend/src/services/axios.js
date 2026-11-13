@@ -7,8 +7,12 @@ const api = axios.create({
 let _tokenFn = null;
 let _onUnauthorizedFn = null;
 
-export const registrarGetToken = (fn) => { _tokenFn = fn; };
-export const registrarOnUnauthorized = (fn) => { _onUnauthorizedFn = fn; };
+export const registrarGetToken = (fn) => {
+  _tokenFn = fn;
+};
+export const registrarOnUnauthorized = (fn) => {
+  _onUnauthorizedFn = fn;
+};
 
 export const MENSAJE_SESION_EXPIRADA = 'Su sesión expiró o fue desactivada. Ingrese nuevamente.';
 

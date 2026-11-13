@@ -53,12 +53,7 @@ export default function FiltrosReservas({ onFiltrar, aulas = [] }) {
         </Field>
 
         <Field id="filtro-fecha" etiqueta="Fecha">
-          <Input
-            type="date"
-            name="fecha"
-            value={form.fecha}
-            onChange={handleChange}
-          />
+          <Input type="date" name="fecha" value={form.fecha} onChange={handleChange} />
         </Field>
 
         <Field id="filtro-aula" etiqueta="Aula">

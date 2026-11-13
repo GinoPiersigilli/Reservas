@@ -64,7 +64,8 @@ export function useGoogleOAuth({
     timeoutRef.current = setTimeout(() => {
       setRedirigiendoGoogle(false);
       setErrorGoogle(
-        TEXTOS.login?.noCompletadoGoogle || 'No se completó el ingreso con Google. Intente de nuevo.'
+        TEXTOS.login?.noCompletadoGoogle ||
+          'No se completó el ingreso con Google. Intente de nuevo.'
       );
       timeoutRef.current = null;
     }, timeoutMs);

@@ -291,9 +291,9 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
           cantidadPersonas: 20,
           motivo: 'Intento de asignación masiva',
           usuarioId: usuarioAdmin.id, // Suplantación de identidad
-          estado: 'aprobada',         // Intento de auto-aprobación
-          id: 999999,                 // Intento de forzar ID
-          rol: 'admin'                // Intento de elevación
+          estado: 'aprobada', // Intento de auto-aprobación
+          id: 999999, // Intento de forzar ID
+          rol: 'admin' // Intento de elevación
         });
 
       expect(res.status).toBe(201);
@@ -383,12 +383,10 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
     });
 
     it('rechaza inyección SQL en el campo email de login sin producir error 500', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: "' OR '1'='1' --",
-          password: 'password123'
-        });
+      const res = await request(app).post('/api/auth/login').send({
+        email: "' OR '1'='1' --",
+        password: 'password123'
+      });
 
       expect([400, 401]).toContain(res.status);
       expect(res.status).not.toBe(500);
@@ -520,12 +518,10 @@ describe('Suite Integral de Seguridad y Pruebas de Ataque (SEC-TEST-SUITE)', () 
 
   describe('10. Prevención de Fuga de Información Sensible', () => {
     it('no expone passwordHash ni datos sensibles en respuestas de autenticación exitosa', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: 'admin.sec@test.com',
-          password: 'Password123!'
-        });
+      const res = await request(app).post('/api/auth/login').send({
+        email: 'admin.sec@test.com',
+        password: 'Password123!'
+      });
 
       expect(res.status).toBe(200);
       const resStr = JSON.stringify(res.body);

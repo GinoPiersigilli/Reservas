@@ -98,8 +98,18 @@ describe('Fase 10 — ABM y Ciclo de Vida de Aulas', () => {
     });
 
     it('GET /api/aulas: usuario común solo ve activas incluso con ?incluirInactivas=true', async () => {
-      await Aula.create({ nombre: 'Aula Activa', ubicacion: 'Piso 1', capacidad: 30, activa: true });
-      await Aula.create({ nombre: 'Aula Inactiva', ubicacion: 'Piso 2', capacidad: 40, activa: false });
+      await Aula.create({
+        nombre: 'Aula Activa',
+        ubicacion: 'Piso 1',
+        capacidad: 30,
+        activa: true
+      });
+      await Aula.create({
+        nombre: 'Aula Inactiva',
+        ubicacion: 'Piso 2',
+        capacidad: 40,
+        activa: false
+      });
 
       const res = await request(app)
         .get('/api/aulas?incluirInactivas=true')
@@ -111,8 +121,18 @@ describe('Fase 10 — ABM y Ciclo de Vida de Aulas', () => {
     });
 
     it('GET /api/aulas: admin ve todas cuando envía ?incluirInactivas=true', async () => {
-      await Aula.create({ nombre: 'Aula Activa', ubicacion: 'Piso 1', capacidad: 30, activa: true });
-      await Aula.create({ nombre: 'Aula Inactiva', ubicacion: 'Piso 2', capacidad: 40, activa: false });
+      await Aula.create({
+        nombre: 'Aula Activa',
+        ubicacion: 'Piso 1',
+        capacidad: 30,
+        activa: true
+      });
+      await Aula.create({
+        nombre: 'Aula Inactiva',
+        ubicacion: 'Piso 2',
+        capacidad: 40,
+        activa: false
+      });
 
       const res = await request(app)
         .get('/api/aulas?incluirInactivas=true')
@@ -220,7 +240,9 @@ describe('Fase 10 — ABM y Ciclo de Vida de Aulas', () => {
         .send({ capacidad: 30 });
 
       expect(res.status).toBe(409);
-      expect(res.body.error).toMatch(/no se puede reducir la capacidad por debajo de las reservas futuras/i);
+      expect(res.body.error).toMatch(
+        /no se puede reducir la capacidad por debajo de las reservas futuras/i
+      );
       expect(res.body.capacidadMaximaRequerida).toBe(40);
       expect(res.body.detalle).toBeDefined();
 
@@ -463,7 +485,9 @@ describe('Fase 10 — ABM y Ciclo de Vida de Aulas', () => {
 
     it('si falla la inserción en historial_aulas se hace rollback de la creación del aula', async () => {
       // Intentamos crear con un espía que haga fallar HistorialAula.create
-      const spy = jest.spyOn(HistorialAula, 'create').mockRejectedValueOnce(new Error('Fallo simulado en auditoría'));
+      const spy = jest
+        .spyOn(HistorialAula, 'create')
+        .mockRejectedValueOnce(new Error('Fallo simulado en auditoría'));
 
       const res = await request(app)
         .post('/api/aulas')

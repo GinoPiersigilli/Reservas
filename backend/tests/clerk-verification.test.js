@@ -39,7 +39,9 @@ describe('SEC-AUTH-03: verificación de tokens de Clerk con authorizedParties', 
       id: 'user_clerk_azp_test',
       firstName: 'Clerk',
       lastName: 'User',
-      emailAddresses: [{ emailAddress: 'clerk.user@utnfrc.edu.ar', verification: { status: 'verified' } }],
+      emailAddresses: [
+        { emailAddress: 'clerk.user@utnfrc.edu.ar', verification: { status: 'verified' } }
+      ],
       publicMetadata: { rol: 'usuario' }
     });
 
@@ -85,11 +87,13 @@ describe('SEC-AUTH-03: verificación de tokens de Clerk con authorizedParties', 
         id: 'user_clerk_unverified',
         firstName: 'Docente',
         lastName: 'Clerk',
-        emailAddresses: [{
-          id: 'email_1',
-          emailAddress: 'docente@utnfrc.edu.ar',
-          verification: { status: 'unverified' }
-        }],
+        emailAddresses: [
+          {
+            id: 'email_1',
+            emailAddress: 'docente@utnfrc.edu.ar',
+            verification: { status: 'unverified' }
+          }
+        ],
         primaryEmailAddressId: 'email_1',
         publicMetadata: { rol: 'usuario' }
       });
@@ -127,11 +131,13 @@ describe('SEC-AUTH-03: verificación de tokens de Clerk con authorizedParties', 
         id: 'user_clerk_verified_ok',
         firstName: 'Docente',
         lastName: 'Verificado',
-        emailAddresses: [{
-          id: 'email_v',
-          emailAddress: 'docente-verificado@utnfrc.edu.ar',
-          verification: { status: 'verified' }
-        }],
+        emailAddresses: [
+          {
+            id: 'email_v',
+            emailAddress: 'docente-verificado@utnfrc.edu.ar',
+            verification: { status: 'verified' }
+          }
+        ],
         primaryEmailAddressId: 'email_v',
         publicMetadata: { rol: 'usuario' }
       });
@@ -162,11 +168,13 @@ describe('SEC-AUTH-03: verificación de tokens de Clerk con authorizedParties', 
         id: 'user_clerk_ya_vinculado',
         firstName: 'Usuario',
         lastName: 'Con ClerkId',
-        emailAddresses: [{
-          id: 'email_existente',
-          emailAddress: 'existente@utnfrc.edu.ar',
-          verification: { status: 'verified' }
-        }],
+        emailAddresses: [
+          {
+            id: 'email_existente',
+            emailAddress: 'existente@utnfrc.edu.ar',
+            verification: { status: 'verified' }
+          }
+        ],
         publicMetadata: { rol: 'usuario' }
       });
 

@@ -136,7 +136,13 @@ export default function Aulas() {
       errores.ubicacion = 'La ubicación no puede superar los 120 caracteres';
     }
 
-    if (!formData.capacidad || Number.isNaN(capacidadNum) || !Number.isInteger(capacidadNum) || capacidadNum < 1 || capacidadNum > 1000) {
+    if (
+      !formData.capacidad ||
+      Number.isNaN(capacidadNum) ||
+      !Number.isInteger(capacidadNum) ||
+      capacidadNum < 1 ||
+      capacidadNum > 1000
+    ) {
       errores.capacidad = 'La capacidad debe ser un número entero entre 1 y 1000';
     }
 
@@ -253,7 +259,12 @@ export default function Aulas() {
     {
       clave: 'recursos',
       titulo: TEXTOS.aulas.recursos,
-      render: (aula) => aula.recursos ? aula.recursos : <span className={styles.sinRecursos}>{TEXTOS.aulas.sinRecursos}</span>
+      render: (aula) =>
+        aula.recursos ? (
+          aula.recursos
+        ) : (
+          <span className={styles.sinRecursos}>{TEXTOS.aulas.sinRecursos}</span>
+        )
     },
     {
       clave: 'estado',
@@ -303,10 +314,7 @@ export default function Aulas() {
           <h1 className={styles.titulo}>{TEXTOS.aulas.titulo}</h1>
           <p className={styles.subtitulo}>{TEXTOS.aulas.subtitulo}</p>
         </div>
-        <Button
-          variante="primario"
-          onClick={abrirModalCrear}
-        >
+        <Button variante="primario" onClick={abrirModalCrear}>
           <Plus size={16} strokeWidth={2} aria-hidden="true" />
           <span>{TEXTOS.aulas.nuevaAula}</span>
         </Button>
@@ -319,7 +327,9 @@ export default function Aulas() {
             className={[
               styles.botonFiltro,
               filtroEstado === 'todas' ? styles.botonFiltroActivo : ''
-            ].filter(Boolean).join(' ')}
+            ]
+              .filter(Boolean)
+              .join(' ')}
             onClick={() => setFiltroEstado('todas')}
             aria-pressed={filtroEstado === 'todas'}
           >
@@ -330,7 +340,9 @@ export default function Aulas() {
             className={[
               styles.botonFiltro,
               filtroEstado === 'activas' ? styles.botonFiltroActivo : ''
-            ].filter(Boolean).join(' ')}
+            ]
+              .filter(Boolean)
+              .join(' ')}
             onClick={() => setFiltroEstado('activas')}
             aria-pressed={filtroEstado === 'activas'}
           >
@@ -341,7 +353,9 @@ export default function Aulas() {
             className={[
               styles.botonFiltro,
               filtroEstado === 'inactivas' ? styles.botonFiltroActivo : ''
-            ].filter(Boolean).join(' ')}
+            ]
+              .filter(Boolean)
+              .join(' ')}
             onClick={() => setFiltroEstado('inactivas')}
             aria-pressed={filtroEstado === 'inactivas'}
           >
@@ -351,7 +365,16 @@ export default function Aulas() {
       </div>
 
       {cargando ? (
-        <TablaSkeleton cabeceras={[TEXTOS.aulas.nombre, TEXTOS.aulas.ubicacion, TEXTOS.aulas.capacidad, TEXTOS.aulas.recursos, TEXTOS.aulas.estado, TEXTOS.aulas.acciones]} />
+        <TablaSkeleton
+          cabeceras={[
+            TEXTOS.aulas.nombre,
+            TEXTOS.aulas.ubicacion,
+            TEXTOS.aulas.capacidad,
+            TEXTOS.aulas.recursos,
+            TEXTOS.aulas.estado,
+            TEXTOS.aulas.acciones
+          ]}
+        />
       ) : errorCarga ? (
         <ErrorState
           titulo={TEXTOS.ui.errorTitulo}
@@ -397,11 +420,7 @@ export default function Aulas() {
             </div>
           ) : null}
 
-          <Field
-            etiqueta={TEXTOS.aulas.nombre}
-            obligatorio
-            error={erroresForm.nombre}
-          >
+          <Field etiqueta={TEXTOS.aulas.nombre} obligatorio error={erroresForm.nombre}>
             <Input
               name="nombre"
               value={formData.nombre}
@@ -411,11 +430,7 @@ export default function Aulas() {
             />
           </Field>
 
-          <Field
-            etiqueta={TEXTOS.aulas.ubicacion}
-            obligatorio
-            error={erroresForm.ubicacion}
-          >
+          <Field etiqueta={TEXTOS.aulas.ubicacion} obligatorio error={erroresForm.ubicacion}>
             <Input
               name="ubicacion"
               value={formData.ubicacion}
@@ -424,11 +439,7 @@ export default function Aulas() {
             />
           </Field>
 
-          <Field
-            etiqueta={TEXTOS.aulas.capacidad}
-            obligatorio
-            error={erroresForm.capacidad}
-          >
+          <Field etiqueta={TEXTOS.aulas.capacidad} obligatorio error={erroresForm.capacidad}>
             <Input
               type="number"
               min="1"
@@ -483,11 +494,7 @@ export default function Aulas() {
         </label>
 
         {cancelarReservasFuturas ? (
-          <Field
-            etiqueta={TEXTOS.aulas.motivoBaja}
-            obligatorio
-            error={errorMotivo}
-          >
+          <Field etiqueta={TEXTOS.aulas.motivoBaja} obligatorio error={errorMotivo}>
             <Textarea
               rows={3}
               value={motivoBaja}
@@ -517,11 +524,7 @@ export default function Aulas() {
       />
 
       {mensajeToast ? (
-        <Toast
-          mensaje={mensajeToast}
-          tipo="exito"
-          onCerrar={() => setMensajeToast(null)}
-        />
+        <Toast mensaje={mensajeToast} tipo="exito" onCerrar={() => setMensajeToast(null)} />
       ) : null}
     </div>
   );

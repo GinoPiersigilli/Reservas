@@ -1,0 +1,14 @@
+{
+  "name": "reservas",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Herramientas de formato compartidas por el backend, el frontend y las pruebas E2E",
+  "license": "MIT",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}

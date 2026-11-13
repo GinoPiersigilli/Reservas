@@ -84,7 +84,8 @@ export const TEXTOS = {
     tituloUsuario: 'Mis reservas',
     migasRaiz: 'Reservas',
     vacioTitulo: 'Sin reservas para mostrar',
-    vacioDescripcion: 'No hay reservas para los filtros elegidos. Limpie los filtros o cree una reserva.',
+    vacioDescripcion:
+      'No hay reservas para los filtros elegidos. Limpie los filtros o cree una reserva.',
     errorTitulo: 'Error al cargar las reservas',
     errorDescripcion: 'No se pudieron cargar las reservas. Revise la conexión e intente de nuevo.',
     creadaExito: 'Reserva creada.',
@@ -118,13 +119,15 @@ export const TEXTOS = {
     vacioDescripcion: 'No se encontraron aulas con el filtro seleccionado.',
     errorCarga: 'No se pudieron cargar las aulas. Intente de nuevo.',
     confirmarDesactivarTitulo: 'Desactivar aula',
-    confirmarDesactivarDescripcion: '¿Confirma que desea desactivar esta aula? No estará disponible para nuevas reservas.',
+    confirmarDesactivarDescripcion:
+      '¿Confirma que desea desactivar esta aula? No estará disponible para nuevas reservas.',
     avisoReservasFuturas: 'El aula tiene {cantidad} reserva(s) futura(s) activa(s).',
     cancelarReservasFuturas: 'Cancelar las reservas futuras',
     motivoBaja: 'Motivo de la baja',
     motivoRequerido: 'Ingrese un motivo para la baja del aula.',
     confirmarReactivarTitulo: 'Reactivar aula',
-    confirmarReactivarDescripcion: '¿Confirma que desea reactivar esta aula para recibir nuevas reservas?'
+    confirmarReactivarDescripcion:
+      '¿Confirma que desea reactivar esta aula para recibir nuevas reservas?'
   },
   formulario: {
     tituloNueva: 'Nueva reserva',
@@ -141,7 +144,8 @@ export const TEXTOS = {
   },
   dialogos: {
     cancelarTitulo: 'Cancelar reserva',
-    cancelarDescripcion: '¿Confirma que desea cancelar esta reserva? Esta acción no se puede deshacer.',
+    cancelarDescripcion:
+      '¿Confirma que desea cancelar esta reserva? Esta acción no se puede deshacer.',
     rechazarTitulo: 'Rechazar solicitud',
     rechazarDescripcion: '¿Confirma que desea rechazar esta solicitud de reserva?',
     aprobarTitulo: 'Aprobar solicitud',
@@ -179,4 +183,3 @@ export const TEXTOS = {
 };
 
 export default TEXTOS;
-

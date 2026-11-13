@@ -35,9 +35,7 @@ export const esFechaValida = (fechaStr) => {
   const fecha = new Date(Date.UTC(anio, mes - 1, dia));
 
   return (
-    fecha.getUTCFullYear() === anio &&
-    fecha.getUTCMonth() === mes - 1 &&
-    fecha.getUTCDate() === dia
+    fecha.getUTCFullYear() === anio && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === dia
   );
 };
 

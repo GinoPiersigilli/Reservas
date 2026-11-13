@@ -21,7 +21,12 @@ describe('useGoogleOAuth hook', () => {
 
   it('sets redirigiendoGoogle=true when initiating OAuth', async () => {
     let resolveAuth;
-    const mockAuth = vi.fn().mockImplementation(() => new Promise((resolve) => { resolveAuth = resolve; }));
+    const mockAuth = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveAuth = resolve;
+        })
+    );
 
     const { result } = renderHook(() =>
       useGoogleOAuth({
@@ -110,7 +115,9 @@ describe('useGoogleOAuth hook', () => {
     });
 
     expect(result.current.redirigiendoGoogle).toBe(false);
-    expect(result.current.errorGoogle).toBe('No se completó el ingreso con Google. Intente de nuevo.');
+    expect(result.current.errorGoogle).toBe(
+      'No se completó el ingreso con Google. Intente de nuevo.'
+    );
 
     vi.useRealTimers();
   });
@@ -153,7 +160,10 @@ describe('useGoogleOAuth hook', () => {
     unmount();
 
     expect(removeEventListenerSpy).toHaveBeenCalledWith('pageshow', expect.any(Function));
-    expect(docRemoveEventListenerSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    expect(docRemoveEventListenerSpy).toHaveBeenCalledWith(
+      'visibilitychange',
+      expect.any(Function)
+    );
 
     // Verify timer doesn't trigger state update after unmount
     act(() => {

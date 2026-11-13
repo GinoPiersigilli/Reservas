@@ -154,4 +154,3 @@ describe('Resumen (Panel de administración)', () => {
     expect(screen.getByText(/\(70%\)/i)).toBeInTheDocument();
   });
 });
-

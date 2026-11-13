@@ -12,14 +12,11 @@ export const getReservas = (params = {}) => {
   return api.get('/reservas', { params: cleanParams });
 };
 
-export const getReserva = (id) =>
-  api.get(`/reservas/${id}`);
+export const getReserva = (id) => api.get(`/reservas/${id}`);
 
-export const getHistorial = (id) =>
-  api.get(`/reservas/${id}/historial`);
+export const getHistorial = (id) => api.get(`/reservas/${id}/historial`);
 
-export const getResumen = () =>
-  api.get('/reservas/resumen');
+export const getResumen = () => api.get('/reservas/resumen');
 
 export const crearReserva = (datos, opciones = {}) => {
   const config = {};
@@ -29,14 +26,10 @@ export const crearReserva = (datos, opciones = {}) => {
   return api.post('/reservas', datos, config);
 };
 
-export const editarReserva = (id, datos) =>
-  api.put(`/reservas/${id}`, datos);
+export const editarReserva = (id, datos) => api.put(`/reservas/${id}`, datos);
 
-export const aprobarReserva = (id) =>
-  api.patch(`/reservas/${id}/aprobar`);
+export const aprobarReserva = (id) => api.patch(`/reservas/${id}/aprobar`);
 
-export const rechazarReserva = (id) =>
-  api.patch(`/reservas/${id}/rechazar`);
+export const rechazarReserva = (id) => api.patch(`/reservas/${id}/rechazar`);
 
-export const cancelarReserva = (id) =>
-  api.patch(`/reservas/${id}/cancelar`);
+export const cancelarReserva = (id) => api.patch(`/reservas/${id}/cancelar`);

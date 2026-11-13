@@ -40,15 +40,56 @@ beforeAll(async () => {
 beforeEach(async () => {
   await limpiarBaseDeDatos();
 
-  admin = await Usuario.create({ nombre: 'Admin Test', email: 'admin@test.com', passwordHash, rol: 'admin', activo: true });
-  usuario = await Usuario.create({ nombre: 'User Test A', email: 'user@test.com', passwordHash, rol: 'usuario', activo: true });
-  otroUsuario = await Usuario.create({ nombre: 'User Test B', email: 'userb@test.com', passwordHash, rol: 'usuario', activo: true });
+  admin = await Usuario.create({
+    nombre: 'Admin Test',
+    email: 'admin@test.com',
+    passwordHash,
+    rol: 'admin',
+    activo: true
+  });
+  usuario = await Usuario.create({
+    nombre: 'User Test A',
+    email: 'user@test.com',
+    passwordHash,
+    rol: 'usuario',
+    activo: true
+  });
+  otroUsuario = await Usuario.create({
+    nombre: 'User Test B',
+    email: 'userb@test.com',
+    passwordHash,
+    rol: 'usuario',
+    activo: true
+  });
 
-  adminToken = jwt.sign({ id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
-  usuarioToken = jwt.sign({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
-  otroUsuarioToken = jwt.sign({ id: otroUsuario.id, nombre: otroUsuario.nombre, email: otroUsuario.email, rol: otroUsuario.rol }, env.JWT_SECRET, { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' });
+  adminToken = jwt.sign(
+    { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
+    env.JWT_SECRET,
+    { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
+  );
+  usuarioToken = jwt.sign(
+    { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+    env.JWT_SECRET,
+    { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
+  );
+  otroUsuarioToken = jwt.sign(
+    {
+      id: otroUsuario.id,
+      nombre: otroUsuario.nombre,
+      email: otroUsuario.email,
+      rol: otroUsuario.rol
+    },
+    env.JWT_SECRET,
+    { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
+  );
 
-  aula = await Aula.create({ nombre: 'Aula de Prueba', ubicacion: 'Piso 1', capacidad: 20, recursos: 'pizarra', activa: true });
+  aula = await Aula.create({
+    nombre: 'Aula de Prueba',
+    ubicacion: 'Piso 1',
+    capacidad: 20,
+    recursos: 'pizarra',
+    activa: true
+  });
 
   const fechaBase = fechaFutura(1);
 
@@ -164,7 +205,10 @@ describe('Reservas API', () => {
       .set('Authorization', `Bearer ${usuarioToken}`);
 
     expect(responseOtroUsuario.status).toBe(403);
-    expect(responseOtroUsuario.body).toHaveProperty('error', 'No tienes permiso para cancelar esta reserva');
+    expect(responseOtroUsuario.body).toHaveProperty(
+      'error',
+      'No tienes permiso para cancelar esta reserva'
+    );
 
     const tokenRolDesconocido = jwt.sign(
       { id: usuario.id, nombre: 'Invitado', email: 'invitado@test.com', rol: 'invitado' },
@@ -177,7 +221,10 @@ describe('Reservas API', () => {
       .set('Authorization', `Bearer ${tokenRolDesconocido}`);
 
     expect(responseRolDesconocido.status).toBe(403);
-    expect(responseRolDesconocido.body).toHaveProperty('error', 'No tienes permiso para cancelar esta reserva');
+    expect(responseRolDesconocido.body).toHaveProperty(
+      'error',
+      'No tienes permiso para cancelar esta reserva'
+    );
   });
 
   it('should return reservation detail for existing id', async () => {
@@ -244,7 +291,10 @@ describe('Reservas API', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('error', 'La fecha debe tener un formato válido YYYY-MM-DD');
+      expect(response.body).toHaveProperty(
+        'error',
+        'La fecha debe tener un formato válido YYYY-MM-DD'
+      );
     });
 
     it('rejects invalid estado in query with 400', async () => {
@@ -262,7 +312,10 @@ describe('Reservas API', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('error', 'La página debe ser un número entero mayor a 0');
+      expect(response.body).toHaveProperty(
+        'error',
+        'La página debe ser un número entero mayor a 0'
+      );
     });
 
     it('rejects invalid aulaId in query with 400', async () => {
@@ -335,7 +388,10 @@ describe('Reservas API', () => {
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('error', 'La fecha debe tener un formato válido YYYY-MM-DD');
+      expect(response.body).toHaveProperty(
+        'error',
+        'La fecha debe tener un formato válido YYYY-MM-DD'
+      );
     });
   });
 
@@ -354,7 +410,10 @@ describe('Reservas API', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('error', 'La cantidad de personas debe ser un número entero mayor a 0');
+      expect(response.body).toHaveProperty(
+        'error',
+        'La cantidad de personas debe ser un número entero mayor a 0'
+      );
     });
 
     it('rejects PUT /api/reservas/:id with non-positive aulaId with 400', async () => {
@@ -374,7 +433,10 @@ describe('Reservas API', () => {
         .send({ motivo: 'A'.repeat(256) });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('error', 'El motivo no puede superar los 255 caracteres');
+      expect(response.body).toHaveProperty(
+        'error',
+        'El motivo no puede superar los 255 caracteres'
+      );
     });
   });
 
@@ -412,7 +474,10 @@ describe('Reservas API', () => {
       });
 
     expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('error', 'La cantidad de personas supera la capacidad del aula');
+    expect(response.body).toHaveProperty(
+      'error',
+      'La cantidad de personas supera la capacidad del aula'
+    );
   });
 
   it('should reject reservation creation due overlapping schedule', async () => {
@@ -893,7 +958,9 @@ describe('Reservas API', () => {
     });
 
     // Sin token -> 401
-    const sinToken = await request(app).get(`/api/aulas/${aula.id}/disponibilidad?fecha=${fechaDisp}`);
+    const sinToken = await request(app).get(
+      `/api/aulas/${aula.id}/disponibilidad?fecha=${fechaDisp}`
+    );
     expect(sinToken.status).toBe(401);
 
     // Aula inexistente -> 404
@@ -1044,7 +1111,10 @@ describe('Reservas API', () => {
         motivo: 'Horario invertido'
       });
     expect(resHoraInvertida.status).toBe(400);
-    expect(resHoraInvertida.body).toHaveProperty('error', 'La hora de inicio debe ser menor a la hora de fin');
+    expect(resHoraInvertida.body).toHaveProperty(
+      'error',
+      'La hora de inicio debe ser menor a la hora de fin'
+    );
 
     // 5. Fuera de horario laboral (08:00 a 22:00) -> 400
     const resTemprano = await request(app)
@@ -1059,7 +1129,10 @@ describe('Reservas API', () => {
         motivo: 'Antes de las 08:00'
       });
     expect(resTemprano.status).toBe(400);
-    expect(resTemprano.body).toHaveProperty('error', 'Las reservas solo se permiten entre las 08:00 y las 22:00');
+    expect(resTemprano.body).toHaveProperty(
+      'error',
+      'Las reservas solo se permiten entre las 08:00 y las 22:00'
+    );
 
     const resTarde = await request(app)
       .post('/api/reservas')
@@ -1073,7 +1146,10 @@ describe('Reservas API', () => {
         motivo: 'Después de las 22:00'
       });
     expect(resTarde.status).toBe(400);
-    expect(resTarde.body).toHaveProperty('error', 'Las reservas solo se permiten entre las 08:00 y las 22:00');
+    expect(resTarde.body).toHaveProperty(
+      'error',
+      'Las reservas solo se permiten entre las 08:00 y las 22:00'
+    );
 
     // 6. Creación válida registra historial con accion 'creacion'
     const resValida = await request(app)
@@ -1133,7 +1209,10 @@ describe('Reservas API', () => {
       .patch(`/api/reservas/${reservaPendiente.id}/rechazar`)
       .set('Authorization', `Bearer ${adminToken}`);
     expect(resRechazarAprobada.status).toBe(400);
-    expect(resRechazarAprobada.body).toHaveProperty('error', 'Solo se pueden rechazar reservas pendientes');
+    expect(resRechazarAprobada.body).toHaveProperty(
+      'error',
+      'Solo se pueden rechazar reservas pendientes'
+    );
 
     // aprobada -> cancelada por el propietario
     const resCancelarAprobada = await request(app)
@@ -1147,7 +1226,10 @@ describe('Reservas API', () => {
       .patch(`/api/reservas/${reservaPendiente.id}/cancelar`)
       .set('Authorization', `Bearer ${adminToken}`);
     expect(resReCancelar.status).toBe(400);
-    expect(resReCancelar.body).toHaveProperty('error', 'Solo se pueden cancelar reservas pendientes o aprobadas');
+    expect(resReCancelar.body).toHaveProperty(
+      'error',
+      'Solo se pueden cancelar reservas pendientes o aprobadas'
+    );
 
     // 2. pendiente -> rechazada (admin) y verificar que rechazada no puede cambiar ni bloquea horario
     const resParaRechazar = await request(app)
@@ -1276,7 +1358,10 @@ describe('Reservas API', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ motivo: 'Intento editar cancelada' });
     expect(resEditCancelada.status).toBe(400);
-    expect(resEditCancelada.body).toHaveProperty('error', 'No se puede editar una reserva cancelada o rechazada');
+    expect(resEditCancelada.body).toHaveProperty(
+      'error',
+      'No se puede editar una reserva cancelada o rechazada'
+    );
   });
 
   it('should filter by fecha, aulaId, estado, q and paginate results on GET /api/reservas', async () => {
@@ -1301,7 +1386,9 @@ describe('Reservas API', () => {
     });
 
     const resPorQ = await request(app)
-      .get(`/api/reservas?q=Inteligencia&fecha=${fechaFiltro}&aulaId=${otraAula.id}&estado=aprobada`)
+      .get(
+        `/api/reservas?q=Inteligencia&fecha=${fechaFiltro}&aulaId=${otraAula.id}&estado=aprobada`
+      )
       .set('Authorization', `Bearer ${adminToken}`);
     expect(resPorQ.status).toBe(200);
     expect(resPorQ.body.total).toBe(1);

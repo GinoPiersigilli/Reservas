@@ -23,17 +23,12 @@ const Select = forwardRef(function Select(
 
   return (
     <div className={styles.contenedor}>
-      <select
-        ref={ref}
-        className={clases}
-        aria-invalid={esInvalido || undefined}
-        {...rest}
-      >
+      <select ref={ref} className={clases} aria-invalid={esInvalido || undefined} {...rest}>
         {placeholder ? <option value="">{placeholder}</option> : null}
         {Array.isArray(listaOpciones)
           ? listaOpciones.map((op) => {
-              const valor = typeof op === 'object' ? op.value ?? op.valor : op;
-              const etiqueta = typeof op === 'object' ? op.label ?? op.etiqueta : op;
+              const valor = typeof op === 'object' ? (op.value ?? op.valor) : op;
+              const etiqueta = typeof op === 'object' ? (op.label ?? op.etiqueta) : op;
               const deshabilitado = typeof op === 'object' ? Boolean(op.disabled) : false;
               return (
                 <option key={String(valor)} value={valor} disabled={deshabilitado}>
@@ -51,4 +46,3 @@ const Select = forwardRef(function Select(
 });
 
 export default Select;
-

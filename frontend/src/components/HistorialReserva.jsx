@@ -60,9 +60,7 @@ const HistorialReserva = ({ historial = [] }) => {
       key: 'accion',
       titulo: 'Acción',
       render: (item) => (
-        <span className={styles.accionTexto}>
-          {ETIQUETAS_ACCION[item.accion] || item.accion}
-        </span>
+        <span className={styles.accionTexto}>{ETIQUETAS_ACCION[item.accion] || item.accion}</span>
       )
     },
     {

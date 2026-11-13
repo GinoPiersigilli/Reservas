@@ -229,7 +229,9 @@ describe('Aulas (Gestión y ABM de Aulas para Administradores)', () => {
 
     // Aparece el aviso de reservas futuras afectadas
     await waitFor(() => {
-      expect(screen.getByText(/El aula tiene 2 reserva\(s\) futura\(s\) activa\(s\)\./i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/El aula tiene 2 reserva\(s\) futura\(s\) activa\(s\)\./i)
+      ).toBeInTheDocument();
     });
 
     // Si intenta confirmar con checkbox activo pero sin motivo, valida
@@ -289,7 +291,9 @@ describe('Aulas (Gestión y ABM de Aulas para Administradores)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No se pudieron cargar las aulas\. Intente de nuevo\./i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/No se pudieron cargar las aulas\. Intente de nuevo\./i)
+      ).toBeInTheDocument();
     });
 
     aulaService.getAulas.mockResolvedValueOnce({ data: mockAulas });

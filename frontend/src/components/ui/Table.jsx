@@ -47,13 +47,7 @@ function Table({
     if (estadoVacio || emptyState) {
       return estadoVacio || emptyState;
     }
-    return (
-      <EmptyState
-        titulo={vacioTitulo}
-        descripcion={vacioDescripcion}
-        accion={vacioAccion}
-      />
-    );
+    return <EmptyState titulo={vacioTitulo} descripcion={vacioDescripcion} accion={vacioAccion} />;
   }
 
   const obtenerClaseAlineacion = (alineacion) => {
@@ -98,14 +92,9 @@ function Table({
                     const key = col.key ?? col.clave ?? colIdx;
                     const alinear = obtenerClaseAlineacion(col.align || col.alineacion);
                     const contenido =
-                      typeof col.render === 'function'
-                        ? col.render(fila, filaIdx)
-                        : fila?.[key];
+                      typeof col.render === 'function' ? col.render(fila, filaIdx) : fila?.[key];
                     return (
-                      <td
-                        key={key}
-                        className={[styles.td, alinear].filter(Boolean).join(' ')}
-                      >
+                      <td key={key} className={[styles.td, alinear].filter(Boolean).join(' ')}>
                         {contenido}
                       </td>
                     );
@@ -144,11 +133,7 @@ Table.Row = function TableRow({ className = '', children, ...rest }) {
 
 Table.HeaderCell = function TableHeaderCell({ className = '', children, ...rest }) {
   return (
-    <th
-      scope="col"
-      className={[styles.th, className].filter(Boolean).join(' ')}
-      {...rest}
-    >
+    <th scope="col" className={[styles.th, className].filter(Boolean).join(' ')} {...rest}>
       {children}
     </th>
   );
@@ -163,4 +148,3 @@ Table.Cell = function TableCell({ className = '', children, ...rest }) {
 };
 
 export default Table;
-

@@ -4,11 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getReserva, getHistorial } from '../services/reservas.service.js';
 import { getAulas } from '../services/aula.service.js';
 import { TEXTOS } from '../textos.js';
-import {
-  formatearFecha,
-  formatearFechaHora,
-  calcularDuracionTexto
-} from '../utils/formato.js';
+import { formatearFecha, formatearFechaHora, calcularDuracionTexto } from '../utils/formato.js';
 import AccionesReserva from '../components/AccionesReserva.jsx';
 import HistorialReserva from '../components/HistorialReserva.jsx';
 import EstadoBadge from '../components/ui/EstadoBadge.jsx';
@@ -104,9 +100,7 @@ const DetalleReserva = () => {
     mapaAulas[reserva.aulaId] ||
     `Aula ${reserva.aulaId}`;
   const nombreSolicitante =
-    reserva.usuario?.nombre ||
-    reserva.usuarioNombre ||
-    `Usuario #${reserva.usuarioId}`;
+    reserva.usuario?.nombre || reserva.usuarioNombre || `Usuario #${reserva.usuarioId}`;
 
   return (
     <div className={styles.pagina}>
@@ -128,11 +122,7 @@ const DetalleReserva = () => {
       </header>
 
       {mensajeExito ? (
-        <Toast
-          variante="exito"
-          mensaje={mensajeExito}
-          onCerrar={() => setMensajeExito(null)}
-        />
+        <Toast variante="exito" mensaje={mensajeExito} onCerrar={() => setMensajeExito(null)} />
       ) : null}
 
       <section className={styles.ficha} aria-labelledby="titulo-ficha-reserva">
@@ -143,9 +133,7 @@ const DetalleReserva = () => {
         <dl className={styles.listaDatos}>
           <div className={styles.filaDato}>
             <dt className={styles.etiquetaDato}>Aula</dt>
-            <dd className={[styles.valorDato, styles.valorDestacado].join(' ')}>
-              {nombreAula}
-            </dd>
+            <dd className={[styles.valorDato, styles.valorDestacado].join(' ')}>{nombreAula}</dd>
           </div>
 
           <div className={styles.filaDato}>
@@ -159,9 +147,7 @@ const DetalleReserva = () => {
               <span>
                 {String(reserva.horaInicio).slice(0, 5)}–{String(reserva.horaFin).slice(0, 5)}
               </span>
-              {duracion ? (
-                <span className={styles.valorSecundario}>({duracion})</span>
-              ) : null}
+              {duracion ? <span className={styles.valorSecundario}>({duracion})</span> : null}
             </dd>
           </div>
 
@@ -179,9 +165,7 @@ const DetalleReserva = () => {
             <div className={styles.filaDato}>
               <dt className={styles.etiquetaDato}>Solicitante</dt>
               <dd className={styles.valorDato}>
-                <span title={reserva.usuario?.email || nombreSolicitante}>
-                  {nombreSolicitante}
-                </span>
+                <span title={reserva.usuario?.email || nombreSolicitante}>{nombreSolicitante}</span>
               </dd>
             </div>
           ) : null}
@@ -199,11 +183,7 @@ const DetalleReserva = () => {
           ) : null}
         </dl>
 
-        <AccionesReserva
-          reserva={reserva}
-          usuario={usuario}
-          onAccion={manejarAccionExito}
-        />
+        <AccionesReserva reserva={reserva} usuario={usuario} onAccion={manejarAccionExito} />
       </section>
 
       <section className={styles.seccionHistorial} aria-labelledby="titulo-historial-reserva">

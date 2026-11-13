@@ -45,11 +45,11 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     const usuariosCreados = await Usuario.bulkCreate(usuariosData, { returning: true });
 
     tokens = usuariosCreados.map((u) =>
-      jwt.sign(
-        { id: u.id, nombre: u.nombre, email: u.email, rol: 'usuario' },
-        env.JWT_SECRET,
-        { expiresIn: '2h', algorithm: 'HS256', issuer: 'reservas-api' }
-      )
+      jwt.sign({ id: u.id, nombre: u.nombre, email: u.email, rol: 'usuario' }, env.JWT_SECRET, {
+        expiresIn: '2h',
+        algorithm: 'HS256',
+        issuer: 'reservas-api'
+      })
     );
   });
 

@@ -77,9 +77,7 @@ export default function ConfirmDialog({
       }
 
       if (evento.key === 'Tab' && dialogoRef.current) {
-        const enfocables = Array.from(
-          dialogoRef.current.querySelectorAll(SELECTOR_ENFOCABLES)
-        );
+        const enfocables = Array.from(dialogoRef.current.querySelectorAll(SELECTOR_ENFOCABLES));
         if (enfocables.length === 0) {
           evento.preventDefault();
           return;
@@ -109,10 +107,7 @@ export default function ConfirmDialog({
 
     return () => {
       document.removeEventListener('keydown', manejarKeyDown);
-      if (
-        focoPrevioRef.current &&
-        typeof focoPrevioRef.current.focus === 'function'
-      ) {
+      if (focoPrevioRef.current && typeof focoPrevioRef.current.focus === 'function') {
         focoPrevioRef.current.focus();
       }
     };
@@ -175,4 +170,3 @@ export default function ConfirmDialog({
     </div>
   );
 }
-

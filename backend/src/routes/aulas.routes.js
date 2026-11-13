@@ -22,11 +22,50 @@ import {
 const router = express.Router();
 
 router.get('/', verificarToken, validar(queryAulasSchema, 'query'), listarAulas);
-router.get('/:id/disponibilidad', verificarToken, validar(idParamSchema, 'params'), obtenerDisponibilidadAula);
+router.get(
+  '/:id/disponibilidad',
+  verificarToken,
+  validar(idParamSchema, 'params'),
+  obtenerDisponibilidadAula
+);
 
-router.post('/', limiteEscrituras, verificarToken, limiteEscriturasUsuario, soloAdmin, validar(crearAulaSchema, 'body'), crearAula);
-router.put('/:id', limiteEscrituras, verificarToken, limiteEscriturasUsuario, soloAdmin, validar(idParamSchema, 'params'), validar(editarAulaSchema, 'body'), editarAula);
-router.patch('/:id/desactivar', limiteEscrituras, verificarToken, limiteEscriturasUsuario, soloAdmin, validar(idParamSchema, 'params'), validar(desactivarAulaSchema, 'body'), desactivarAula);
-router.patch('/:id/reactivar', limiteEscrituras, verificarToken, limiteEscriturasUsuario, soloAdmin, validar(idParamSchema, 'params'), reactivarAula);
+router.post(
+  '/',
+  limiteEscrituras,
+  verificarToken,
+  limiteEscriturasUsuario,
+  soloAdmin,
+  validar(crearAulaSchema, 'body'),
+  crearAula
+);
+router.put(
+  '/:id',
+  limiteEscrituras,
+  verificarToken,
+  limiteEscriturasUsuario,
+  soloAdmin,
+  validar(idParamSchema, 'params'),
+  validar(editarAulaSchema, 'body'),
+  editarAula
+);
+router.patch(
+  '/:id/desactivar',
+  limiteEscrituras,
+  verificarToken,
+  limiteEscriturasUsuario,
+  soloAdmin,
+  validar(idParamSchema, 'params'),
+  validar(desactivarAulaSchema, 'body'),
+  desactivarAula
+);
+router.patch(
+  '/:id/reactivar',
+  limiteEscrituras,
+  verificarToken,
+  limiteEscriturasUsuario,
+  soloAdmin,
+  validar(idParamSchema, 'params'),
+  reactivarAula
+);
 
 export default router;

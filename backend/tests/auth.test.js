@@ -75,7 +75,9 @@ describe('Auth routes, token verification & env validation', () => {
   describe('SEC-AUTH-02: restricciones criptográficas de JWT local', () => {
     it('rejects token with algorithm "none" with 401', async () => {
       const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({ id: 1, rol: 'usuario', email: 'user@test.com', iss: 'reservas-api' })).toString('base64url');
+      const payload = Buffer.from(
+        JSON.stringify({ id: 1, rol: 'usuario', email: 'user@test.com', iss: 'reservas-api' })
+      ).toString('base64url');
       const tokenNone = `${header}.${payload}.`;
 
       const response = await request(app)
@@ -165,7 +167,9 @@ describe('Auth routes, token verification & env validation', () => {
         { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
       );
 
-      const spy = jest.spyOn(Usuario, 'findByPk').mockRejectedValueOnce(new Error('PostgreSQL connection dropped'));
+      const spy = jest
+        .spyOn(Usuario, 'findByPk')
+        .mockRejectedValueOnce(new Error('PostgreSQL connection dropped'));
 
       const response = await request(app)
         .get('/api/reservas')
@@ -224,8 +228,12 @@ describe('Auth routes, token verification & env validation', () => {
 
   it('aborts startup when JWT_SECRET is missing in development or production', async () => {
     expect(() => validarEnv({ NODE_ENV: 'development', JWT_SECRET: '' })).toThrow(/JWT_SECRET/);
-    expect(() => validarEnv({ NODE_ENV: 'production', CLERK_SECRET_KEY: 'sk_test_123' })).toThrow(/JWT_SECRET/);
-    expect(() => validarEnv({ NODE_ENV: 'production', JWT_SECRET: 'secreto_valido' })).toThrow(/CLERK_SECRET_KEY/);
+    expect(() => validarEnv({ NODE_ENV: 'production', CLERK_SECRET_KEY: 'sk_test_123' })).toThrow(
+      /JWT_SECRET/
+    );
+    expect(() => validarEnv({ NODE_ENV: 'production', JWT_SECRET: 'secreto_valido' })).toThrow(
+      /CLERK_SECRET_KEY/
+    );
 
     const originalJwtSecret = process.env.JWT_SECRET;
     try {
@@ -263,7 +271,9 @@ describe('Auth routes, token verification & env validation', () => {
       id: 'user_nuevo456',
       firstName: 'Ana',
       lastName: 'Gómez',
-      emailAddresses: [{ emailAddress: 'ana.gomez@utnfrc.edu.ar', verification: { status: 'verified' } }],
+      emailAddresses: [
+        { emailAddress: 'ana.gomez@utnfrc.edu.ar', verification: { status: 'verified' } }
+      ],
       publicMetadata: { rol: 'admin' }
     });
 
@@ -286,7 +296,9 @@ describe('Auth routes, token verification & env validation', () => {
       id: 'user_clerk_vincular_email',
       firstName: 'Usuario',
       lastName: 'Preexistente',
-      emailAddresses: [{ emailAddress: 'preexistente@utnfrc.edu.ar', verification: { status: 'verified' } }],
+      emailAddresses: [
+        { emailAddress: 'preexistente@utnfrc.edu.ar', verification: { status: 'verified' } }
+      ],
       publicMetadata: { rol: 'admin' }
     });
 
@@ -328,9 +340,7 @@ describe('Auth routes, token verification & env validation', () => {
     });
 
     it('rejects login with empty strings with 400', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ email: '   ', password: '' });
+      const res = await request(app).post('/api/auth/login').send({ email: '   ', password: '' });
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error', 'Email y contraseña son obligatorios');
@@ -368,7 +378,9 @@ describe('Auth routes, token verification & env validation', () => {
     });
     expect(resOk.body).toHaveProperty('timestamp');
 
-    const authSpy = jest.spyOn(sequelize, 'authenticate').mockRejectedValueOnce(new Error('DB connection error'));
+    const authSpy = jest
+      .spyOn(sequelize, 'authenticate')
+      .mockRejectedValueOnce(new Error('DB connection error'));
     try {
       const resFail = await request(app).get('/api/health');
       expect(resFail.status).toBe(503);

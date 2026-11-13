@@ -81,9 +81,9 @@ textarea {
 /* Números y horarios tabulares */
 .tabular-nums,
 table td,
-input[type="time"],
-input[type="date"],
-input[type="number"] {
+input[type='time'],
+input[type='date'],
+input[type='number'] {
   font-variant-numeric: tabular-nums;
 }
 
@@ -116,4 +116,3 @@ input[type="number"] {
     scroll-behavior: auto !important;
   }
 }
-

@@ -354,4 +354,3 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
     expect(screen.getByRole('button', { name: /Reintentar/i })).toBeInTheDocument();
   });
 });
-

@@ -1,6 +1,16 @@
 import { useEffect, useId, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Calendar, CalendarPlus, DoorOpen, LayoutDashboard, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import {
+  Calendar,
+  CalendarPlus,
+  DoorOpen,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Moon,
+  Sun,
+  X
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTema } from '../hooks/useTema.js';
 import { TEXTOS } from '../textos.js';
@@ -45,9 +55,7 @@ export default function AppShell({ children }) {
           className={styles.botonMenuMovil}
           aria-expanded={menuAbierto}
           aria-controls={menuId}
-          aria-label={
-            menuAbierto ? TEXTOS.navegacion.cerrarMenu : TEXTOS.navegacion.abrirMenu
-          }
+          aria-label={menuAbierto ? TEXTOS.navegacion.cerrarMenu : TEXTOS.navegacion.abrirMenu}
           onClick={() => setMenuAbierto((prev) => !prev)}
         >
           {menuAbierto ? (
@@ -136,11 +144,7 @@ export default function AppShell({ children }) {
             <span>{labelTema}</span>
           </button>
 
-          <button
-            type="button"
-            className={styles.botonCerrar}
-            onClick={() => cerrarSesion?.()}
-          >
+          <button type="button" className={styles.botonCerrar} onClick={() => cerrarSesion?.()}>
             <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
             <span>{TEXTOS.navegacion.cerrarSesion}</span>
           </button>
@@ -153,4 +157,3 @@ export default function AppShell({ children }) {
     </div>
   );
 }
-

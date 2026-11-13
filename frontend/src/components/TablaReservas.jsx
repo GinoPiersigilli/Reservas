@@ -20,11 +20,7 @@ export default function TablaReservas({
     const activo = sortBy === campo;
     const Icono = !activo ? ArrowUpDown : order === 'ASC' ? ArrowUp : ArrowDown;
     return (
-      <button
-        type="button"
-        className={styles.botonOrden}
-        onClick={() => onOrdenar(campo)}
-      >
+      <button type="button" className={styles.botonOrden} onClick={() => onOrdenar(campo)}>
         <span>{etiqueta}</span>
         <Icono size={14} strokeWidth={1.75} aria-hidden="true" />
       </button>
@@ -85,10 +81,7 @@ export default function TablaReservas({
               {r.horaInicio}–{r.horaFin}
             </Table.Cell>
             {esAdmin ? (
-              <Table.Cell
-                className={styles.solicitanteCelda}
-                title={obtenerSolicitante(r)}
-              >
+              <Table.Cell className={styles.solicitanteCelda} title={obtenerSolicitante(r)}>
                 <span
                   className={styles.nombreSolicitante}
                   title={r.usuario?.email || obtenerSolicitante(r)}

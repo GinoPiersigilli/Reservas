@@ -93,4 +93,3 @@ describe('AppShell layout', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 });
-

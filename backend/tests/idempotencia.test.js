@@ -196,7 +196,9 @@ describe('Fase 11 — Idempotencia en Creación de Reservas (POST /api/reservas)
       .send(payload2);
 
     expect(res2.status).toBe(422);
-    expect(res2.body.error).toMatch(/clave de idempotencia ya fue utilizada con un cuerpo diferente/i);
+    expect(res2.body.error).toMatch(
+      /clave de idempotencia ya fue utilizada con un cuerpo diferente/i
+    );
   });
 
   it('4. Usuarios distintos con la misma clave son independientes', async () => {
