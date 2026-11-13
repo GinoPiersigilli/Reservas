@@ -19,6 +19,15 @@ export default defineConfig([
     }
   },
   {
+    // El punto de entrada monta la raíz de React y no exporta nada, así que no
+    // es un límite de Fast Refresh: la regla no tiene nada que proteger acá y
+    // confunde la constante de configuración con un componente.
+    files: ['src/main.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off'
+    }
+  },
+  {
     // Módulos de lógica (.js): mismos límites que el backend.
     files: ['src/**/*.js'],
     ignores: ['src/**/__tests__/**'],
