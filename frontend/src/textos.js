@@ -71,7 +71,15 @@ export const TEXTOS = {
     errorGoogle: 'No se pudo completar el registro con Google. Intente nuevamente.',
     noCompletadoGoogle: 'No se completó el ingreso con Google. Intente de nuevo.',
     conCuenta: '¿Ya tiene cuenta?',
-    ingresar: 'Ingresar'
+    ingresar: 'Ingresar',
+    verificacionTitulo: 'Verifique su correo',
+    verificacionSubtitulo: 'Le enviamos un código de 6 dígitos para confirmar su dirección',
+    codigo: 'Código de verificación',
+    confirmar: 'Confirmar',
+    reenviar: 'Reenviar código',
+    codigoEnviado: 'Le enviamos un código nuevo.',
+    errorCodigo: 'El código no es correcto o venció. Pida uno nuevo.',
+    errorRegistro: 'No se pudo completar el registro.'
   },
   reservas: {
     tituloAdmin: 'Reservas',
