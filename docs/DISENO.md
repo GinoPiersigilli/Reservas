@@ -6,7 +6,7 @@ Este documento sintetiza la arquitectura visual y las decisiones de diseño del 
 
 ## 1. Principios de Diseño
 
-- **Institucional y funcional:** Tipografía formal y jerarquía visual estricta mediante bordes y espaciados, evitando degradados, sombras flotantes o elementos decorativos genéricos.
+- **Institucional y funcional:** Tipografía formal y jerarquía visual estricta mediante bordes y espaciados, evitando degradados y elementos decorativos genéricos. Las sombras se reservan para comunicar elevación: una leve en botones al pasar el cursor y en notificaciones, y una más marcada en diálogos modales.
 - **Riesgo visual concentrado:** Toda la complejidad interactiva se focaliza en la **grilla de disponibilidad horaria**; el resto de la interfaz permanece silencioso.
 - **Sin dependencias externas:** Fuentes e íconos autoalojados en el origen propio (`'self'`), alineados con la Content-Security-Policy (CSP) estricta.
 
@@ -31,7 +31,9 @@ Centraliza colores, forma, espaciado y transiciones sin librerías invasivas:
   - Aprobada: verde macizo (`--estado-aprobada-fondo`, `--estado-aprobada-texto`).
   - Rechazada: rojo (`--estado-rechazada-fondo`, `--estado-rechazada-texto`).
   - Cancelada: gris neutro (`--estado-cancelada-fondo`, `--estado-cancelada-texto`).
-- **Movimiento:** Limitado a transiciones funcionales de 120–150ms en foco y hover; respeta `prefers-reduced-motion`.
+- **Movimiento:** Siempre en respuesta a una acción del usuario, nunca decorativo ni en bucle. Tres duraciones centralizadas: 140ms (`--transicion-rapida`) para hover, foco y presión de controles; 200ms (`--transicion-base`) para desplazamientos de íconos y aparición del telón de diálogos; 280ms (`--transicion-entrada`) para la entrada de contenido (cambio de pantalla, diálogos, notificaciones y celdas seleccionadas en la grilla).
+- **Elevación:** `--sombra-elevada` (botones en hover, notificaciones) y `--sombra-flotante` (diálogos modales), con variantes propias para el modo oscuro.
+- **Movimiento reducido:** Con `prefers-reduced-motion: reduce` todas las transiciones y animaciones se anulan desde `base.css`; la interfaz conserva los mismos estados, sin movimiento.
 
 ---
 
@@ -42,6 +44,7 @@ Resuelve el problema central de "reservar a ciegas":
 - **Matriz temporal:** Filas para cada aula y columnas en bloques de 30 minutos (08:00 a 22:00) correspondientes a la fecha seleccionada.
 - **Interacción y accesibilidad:**
   - Celdas libres interactivas con cálculo dinámico de franjas horarias al hacer clic.
+  - Vista previa del rango: una vez elegido el inicio, al apuntar (cursor o foco de teclado) a otra celda de la misma aula se sombrea el tramo que quedaría reservado, siempre que no lo interrumpa una reserva existente.
   - Bloques ocupados no interactivos que indican la reserva aprobada o pendiente existente.
   - Navegación completa por teclado con tabulación lógica y atributos `aria-label` descriptivos (_"Aula 101, 10:00 a 10:30, libre"_).
   - Indicador visual de la hora actual en tiempo real (`--linea-ahora`).

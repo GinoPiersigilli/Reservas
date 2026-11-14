@@ -105,8 +105,29 @@ const estadoDeCeldaLibre = (segmento) => {
   return ESTADOS_LIBRE.libre;
 };
 
+/** La celda cae dentro del rango tentativo que se está por confirmar. */
+const estaEnRangoPrevio = (segmento, aula, rangoPrevio) =>
+  Boolean(
+    rangoPrevio &&
+      rangoPrevio.aulaId === String(aula.id) &&
+      !segmento.esPasado &&
+      !segmento.estaSeleccionada &&
+      segmento.bloque.inicioMin >= rangoPrevio.inicioMin &&
+      segmento.bloque.finMin <= rangoPrevio.finMin
+  );
+
 /** Franja disponible: botón seleccionable, salvo que ya haya pasado. */
-function CeldaLibre({ segmento, aula, filaIdx, reloj, cargando, onSeleccionar, onKeyDown }) {
+function CeldaLibre({
+  segmento,
+  aula,
+  filaIdx,
+  reloj,
+  cargando,
+  enRangoPrevio,
+  onSeleccionar,
+  onApuntar,
+  onKeyDown
+}) {
   const { bloque, colIdx, estaSeleccionada, esPasado } = segmento;
   const { clase, texto } = estadoDeCeldaLibre(segmento);
 
@@ -131,8 +152,10 @@ function CeldaLibre({ segmento, aula, filaIdx, reloj, cargando, onSeleccionar, o
         disabled={Boolean(cargando || esPasado)}
         aria-label={`${aula.nombre}, ${bloque.inicio} a ${bloque.fin}, ${texto}`}
         aria-pressed={estaSeleccionada}
-        className={clases(styles.celdaBoton, clase)}
+        className={clases(styles.celdaBoton, clase, enRangoPrevio && styles.celdaPrevia)}
         onClick={() => onSeleccionar(aula, bloque)}
+        onMouseEnter={() => onApuntar?.(aula, bloque)}
+        onFocus={() => onApuntar?.(aula, bloque)}
         onKeyDown={(e) => onKeyDown(e, filaIdx, colIdx)}
       />
     </td>
@@ -148,7 +171,10 @@ export default function GrillaEscritorio({
   segmentosPorAula,
   reloj,
   cargando,
+  rangoPrevio = null,
   onSeleccionarCelda,
+  onApuntarCelda,
+  onDejarDeApuntar,
   onKeyDown,
   contenedorRef
 }) {
@@ -165,7 +191,7 @@ export default function GrillaEscritorio({
 
           <Cabecera reloj={reloj} />
 
-          <tbody>
+          <tbody onMouseLeave={onDejarDeApuntar}>
             {aulas.map((aula, filaIdx) => (
               <tr key={aula.id} className={styles.filaAula}>
                 <CeldaAula aula={aula} />
@@ -187,7 +213,9 @@ export default function GrillaEscritorio({
                       filaIdx={filaIdx}
                       reloj={reloj}
                       cargando={cargando}
+                      enRangoPrevio={estaEnRangoPrevio(seg, aula, rangoPrevio)}
                       onSeleccionar={onSeleccionarCelda}
+                      onApuntar={onApuntarCelda}
                       onKeyDown={onKeyDown}
                     />
                   )

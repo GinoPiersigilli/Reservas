@@ -65,6 +65,7 @@ export default function GrillaDisponibilidad({
   onSeleccionarFranja
 }) {
   const [ancla, setAncla] = useState(null);
+  const [apuntada, setApuntada] = useState(null);
   const grillaRef = useRef(null);
 
   const hoy = useMemo(() => obtenerHoyArgentina(), []);
@@ -115,6 +116,26 @@ export default function GrillaDisponibilidad({
   });
 
   /**
+   * Con un inicio ya elegido, la celda apuntada (cursor o foco) define el rango
+   * tentativo que se sombrea antes de confirmarlo con el segundo clic.
+   */
+  const manejarApuntarCelda = (aula, bloque) => {
+    if (!ancla) return;
+    setApuntada({ aulaId: String(aula.id), finMin: bloque.finMin });
+  };
+
+  const hayRangoPrevio =
+    ancla &&
+    apuntada &&
+    apuntada.aulaId === ancla.aulaId &&
+    apuntada.finMin > ancla.inicioMin &&
+    !hayOcupacionEnRango(franjasDe(ancla.aulaId), ancla.inicioMin, apuntada.finMin);
+
+  const rangoPrevio = hayRangoPrevio
+    ? { aulaId: ancla.aulaId, inicioMin: ancla.inicioMin, finMin: apuntada.finMin }
+    : null;
+
+  /**
    * Primer clic: deja el ancla y preselecciona ese bloque.
    * Segundo clic sobre la misma aula y más adelante: cierra el rango.
    */
@@ -130,6 +151,7 @@ export default function GrillaDisponibilidad({
     if (cierraRango) {
       onSeleccionarFranja?.({ aulaId, horaInicio: ancla.inicio, horaFin: bloque.fin });
       setAncla(null);
+      setApuntada(null);
       return;
     }
 
@@ -152,7 +174,10 @@ export default function GrillaDisponibilidad({
         segmentosPorAula={segmentosPorAula}
         reloj={reloj}
         cargando={cargando}
+        rangoPrevio={rangoPrevio}
         onSeleccionarCelda={manejarClickCelda}
+        onApuntarCelda={manejarApuntarCelda}
+        onDejarDeApuntar={() => setApuntada(null)}
         onKeyDown={manejarKeyDown}
         contenedorRef={grillaRef}
       />

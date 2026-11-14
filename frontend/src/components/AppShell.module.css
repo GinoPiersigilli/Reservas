@@ -45,6 +45,7 @@
 }
 
 .enlace {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--espacio-3);
@@ -60,13 +61,28 @@
   transition:
     background-color var(--transicion-rapida),
     color var(--transicion-rapida),
-    border-color var(--transicion-rapida);
+    border-color var(--transicion-rapida),
+    box-shadow var(--transicion-base),
+    transform var(--transicion-rapida);
+}
+
+.enlace svg {
+  flex-shrink: 0;
+  transition: transform var(--transicion-base);
 }
 
 .enlace:hover {
   background-color: var(--fondo);
   color: var(--tinta);
   text-decoration: none;
+}
+
+.enlace:hover svg {
+  transform: translateX(2px);
+}
+
+.enlace:active {
+  transform: scale(var(--escala-presion));
 }
 
 /* El destino actual es dónde estoy parado, no algo que ejecutar: se marca con
@@ -124,12 +140,33 @@
   cursor: pointer;
   transition:
     background-color var(--transicion-rapida),
-    border-color var(--transicion-rapida);
+    border-color var(--transicion-rapida),
+    transform var(--transicion-rapida);
 }
 
 .botonCerrar:hover {
   background-color: var(--fondo);
   border-color: var(--tinta-2);
+}
+
+.botonCerrar svg,
+.botonTema svg {
+  transition: transform var(--transicion-base);
+}
+
+.botonCerrar:hover svg {
+  transform: translateX(2px);
+}
+
+.botonTema:hover svg {
+  transform: rotate(20deg);
+}
+
+.botonCerrar:active,
+.botonTema:active,
+.botonTemaMovil:active,
+.botonMenuMovil:active {
+  transform: scale(var(--escala-presion));
 }
 
 .botonTema {
@@ -151,7 +188,8 @@
   transition:
     background-color var(--transicion-rapida),
     border-color var(--transicion-rapida),
-    color var(--transicion-rapida);
+    color var(--transicion-rapida),
+    transform var(--transicion-rapida);
 }
 
 .botonTema:hover {
@@ -175,7 +213,8 @@
   transition:
     background-color var(--transicion-rapida),
     border-color var(--transicion-rapida),
-    color var(--transicion-rapida);
+    color var(--transicion-rapida),
+    transform var(--transicion-rapida);
 }
 
 .botonTemaMovil:hover {
@@ -195,6 +234,21 @@
   width: 100%;
   max-width: var(--contenedor-max-ancho);
   min-width: 0;
+  animation: entradaPantalla var(--transicion-entrada) backwards;
+}
+
+@keyframes entradaPantalla {
+  from {
+    opacity: 0;
+    transform: translateY(var(--desplazamiento-entrada));
+  }
+}
+
+@keyframes desplegarMenu {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--desplazamiento-entrada) * -1));
+  }
 }
 
 .botonMenuMovil {
@@ -209,6 +263,9 @@
   border-radius: var(--radio-control);
   color: var(--tinta);
   cursor: pointer;
+  transition:
+    background-color var(--transicion-rapida),
+    transform var(--transicion-rapida);
 }
 
 /* Entre la tablet y el escritorio chico la barra lateral se vuelve un riel de
@@ -290,6 +347,7 @@
 
   .sidebarAbierto {
     display: flex;
+    animation: desplegarMenu var(--transicion-base) backwards;
   }
 
   .marca {

@@ -19,7 +19,17 @@
   border-radius: var(--radio-control);
   appearance: none;
   cursor: pointer;
-  transition: border-color var(--transicion-rapida);
+  transition:
+    border-color var(--transicion-rapida),
+    box-shadow var(--transicion-rapida);
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--tinta-2);
+}
+
+.select:focus-visible {
+  box-shadow: 0 0 0 4px var(--acento-tenue);
 }
 
 .select:focus-visible {

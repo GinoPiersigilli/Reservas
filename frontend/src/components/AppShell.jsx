@@ -170,7 +170,9 @@ export default function AppShell({ children }) {
       </aside>
 
       <main className={styles.contenido}>
-        <div className={styles.contenedorInterior}>{children ?? <Outlet />}</div>
+        <div key={location.pathname} className={styles.contenedorInterior}>
+          {children ?? <Outlet />}
+        </div>
       </main>
     </div>
   );

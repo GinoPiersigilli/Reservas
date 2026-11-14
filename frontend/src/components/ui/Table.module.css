@@ -42,6 +42,10 @@
   vertical-align: middle;
 }
 
+.tr {
+  transition: background-color var(--transicion-rapida);
+}
+
 .tr:hover {
   background-color: var(--fondo);
 }
