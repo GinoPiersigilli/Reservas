@@ -130,8 +130,39 @@ const registrarClaveIdempotencia = async (
 };
 
 /** Comprobaciones que requieren leer la base dentro de la transacción. */
+/**
+ * Pone en una sola fila a las transacciones que compiten por el mismo día de la
+ * misma aula, antes de que toquen la restricción de exclusión.
+ *
+ * Sin esto, cien pedidos simultáneos por la misma franja se esperan entre sí
+ * sobre la restricción formando ciclos, y PostgreSQL los rompe abortando
+ * transacciones con `40P01`. Reintentar no alcanza: los reintentos vuelven a
+ * formar ciclos y la carga tarda minutos en drenar.
+ *
+ * El bloqueo es consultivo y de transacción: PostgreSQL lo libera solo al
+ * confirmar o deshacer, no hay forma de olvidarse de soltarlo. La clave combina
+ * aula y fecha, así que dos aulas distintas —o la misma aula en días
+ * distintos— siguen trabajando en paralelo, que es justo el caso en el que las
+ * franjas no pueden solaparse.
+ */
+const encolarPorAulaYFecha = async (aulaId, fecha, transaction) => {
+  await sequelize.query('SELECT pg_advisory_xact_lock(:aula, :dia)', {
+    replacements: {
+      aula: Number(aulaId),
+      // `fecha` es aaaa-mm-dd; los dígitos entran holgados en un entero de 32
+      // bits con signo, y el bloqueo de dos claves toma justamente dos.
+      dia: Number(String(fecha).slice(0, 10).replace(/-/g, ''))
+    },
+    transaction
+  });
+};
+
 const verificarAulaYDisponibilidad = async (datos, transaction) => {
   const { aulaId, fecha, horaInicio, horaFin, cantidadPersonas } = datos;
+
+  // Primero la cola: todo lo que sigue solo puede chocar con quien comparte
+  // aula y día, y ahora esos pasan de a uno.
+  await encolarPorAulaYFecha(aulaId, fecha, transaction);
 
   // Bloqueo compartido sobre el aula para evitar carreras con su baja
   const aula = await Aula.findByPk(aulaId, { transaction, lock: transaction.LOCK.SHARE });

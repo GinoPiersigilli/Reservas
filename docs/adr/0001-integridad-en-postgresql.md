@@ -61,11 +61,14 @@ lo que falla es que choca con el estado actual del recurso. Un 400 le diría a
 quien integra la API que revise el cuerpo del pedido, cuando lo que tiene que
 hacer es elegir otra franja.
 
-Dos transacciones que insertan franjas superpuestas pueden quedar esperándose
-entre sí sobre la restricción, y PostgreSQL rompe el ciclo abortando a una con
-`40P01`. Es transitorio, así que el servicio reintenta con esperas cortas y el
-pedido que pierde termina recibiendo su `409`; si el conflicto no cede, la
-respuesta es `503` con `Retry-After`, nunca `500`.
+Varias transacciones que insertan franjas superpuestas pueden quedar
+esperándose entre sí sobre la restricción y formar un ciclo, que PostgreSQL
+rompe abortando a una con `40P01`. Para que eso no ocurra, cada transacción toma
+antes un bloqueo consultivo sobre `(aulaId, fecha)`: los pedidos que compiten
+por el mismo día de la misma aula pasan de a uno, y los que no comparten aula ni
+día siguen en paralelo. El reintento ante `40P01` queda como red de seguridad
+del resto de las rutas, y si el conflicto no cede la respuesta es `503` con
+`Retry-After`, nunca `500`.
 
 Cuánto aporta la restricción está medido: al quitarla de la migración y volver a
 correr la prueba de concurrencia, **29 de 100 pedidos simultáneos** por la misma
