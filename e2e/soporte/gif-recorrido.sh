@@ -28,9 +28,11 @@ fi
 PALETA="$(mktemp -t paleta-XXXXXX.png)"
 trap 'rm -f "$PALETA"' EXIT
 
-# 10 cuadros por segundo y 960 px de ancho: suficiente para leer la interfaz
-# sin que el archivo se vuelva impracticable en un README.
-FILTRO="fps=10,scale=960:-1:flags=lanczos"
+# 25 cuadros por segundo, los mismos que graba Playwright: las transiciones de
+# la interfaz duran entre 140 y 280 ms, y a 10 cuadros quedaban en uno o dos
+# cuadros, sin que se notara el movimiento. 960 px de ancho alcanzan para leer
+# la interfaz sin que el archivo se vuelva impracticable en un README.
+FILTRO="fps=25,scale=960:-1:flags=lanczos"
 
 ffmpeg -loglevel error -y -i "$VIDEO" -vf "$FILTRO,palettegen=max_colors=128:stats_mode=diff" "$PALETA"
 ffmpeg -loglevel error -y -i "$VIDEO" -i "$PALETA" \
