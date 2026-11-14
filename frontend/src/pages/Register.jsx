@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useSignUp } from '@clerk/clerk-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Field, Input, Toast } from '../components/ui/index.js';
-import { register } from '../services/auth.service.js';
 import { useGoogleOAuth } from '../hooks/useGoogleOAuth.js';
+import { useRegistroClerk } from './registro/useRegistroClerk.js';
+import PasoVerificacion from './registro/PasoVerificacion.jsx';
 import { TEXTOS } from '../textos.js';
 import styles from './Auth.module.css';
 
@@ -33,7 +33,20 @@ function GoogleIcon({ size = 18, ...props }) {
 export default function Register() {
   const navigate = useNavigate();
 
-  const { isLoaded, signUp } = useSignUp();
+  const {
+    isLoaded,
+    signUp,
+    paso,
+    error: errorGeneral,
+    setError: setErrorGeneral,
+    aviso,
+    setAviso,
+    enviando: cargando,
+    registrar,
+    verificar,
+    reenviarCodigo
+  } = useRegistroClerk({ alCompletar: () => navigate('/reservas') });
+
   const { redirigiendoGoogle, errorGoogle, setErrorGoogle, iniciarOAuth } = useGoogleOAuth({
     authResource: signUp,
     isLoaded,
@@ -47,8 +60,6 @@ export default function Register() {
     confirmPassword: ''
   });
   const [erroresCampo, setErroresCampo] = useState({});
-  const [errorGeneral, setErrorGeneral] = useState(null);
-  const [cargando, setCargando] = useState(false);
 
   const handleChange = (evento) => {
     const { name, value } = evento.target;
@@ -78,37 +89,45 @@ export default function Register() {
 
   const handleSubmit = async (evento) => {
     evento.preventDefault();
-    setErrorGeneral(null);
     setErrorGoogle(null);
 
     if (!validar()) return;
 
-    setCargando(true);
-    try {
-      await register(form.nombre.trim(), form.email.trim(), form.password);
-      navigate('/login', {
-        state: { mensaje: 'Cuenta creada. Ingrese con sus credenciales.' }
-      });
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || 'No se pudo completar el registro.';
-      if (
-        errorMsg.toLowerCase().includes('email') ||
-        errorMsg.toLowerCase().includes('ya existe')
-      ) {
-        setErroresCampo({ email: 'Este email ya está registrado.' });
-        setErrorGeneral(errorMsg);
-      } else {
-        setErrorGeneral(errorMsg);
-      }
-    } finally {
-      setCargando(false);
-    }
+    await registrar({
+      nombre: form.nombre.trim(),
+      email: form.email.trim(),
+      password: form.password
+    });
   };
 
   const handleGoogleSignUp = async () => {
     setErrorGeneral(null);
     await iniciarOAuth();
   };
+
+  const avisos = (
+    <>
+      {errorGeneral ? (
+        <Toast tipo="error" mensaje={errorGeneral} onCerrar={() => setErrorGeneral(null)} />
+      ) : null}
+      {errorGoogle ? (
+        <Toast tipo="error" mensaje={errorGoogle} onCerrar={() => setErrorGoogle(null)} />
+      ) : null}
+      {aviso ? <Toast tipo="exito" mensaje={aviso} onCerrar={() => setAviso(null)} /> : null}
+    </>
+  );
+
+  // Clerk puede exigir confirmar el correo antes de abrir la sesión.
+  if (paso === 'verificacion') {
+    return (
+      <PasoVerificacion
+        avisos={avisos}
+        cargando={cargando}
+        onVerificar={verificar}
+        onReenviar={reenviarCodigo}
+      />
+    );
+  }
 
   return (
     <main className={styles.contenedor}>
@@ -118,12 +137,7 @@ export default function Register() {
           <p className={styles.subtitulo}>{TEXTOS.registro.subtitulo}</p>
         </header>
 
-        {errorGeneral ? (
-          <Toast tipo="error" mensaje={errorGeneral} onCerrar={() => setErrorGeneral(null)} />
-        ) : null}
-        {errorGoogle ? (
-          <Toast tipo="error" mensaje={errorGoogle} onCerrar={() => setErrorGoogle(null)} />
-        ) : null}
+        {avisos}
 
         <form onSubmit={handleSubmit} className={styles.formulario} noValidate>
           <Field

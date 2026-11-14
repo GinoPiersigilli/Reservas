@@ -1,28 +1,57 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Register from '../Register.jsx';
-import * as authService from '../../services/auth.service.js';
 
 const mockAuthenticateWithRedirect = vi.fn();
+const mockCreate = vi.fn();
+const mockPrepararVerificacion = vi.fn();
+const mockIntentarVerificacion = vi.fn();
+const mockSetActive = vi.fn();
+const mockNavigate = vi.fn();
 let mockIsLoaded = true;
 
 vi.mock('@clerk/clerk-react', () => ({
   useSignUp: () => ({
     isLoaded: mockIsLoaded,
-    signUp: { authenticateWithRedirect: mockAuthenticateWithRedirect }
+    setActive: mockSetActive,
+    signUp: {
+      authenticateWithRedirect: mockAuthenticateWithRedirect,
+      create: mockCreate,
+      prepareEmailAddressVerification: mockPrepararVerificacion,
+      attemptEmailAddressVerification: mockIntentarVerificacion
+    }
   }),
   AuthenticateWithRedirectCallback: () => null
 }));
 
-vi.mock('../../services/auth.service.js', () => ({
-  register: vi.fn()
+vi.mock('react-router-dom', async () => ({
+  ...(await vi.importActual('react-router-dom')),
+  useNavigate: () => mockNavigate
 }));
+
+/** Completa los cuatro campos del formulario de alta. */
+const completarFormulario = ({ email = 'test@example.com' } = {}) => {
+  fireEvent.input(screen.getByLabelText(/Nombre completo/i), {
+    target: { name: 'nombre', value: 'Usuario De Prueba' }
+  });
+  fireEvent.input(screen.getByLabelText(/Correo electrónico/i), {
+    target: { name: 'email', value: email }
+  });
+  fireEvent.input(screen.getByLabelText(/^Contraseña/i), {
+    target: { name: 'password', value: '123456' }
+  });
+  fireEvent.input(screen.getByLabelText(/Confirmar contraseña/i), {
+    target: { name: 'confirmPassword', value: '123456' }
+  });
+};
 
 describe('Register page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsLoaded = true;
     mockAuthenticateWithRedirect.mockResolvedValue({});
+    mockPrepararVerificacion.mockResolvedValue({});
+    mockSetActive.mockResolvedValue({});
   });
 
   it('renders the registration form without English or Clerk text', () => {
@@ -143,8 +172,12 @@ describe('Register page', () => {
     vi.useRealTimers();
   });
 
-  it('submits the form and calls register service', async () => {
-    authService.register.mockResolvedValueOnce({ data: {} });
+  // El alta la resuelve Clerk: no hay ruta de registro local (ver ADR 0002).
+  // Antes el formulario pegaba a POST /api/auth/register, que nunca existió, y
+  // devolvía 404 en cada intento.
+
+  it('crea la cuenta en Clerk con el nombre partido en nombre y apellido', async () => {
+    mockCreate.mockResolvedValueOnce({ status: 'missing_requirements' });
 
     render(
       <MemoryRouter>
@@ -152,33 +185,43 @@ describe('Register page', () => {
       </MemoryRouter>
     );
 
-    fireEvent.input(screen.getByLabelText(/Nombre completo/i), {
-      target: { name: 'nombre', value: 'Usuario de prueba' }
-    });
-    fireEvent.input(screen.getByLabelText(/Correo electrónico/i), {
-      target: { name: 'email', value: 'test@example.com' }
-    });
-    fireEvent.input(screen.getByLabelText(/^Contraseña/i), {
-      target: { name: 'password', value: '123456' }
-    });
-    fireEvent.input(screen.getByLabelText(/Confirmar contraseña/i), {
-      target: { name: 'confirmPassword', value: '123456' }
-    });
-
+    completarFormulario();
     fireEvent.click(screen.getByRole('button', { name: /^Crear cuenta$/i }));
 
     await waitFor(() => {
-      expect(authService.register).toHaveBeenCalledWith(
-        'Usuario de prueba',
-        'test@example.com',
-        '123456'
-      );
+      expect(mockCreate).toHaveBeenCalledWith({
+        emailAddress: 'test@example.com',
+        password: '123456',
+        firstName: 'Usuario',
+        lastName: 'De Prueba'
+      });
     });
   });
 
-  it('displays an error message when registration fails', async () => {
-    authService.register.mockRejectedValueOnce({
-      response: { data: { error: 'Email ya registrado' } }
+  it('abre la sesión sin pedir código cuando Clerk no exige verificar el correo', async () => {
+    mockCreate.mockResolvedValueOnce({ status: 'complete', createdSessionId: 'sess_1' });
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    completarFormulario();
+    fireEvent.click(screen.getByRole('button', { name: /^Crear cuenta$/i }));
+
+    await waitFor(() => {
+      expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_1' });
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/reservas');
+    expect(mockPrepararVerificacion).not.toHaveBeenCalled();
+  });
+
+  it('pide el código cuando Clerk exige verificar el correo, y abre la sesión al confirmarlo', async () => {
+    mockCreate.mockResolvedValueOnce({ status: 'missing_requirements' });
+    mockIntentarVerificacion.mockResolvedValueOnce({
+      status: 'complete',
+      createdSessionId: 'sess_2'
     });
 
     render(
@@ -187,21 +230,63 @@ describe('Register page', () => {
       </MemoryRouter>
     );
 
-    fireEvent.input(screen.getByLabelText(/Nombre completo/i), {
-      target: { name: 'nombre', value: 'Usuario de prueba' }
-    });
-    fireEvent.input(screen.getByLabelText(/Correo electrónico/i), {
-      target: { name: 'email', value: 'existing@example.com' }
-    });
-    fireEvent.input(screen.getByLabelText(/^Contraseña/i), {
-      target: { name: 'password', value: '123456' }
-    });
-    fireEvent.input(screen.getByLabelText(/Confirmar contraseña/i), {
-      target: { name: 'confirmPassword', value: '123456' }
-    });
-
+    completarFormulario();
     fireEvent.click(screen.getByRole('button', { name: /^Crear cuenta$/i }));
 
-    expect(await screen.findByText(/Email ya registrado/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/Código de verificación/i)).toBeInTheDocument();
+    expect(mockPrepararVerificacion).toHaveBeenCalledWith({ strategy: 'email_code' });
+
+    fireEvent.input(screen.getByLabelText(/Código de verificación/i), {
+      target: { name: 'codigo', value: '123456' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar$/i }));
+
+    await waitFor(() => {
+      expect(mockIntentarVerificacion).toHaveBeenCalledWith({ code: '123456' });
+    });
+    expect(mockSetActive).toHaveBeenCalledWith({ session: 'sess_2' });
+    expect(mockNavigate).toHaveBeenCalledWith('/reservas');
+  });
+
+  it('muestra el mensaje de Clerk cuando el correo ya está registrado', async () => {
+    mockCreate.mockRejectedValueOnce({
+      errors: [{ longMessage: 'Ese correo ya tiene una cuenta.' }]
+    });
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    completarFormulario({ email: 'existing@example.com' });
+    fireEvent.click(screen.getByRole('button', { name: /^Crear cuenta$/i }));
+
+    expect(await screen.findByText(/Ese correo ya tiene una cuenta/i)).toBeInTheDocument();
+  });
+
+  it('avisa cuando el código es incorrecto y deja pedir uno nuevo', async () => {
+    mockCreate.mockResolvedValueOnce({ status: 'missing_requirements' });
+    mockIntentarVerificacion.mockResolvedValueOnce({ status: 'missing_requirements' });
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    );
+
+    completarFormulario();
+    fireEvent.click(screen.getByRole('button', { name: /^Crear cuenta$/i }));
+
+    fireEvent.input(await screen.findByLabelText(/Código de verificación/i), {
+      target: { name: 'codigo', value: '000000' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmar$/i }));
+
+    expect(await screen.findByText(/El código no es correcto o venció/i)).toBeInTheDocument();
+    expect(mockSetActive).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Reenviar código/i }));
+    expect(await screen.findByText(/Le enviamos un código nuevo/i)).toBeInTheDocument();
   });
 });

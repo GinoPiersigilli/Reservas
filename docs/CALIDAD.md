@@ -10,7 +10,7 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 | Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
 | ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | Integración de API | Jest + Supertest               | 211 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
-| Componentes        | Vitest + Testing Library + axe | 112 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
+| Componentes        | Vitest + Testing Library + axe | 121 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
 | Extremo a extremo  | Playwright                     | 20 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
 | Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
 | Volumen de datos   | Script propio                  | 1 benchmark            | Planes de consulta con 200.000 reservas                                                                             | Manual (ver `docs/RENDIMIENTO.md`) |
@@ -165,7 +165,7 @@ validación en `validarAula.js` y `validarReserva.js`.
 
 Activar estos límites obligó a reorganizar el frontend. Los archivos grandes se
 dividieron en piezas con una sola responsabilidad, sin cambiar el
-comportamiento (las 112 pruebas de componentes y las 20 de extremo a extremo
+comportamiento (las 121 pruebas de componentes y las 20 de extremo a extremo
 siguen pasando):
 
 Las líneas de «antes» son las que tenía cada archivo al activarse los límites;

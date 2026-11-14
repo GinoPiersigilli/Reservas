@@ -46,7 +46,12 @@ Reglas comunes a las dos vías:
 
 - **Clerk** lo usan las personas reales en la aplicación desplegada: es la vía
   del registro, del inicio de sesión con Google y de la recuperación de
-  contraseña, ninguno de los cuales está implementado localmente.
+  contraseña, ninguno de los cuales está implementado localmente. El formulario
+  de alta habla con el SDK de Clerk (`signUp.create`) y, si la instancia exige
+  confirmar el correo, muestra un segundo paso para el código. Hasta el
+  14/11/2026 ese formulario llamaba a `POST /api/auth/register`, una ruta que
+  nunca existió: el registro con correo y contraseña devolvía `404` desde el
+  primer día, y solo funcionaba el botón de Google.
 - **El JWT local** lo usan las pruebas (los 206 casos de API y los 20 de
   extremo a extremo firman sus propios tokens), el modo de desarrollo sin red,
   y las cuentas sembradas por los seeders. No hay ruta de registro local: el
