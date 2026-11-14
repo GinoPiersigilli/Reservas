@@ -61,10 +61,20 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
     await sequelize.close();
   });
 
+  /** Contador acumulado de deadlocks de la base, según PostgreSQL. */
+  const contarDeadlocks = async () => {
+    const [fila] = await sequelize.query(
+      'SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()',
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    return Number(fila.deadlocks);
+  };
+
   it('1. 100 pedidos simultáneos de usuarios distintos para la MISMA aula y el MISMO horario -> exactamente 1 con 201, 99 con 409, cero 5xx', async () => {
     const fecha = fechaFutura(14);
     const horaInicio = '10:00';
     const horaFin = '12:00';
+    const deadlocksAntes = await contarDeadlocks();
 
     // Disparamos 100 solicitudes simultáneas
     const promesas = tokens.map((token, i) =>
@@ -102,7 +112,17 @@ describe('Fase 11 — Pruebas de Alta Concurrencia (100 pedidos simultáneos)', 
       expect(r.body.error).toMatch(/ya está reservada en ese horario/i);
     });
 
-    // 5. Verificación en la base de datos: solo una reserva activa en esa franja
+    // 5. Ningún deadlock. Las cien transacciones se encolan sobre el bloqueo
+    //    consultivo de (aula, fecha) antes de tocar la restricción de
+    //    exclusión, así que no pueden formar un ciclo de espera.
+    //
+    //    Esta aserción existe porque la versión anterior —reintentar el 40P01
+    //    en lugar de evitarlo— pasaba en una máquina de desarrollo y agotaba el
+    //    tiempo de la prueba en CI: los reintentos volvían a formar ciclos. El
+    //    conteo de PostgreSQL es la única forma de ver eso desde la prueba.
+    expect(await contarDeadlocks()).toBe(deadlocksAntes);
+
+    // 6. Verificación en la base de datos: solo una reserva activa en esa franja
     const reservasEnDb = await Reserva.findAll({
       where: {
         aulaId: aulaTest.id,

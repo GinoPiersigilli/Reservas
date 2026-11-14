@@ -247,9 +247,24 @@ viera. Lo destapó la combinación de PostgreSQL en contenedor y CPU compartida
 del runner de CI, que es justamente el entorno más parecido a producción con el
 que cuenta el proyecto.
 
-La corrección reintenta la transacción con esperas cortas y jitter, y si el
-conflicto no cede responde `503` con `Retry-After` en lugar de `500`. Las cinco
-pruebas que lo cubren fallan si se desactiva el reintento.
+La primera corrección reintentaba la transacción con esperas cortas y jitter.
+**No alcanzó**, y la corrida siguiente de CI lo demostró: con cien pedidos
+simultáneos los reintentos vuelven a formar ciclos de espera, y la prueba pasó
+de fallar con `5xx` a agotar los 150 segundos de tiempo límite. Reintentar un
+deadlock lo sobrelleva; no lo evita.
+
+La corrección definitiva lo evita. Antes de tocar la restricción de exclusión,
+cada transacción toma un bloqueo consultivo de transacción sobre la clave
+`(aulaId, fecha)`: los pedidos que compiten por el mismo día de la misma aula
+pasan de a uno y no pueden formar un ciclo, mientras que dos aulas distintas, o
+la misma aula en días distintos, siguen en paralelo —que es justo el caso en el
+que las franjas no pueden solaparse—. El reintento se conserva como red de
+seguridad para el resto de las rutas transaccionales.
+
+La prueba de cien pedidos **cuenta los deadlocks** que registra PostgreSQL en
+`pg_stat_database` antes y después, y falla si aumentaron. Es la única forma de
+ver desde la prueba lo que la versión anterior escondía: pasaba en una máquina
+de desarrollo y se caía en CI.
 
 ---
 
