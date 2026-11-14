@@ -98,9 +98,20 @@
   --z-modal: 1000;
   --z-toast: 1100;
 
-  /* Movimiento (120–160 ms solo en respuesta a una acción) */
-  --transicion-rapida: 120ms ease-out;
-  --transicion-base: 150ms ease-out;
+  /* Movimiento: respuestas cortas a una acción y entradas suaves de contenido */
+  --curva-estandar: cubic-bezier(0.2, 0, 0, 1);
+  --curva-entrada: cubic-bezier(0.16, 1, 0.3, 1);
+  --transicion-rapida: 140ms var(--curva-estandar);
+  --transicion-base: 200ms var(--curva-estandar);
+  --transicion-entrada: 280ms var(--curva-entrada);
+  --desplazamiento-entrada: 8px;
+  --escala-presion: 0.97;
+
+  /* Elevación y realces derivados del acento */
+  --sombra-elevada: 0 2px 6px rgba(27, 36, 48, 0.14);
+  --sombra-flotante: 0 12px 32px rgba(27, 36, 48, 0.22);
+  --acento-tenue: color-mix(in srgb, var(--acento) 12%, transparent);
+  --acento-medio: color-mix(in srgb, var(--acento) 28%, transparent);
 }
 
 :root[data-theme='dark'],
@@ -123,6 +134,8 @@
   --peligro-fondo: #3a1618;
   --peligro-texto: #f29a9e;
   --overlay: rgba(0, 0, 0, 0.6);
+  --sombra-elevada: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --sombra-flotante: 0 12px 32px rgba(0, 0, 0, 0.55);
 
   /* Estados en modo oscuro */
   --estado-pendiente-texto: #f2c46d;

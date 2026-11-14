@@ -17,7 +17,19 @@
   transition:
     background-color var(--transicion-rapida),
     border-color var(--transicion-rapida),
-    color var(--transicion-rapida);
+    color var(--transicion-rapida),
+    box-shadow var(--transicion-rapida),
+    transform var(--transicion-rapida);
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-elevada);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(var(--escala-presion));
+  box-shadow: none;
 }
 
 .button:focus-visible {

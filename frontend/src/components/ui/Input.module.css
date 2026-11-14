@@ -9,7 +9,17 @@
   background-color: var(--superficie);
   border: var(--borde-ancho) solid var(--borde-control);
   border-radius: var(--radio-control);
-  transition: border-color var(--transicion-rapida);
+  transition:
+    border-color var(--transicion-rapida),
+    box-shadow var(--transicion-rapida);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--tinta-2);
+}
+
+.input:focus-visible {
+  box-shadow: 0 0 0 4px var(--acento-tenue);
 }
 
 .input::placeholder {

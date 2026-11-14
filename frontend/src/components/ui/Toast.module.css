@@ -12,6 +12,15 @@
   font-family: var(--fuente-cuerpo);
   font-size: var(--texto-sm);
   color: var(--tinta);
+  box-shadow: var(--sombra-elevada);
+  animation: entrarToast var(--transicion-entrada) backwards;
+}
+
+@keyframes entrarToast {
+  from {
+    opacity: 0;
+    transform: translateY(var(--desplazamiento-entrada));
+  }
 }
 
 .cuerpo {

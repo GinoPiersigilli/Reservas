@@ -265,7 +265,9 @@
   cursor: pointer;
   transition:
     background-color var(--transicion-rapida),
-    color var(--transicion-rapida);
+    color var(--transicion-rapida),
+    box-shadow var(--transicion-rapida),
+    transform var(--transicion-rapida);
 }
 
 .celdaBoton:focus-visible {
@@ -276,13 +278,46 @@
 }
 
 .celdaLibre:hover:not(:disabled) {
-  background-color: var(--superficie-sutil);
+  background-color: var(--acento-tenue);
+  box-shadow: inset 0 0 0 var(--borde-ancho) var(--acento);
+}
+
+.celdaBoton:active:not(:disabled) {
+  transform: scale(0.88);
+}
+
+/* Rango tentativo entre el inicio elegido y la celda bajo el cursor */
+.celdaPrevia,
+.celdaPrevia:hover:not(:disabled) {
+  background-color: var(--acento-medio);
+  box-shadow: none;
 }
 
 .celdaSeleccionada {
   background-color: var(--acento);
   color: var(--tinta-inversa);
   font-weight: var(--peso-semibold);
+  animation: marcarCelda var(--transicion-entrada) backwards;
+}
+
+.celdaSeleccionada:hover:not(:disabled) {
+  background-color: var(--acento-hover);
+}
+
+@keyframes marcarCelda {
+  from {
+    opacity: 0.3;
+    transform: scale(0.6);
+    border-radius: var(--radio-panel);
+  }
+}
+
+.filaAula .tdAula {
+  transition: background-color var(--transicion-base);
+}
+
+.filaAula:hover .tdAula {
+  background-color: var(--fondo);
 }
 
 .celdaPasada {
@@ -449,12 +484,28 @@
   transition:
     background-color var(--transicion-rapida),
     border-color var(--transicion-rapida),
-    color var(--transicion-rapida);
+    color var(--transicion-rapida),
+    transform var(--transicion-rapida);
 }
 
 .botonTramoLibre:hover {
-  background-color: var(--superficie-sutil);
+  background-color: var(--acento-tenue);
   border-color: var(--acento);
+}
+
+.botonTramoLibre:active,
+.tabAulaCompacta:active {
+  transform: scale(var(--escala-presion));
+}
+
+.tarjetaAulaCompacta {
+  animation: aparecerTarjeta var(--transicion-entrada) backwards;
+}
+
+@keyframes aparecerTarjeta {
+  from {
+    opacity: 0;
+  }
 }
 
 .botonTramoSeleccionado {

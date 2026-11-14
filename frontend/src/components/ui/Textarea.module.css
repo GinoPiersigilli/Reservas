@@ -10,7 +10,17 @@
   border: var(--borde-ancho) solid var(--borde-control);
   border-radius: var(--radio-control);
   resize: vertical;
-  transition: border-color var(--transicion-rapida);
+  transition:
+    border-color var(--transicion-rapida),
+    box-shadow var(--transicion-rapida);
+}
+
+.textarea:hover:not(:disabled) {
+  border-color: var(--tinta-2);
+}
+
+.textarea:focus-visible {
+  box-shadow: 0 0 0 4px var(--acento-tenue);
 }
 
 .textarea::placeholder {
