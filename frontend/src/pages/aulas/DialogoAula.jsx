@@ -24,16 +24,11 @@ export default function DialogoAula({
       textoCancelar={TEXTOS.acciones.cancelar}
       variante="primario"
       cargando={guardando}
+      error={errorGeneral}
       onCancelar={onCancelar}
       onConfirmar={onConfirmar}
     >
       <div className={styles.formModal}>
-        {errorGeneral ? (
-          <div role="alert" className={styles.errorModal}>
-            {errorGeneral}
-          </div>
-        ) : null}
-
         <Field etiqueta={TEXTOS.aulas.nombre} obligatorio error={errores.nombre}>
           <Input
             name="nombre"

@@ -44,7 +44,8 @@ export default function Register() {
     enviando: cargando,
     registrar,
     verificar,
-    reenviarCodigo
+    reenviarCodigo,
+    usarOtroCorreo
   } = useRegistroClerk({ alCompletar: () => navigate('/reservas') });
 
   const { redirigiendoGoogle, errorGoogle, setErrorGoogle, iniciarOAuth } = useGoogleOAuth({
@@ -117,6 +118,16 @@ export default function Register() {
     </>
   );
 
+  /**
+   * Volver al formulario deja los campos como estaban, para que corregir una
+   * letra del correo no obligue a escribir todo de nuevo.
+   */
+  const handleOtroCorreo = () => {
+    setForm((prev) => ({ ...prev, password: '', confirmPassword: '' }));
+    setErroresCampo({});
+    usarOtroCorreo();
+  };
+
   // Clerk puede exigir confirmar el correo antes de abrir la sesión.
   if (paso === 'verificacion') {
     return (
@@ -125,6 +136,7 @@ export default function Register() {
         cargando={cargando}
         onVerificar={verificar}
         onReenviar={reenviarCodigo}
+        onOtroCorreo={handleOtroCorreo}
       />
     );
   }

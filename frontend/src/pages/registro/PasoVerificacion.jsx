@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button, Field, Input } from '../../components/ui/index.js';
 import { TEXTOS } from '../../textos.js';
 import styles from '../Auth.module.css';
@@ -6,11 +7,24 @@ import styles from '../Auth.module.css';
 /**
  * Segundo paso del alta: el código que Clerk envía al correo.
  *
- * No se vuelve atrás desde acá. La cuenta ya existe en Clerk; lo que falta es
- * probar que la dirección es de quien se registró, así que la salida es
- * confirmar el código o pedir uno nuevo.
+ * Antes esta pantalla no tenía salida, con el argumento de que la cuenta ya
+ * existe en Clerk y lo único que falta es probar la dirección. El argumento era
+ * cierto y la conclusión estaba mal: quien escribía mal su correo quedaba
+ * encerrado, sin poder corregirlo ni volver atrás, y la única vía era editar la
+ * barra de direcciones.
+ *
+ * Ahora hay dos salidas, porque sirven para cosas distintas. «Usar otro correo»
+ * es para el que se equivocó al escribirlo: descarta el alta en curso y vuelve
+ * al formulario. «Volver al ingreso» es para el que ya tenía cuenta o prefiere
+ * seguir después: el alta queda sin verificar y se retoma cuando quiera.
  */
-export default function PasoVerificacion({ avisos, cargando, onVerificar, onReenviar }) {
+export default function PasoVerificacion({
+  avisos,
+  cargando,
+  onVerificar,
+  onReenviar,
+  onOtroCorreo
+}) {
   const [codigo, setCodigo] = useState('');
 
   const handleSubmit = async (evento) => {
@@ -50,6 +64,14 @@ export default function PasoVerificacion({ avisos, cargando, onVerificar, onReen
           <Button type="button" variante="secundario" bloque onClick={onReenviar}>
             {TEXTOS.registro.reenviar}
           </Button>
+
+          <Button type="button" variante="secundario" bloque onClick={onOtroCorreo}>
+            {TEXTOS.registro.usarOtroCorreo}
+          </Button>
+
+          <Link to="/login" className={styles.enlace}>
+            {TEXTOS.registro.volverAlIngreso}
+          </Link>
         </div>
       </div>
     </main>

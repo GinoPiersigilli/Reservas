@@ -104,15 +104,6 @@
   text-align: left;
 }
 
-.errorModal {
-  padding: var(--espacio-3);
-  background-color: var(--peligro-fondo);
-  color: var(--peligro-texto);
-  border: var(--borde-ancho) solid var(--peligro);
-  border-radius: var(--radio-control);
-  font-size: var(--texto-sm);
-}
-
 .alertaAfectadas {
   padding: var(--espacio-3);
   background-color: var(--estado-pendiente-fondo);

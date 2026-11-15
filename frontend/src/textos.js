@@ -63,6 +63,8 @@ export const TEXTOS = {
       'Su cuenta pide un paso más de verificación que esta pantalla todavía no resuelve.'
   },
   registro: {
+    usarOtroCorreo: 'Usar otro correo',
+    volverAlIngreso: 'Volver al ingreso',
     titulo: 'Crear cuenta',
     subtitulo: 'Complete sus datos para registrarse',
     nombre: 'Nombre completo',
@@ -153,7 +155,8 @@ export const TEXTOS = {
     rechazarTitulo: 'Rechazar solicitud',
     rechazarDescripcion: '¿Confirma que desea rechazar esta solicitud de reserva?',
     aprobarTitulo: 'Aprobar solicitud',
-    aprobarDescripcion: '¿Confirma que desea aprobar esta solicitud de reserva?'
+    aprobarDescripcion: '¿Confirma que desea aprobar esta solicitud de reserva?',
+    accionFallida: 'No se pudo completar la acción.'
   },
   panel: {
     titulo: 'Panel',

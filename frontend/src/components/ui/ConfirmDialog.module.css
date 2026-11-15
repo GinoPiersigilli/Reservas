@@ -57,6 +57,20 @@
   line-height: var(--linea-base);
 }
 
+/*
+ * El error de la acción va acá adentro y no en la página: el telón tapa todo lo
+ * que haya detrás, así que un mensaje por fuera del diálogo no se ve, y la
+ * persona confirma, algo falla, y para ella no pasó nada.
+ */
+.error {
+  padding: var(--espacio-3);
+  background-color: var(--peligro-fondo);
+  color: var(--peligro-texto);
+  border: var(--borde-ancho) solid var(--peligro);
+  border-radius: var(--radio-control);
+  font-size: var(--texto-sm);
+}
+
 .pie {
   display: flex;
   align-items: center;

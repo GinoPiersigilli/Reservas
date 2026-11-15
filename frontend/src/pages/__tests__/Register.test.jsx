@@ -289,4 +289,56 @@ describe('Register page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reenviar código/i }));
     expect(await screen.findByText(/Le enviamos un código nuevo/i)).toBeInTheDocument();
   });
+
+  /**
+   * El paso de verificación no tenía salida: quien escribía mal su correo
+   * quedaba encerrado, sin poder corregirlo ni volver atrás. La única vía era
+   * editar la barra de direcciones.
+   */
+  describe('salidas del paso de verificación', () => {
+    const llegarAVerificacion = async () => {
+      mockCreate.mockResolvedValueOnce({ status: 'missing_requirements' });
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>
+      );
+      completarFormulario({ email: 'mal-escrito@example.com' });
+      fireEvent.click(screen.getByRole('button', { name: /^Crear cuenta$/i }));
+      await screen.findByLabelText(/Código de verificación/i);
+    };
+
+    it('ofrece una salida, no solo confirmar el código', async () => {
+      await llegarAVerificacion();
+
+      expect(screen.getByRole('button', { name: /otro correo/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /ingreso/i })).toHaveAttribute('href', '/login');
+    });
+
+    it('«usar otro correo» devuelve al formulario para poder corregirlo', async () => {
+      await llegarAVerificacion();
+
+      fireEvent.click(screen.getByRole('button', { name: /otro correo/i }));
+
+      expect(await screen.findByLabelText(/Correo electrónico/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Código de verificación/i)).not.toBeInTheDocument();
+    });
+
+    it('al volver, el correo mal escrito sigue ahí para editarlo', async () => {
+      await llegarAVerificacion();
+
+      fireEvent.click(screen.getByRole('button', { name: /otro correo/i }));
+
+      const correo = await screen.findByLabelText(/Correo electrónico/i);
+      expect(correo).toHaveValue('mal-escrito@example.com');
+    });
+
+    it('pero la contraseña no se conserva, que es dato sensible en pantalla', async () => {
+      await llegarAVerificacion();
+
+      fireEvent.click(screen.getByRole('button', { name: /otro correo/i }));
+
+      expect(await screen.findByLabelText(/^Contraseña/i)).toHaveValue('');
+    });
+  });
 });

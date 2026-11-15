@@ -30,6 +30,9 @@ export default function DialogoDesactivar({
       textoCancelar={TEXTOS.acciones.cancelar}
       variante="peligro"
       cargando={desactivando}
+      /* Con el motivo a la vista, el mismo error ya se muestra pegado al campo:
+         repetirlo arriba sería decir dos veces lo mismo. */
+      error={cancelarReservasFuturas ? null : error}
       onCancelar={onCancelar}
       onConfirmar={onConfirmar}
     >
@@ -59,10 +62,6 @@ export default function DialogoDesactivar({
             autoFocus
           />
         </Field>
-      ) : error ? (
-        <div role="alert" className={styles.errorModal}>
-          {error}
-        </div>
       ) : null}
     </ConfirmDialog>
   );

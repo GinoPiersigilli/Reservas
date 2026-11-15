@@ -10,6 +10,10 @@ import styles from './ConfirmDialog.module.css';
  * El manejo de foco y teclado vive en `useTrampaDeFoco`, así este componente
  * solo describe lo que se ve. Mientras `cargando` es true no se puede cerrar,
  * para no abandonar una operación a mitad de camino.
+ *
+ * `error` es el mensaje de la acción que falló y se dibuja adentro a propósito:
+ * el telón tapa la página, así que un error puesto por fuera queda invisible y
+ * la confirmación parece no haber hecho nada.
  */
 export default function ConfirmDialog({
   abierto = false,
@@ -19,6 +23,7 @@ export default function ConfirmDialog({
   textoCancelar = TEXTOS.acciones.cancelar,
   variante = 'peligro',
   cargando = false,
+  error,
   onConfirmar,
   onCancelar,
   children
@@ -67,6 +72,12 @@ export default function ConfirmDialog({
           <p id={idDescripcion} className={styles.descripcion}>
             {descripcion}
           </p>
+        ) : null}
+
+        {error ? (
+          <div role="alert" className={styles.error}>
+            {error}
+          </div>
         ) : null}
 
         {children}
