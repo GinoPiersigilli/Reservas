@@ -46,6 +46,20 @@ const ACCIONES = {
 
 const puedeEditar = ({ esAdmin, estado }) => esAdmin && ESTADOS_ACTIVOS.includes(estado);
 
+/**
+ * Si son la misma persona.
+ *
+ * Los dos valores salen de la misma columna pero no siempre con el mismo tipo:
+ * según de dónde venga el perfil, el identificador puede llegar como número o
+ * como cadena, y comparar con `===` daba `false` para todos. De ahí que nadie
+ * que entrara por Clerk viera el botón de cancelar su propia reserva.
+ *
+ * Los ausentes no cuentan: dos identificadores que no están no son la misma
+ * persona, son dos incógnitas.
+ */
+const mismoUsuario = (unId, otroId) =>
+  unId != null && otroId != null && String(unId) === String(otroId);
+
 const AccionesReserva = ({ reserva, usuario, onAccion }) => {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
@@ -54,7 +68,7 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
 
   const contexto = {
     esAdmin: usuario?.rol === 'admin',
-    esPropietario: usuario?.id === reserva.usuarioId,
+    esPropietario: mismoUsuario(usuario?.id, reserva.usuarioId),
     estado: reserva.estado
   };
 

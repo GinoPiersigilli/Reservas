@@ -216,6 +216,7 @@ Todos los endpoints bajo `/api/reservas` y `/api/aulas/:id/disponibilidad` requi
 | `GET`   | `/api/health/ready`             | Público            | Readiness: el servicio puede atender tráfico (verifica la base con límite de 2 s)            |
 | `GET`   | `/api/docs/ui`                  | Público (solo dev) | Documentación OpenAPI navegable. No se monta si `NODE_ENV=production`                        |
 | `POST`  | `/api/auth/login`               | Público            | Inicio de sesión local con tasa limitada (rate limit)                                        |
+| `GET`   | `/api/auth/me`                  | Usuario, Admin     | Identidad del portador del token, leída de `usuarios`: identificador numérico y rol efectivo |
 | `GET`   | `/api/aulas`                    | Usuario, Admin     | Lista de aulas activas (para admin admite `?incluirInactivas=true` para auditoría y gestión) |
 | `POST`  | `/api/aulas`                    | Solo Admin         | Creación de aula con nombre único (case-insensitive), capacidad 1-1000 y auditoría           |
 | `PUT`   | `/api/aulas/:id`                | Solo Admin         | Edición integral de aula (valida no reducir capacidad bajo reservas futuras activas -> 409)  |

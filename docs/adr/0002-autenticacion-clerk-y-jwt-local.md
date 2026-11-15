@@ -57,6 +57,26 @@ Reglas comunes a las dos vías:
   cuentas sembradas por los seeders. No hay ruta de registro local: el alta de
   cuentas pasa siempre por Clerk o por un seeder.
 
+### El frontend también lee la identidad de la base (15/11/2026)
+
+`GET /api/auth/me` devuelve la fila de `usuarios` que corresponde al token, sea
+cual sea su origen. El frontend la pide al abrir una sesión de Clerk, y de ahí
+salen el identificador y el rol con los que opera.
+
+Antes los tomaba del SDK, y eso rompía dos cosas que este documento ya
+prometía. El identificador era la cadena `user_2…` de Clerk mientras que las
+reservas guardan la clave primaria entera de `usuarios`: compararlas no da
+error, da `false` siempre, así que **nadie que entrara por Clerk veía el botón
+para cancelar su propia reserva**. Y el rol salía de `publicMetadata`, una copia
+que puede quedar vieja, cuando la regla de arriba dice que el rol se lee de la
+base en cada petición. El backend la cumplía; el frontend decidía qué mostrar
+mirando la copia.
+
+No era un agujero de permisos —el backend revalida todo— pero sí un error
+visible: la aplicación le escondía a la gente una acción que tenía permitida.
+Ninguna prueba lo detectó porque todas las cuentas de prueba, incluidas las de
+extremo a extremo, son locales y su identificador ya es el entero correcto.
+
 ### Recuperar la contraseña (15/11/2026)
 
 `/recuperar` usa `signIn.create({ strategy: 'reset_password_email_code' })` y

@@ -3,15 +3,23 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import EsperaDeSesion from './EsperaDeSesion.jsx';
 
+/**
+ * Las mismas reglas de espera que `RutaProtegida`, más el rol.
+ *
+ * El rol sale de `usuario`, que es la fila de PostgreSQL, y ya no de
+ * `publicMetadata` de Clerk. Esa copia puede estar vieja, y el ADR 0002 dice
+ * que la fuente de verdad del rol es la base. El backend siempre la releyó; el
+ * frontend decidía qué mostrar mirando la copia.
+ */
 const RutaSoloAdmin = ({ children }) => {
-  const { isLoaded, isSignedIn, user } = useUser();
-  const auth = useAuth();
-  const usuario = auth?.usuario;
-  const rol = user?.publicMetadata?.rol || usuario?.rol;
+  const { isLoaded, isSignedIn } = useUser();
+  const { usuario, cargandoPerfil } = useAuth();
 
-  if (!isLoaded) return <EsperaDeSesion />;
+  if (cargandoPerfil) return <EsperaDeSesion />;
+  if (!isLoaded && !usuario) return <EsperaDeSesion />;
+
   if (!isSignedIn && !usuario) return <Navigate to="/login" replace />;
-  if (rol !== 'admin') return <Navigate to="/reservas" replace />;
+  if (usuario?.rol !== 'admin') return <Navigate to="/reservas" replace />;
 
   return children;
 };
