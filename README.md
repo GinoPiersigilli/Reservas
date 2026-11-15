@@ -8,22 +8,6 @@
 
 Plataforma web institucional full-stack para la gestión, consulta visual de disponibilidad horaria y asignación de aulas académicas sin riesgo de solapamiento.
 
-> **In English** — A full-stack classroom booking system for a university
-> registrar's office. Node.js/Express, PostgreSQL 16 and React 19. Double
-> booking is impossible by construction: overlaps are rejected by a PostgreSQL
-> `EXCLUDE USING gist` constraint over half-open `tsrange` values, not by
-> application-level checks, and this is verified under 100 concurrent requests.
-> Retries and double clicks are absorbed by an HTTP `Idempotency-Key` protocol,
-> and every state change is written to an append-only audit trail inside the
-> same transaction. Covered by 233 API tests, 171 component tests and 20
-> end-to-end tests across 7 complete user flows, with Trivy, Semgrep, CodeQL
-> and Gitleaks running on every push. The interface and the documentation are in Spanish; the code, including
-> identifiers and comments, is in Spanish as well, since that is the language of
-> the institution it was written for. Read the full documentation in English in
-> [README.en.md](README.en.md).
-
----
-
 ## Capturas de Pantalla
 
 El recorrido completo: un docente consulta la grilla, elige una franja libre y
