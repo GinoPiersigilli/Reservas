@@ -44,7 +44,7 @@ Dos detalles que hacen que funcione:
 - **La clave se guarda en la misma transacción que la reserva.** Si la
   transacción falla, no queda una clave registrada sin su reserva; si se
   confirma, la respuesta queda disponible para el reintento.
-- **Las claves vencen a las 24 horas** y se purgan al arrancar. Una clave
+- **Las claves vencen a las 24 horas** y se purgan al arrancar y cada una hora. Una clave
   vencida que se reutiliza se renueva, para que no quede una clave inservible
   ocupando el par (usuario, clave).
 

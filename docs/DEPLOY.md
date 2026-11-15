@@ -18,10 +18,10 @@ El despliegue con `docker-compose.prod.yml` levanta tres servicios conectados me
    - No incluye tests ni seeders (`db/seeders` y `tests` están excluidos en `.dockerignore` y fuera de la etapa `production`).
    - Su entrypoint (`backend/docker-entrypoint.sh`) ejecuta explícitamente `./node_modules/.bin/sequelize-cli db:migrate --env production` antes de iniciar el servidor (`node index.js`). **Nunca ejecuta `sequelize.sync()` ni los seeders.**
    - Publica el puerto `3001` ligado únicamente a `127.0.0.1` (`127.0.0.1:${BACKEND_PORT:-3001}:3001`) para diagnóstico local sin exponerlo a interfaces públicas del servidor.
-   - Incluye `healthcheck` contra `GET /api/health`.
+   - Incluye `healthcheck` contra `GET /api/health/ready`.
 3. **`frontend` (`frontend/Dockerfile` + `frontend/nginx.conf`):**
    - Etapa 1 (`build`): compila la aplicación React + Vite estática (`npm run build`).
-   - Etapa 2 (`production`): sirve los archivos estáticos desde `nginxinc/nginx-unprivileged:1.27-alpine` (usuario sin privilegios `nginx`, puerto interno `8080`), maneja rutas de React Router (`try_files $uri $uri/ /index.html`) y actúa como proxy inverso reenviando `/api/` hacia `http://backend:3001/api/` con encabezado Host fijo (`backend`).
+   - Etapa 2 (`production`): sirve los archivos estáticos desde `nginxinc/nginx-unprivileged:1.31-alpine` (usuario sin privilegios `nginx`, puerto interno `8080`), maneja rutas de React Router (`try_files $uri $uri/ /index.html`) y actúa como proxy inverso reenviando `/api/` hacia `http://backend:3001/api/` con encabezado Host fijo (`backend`).
 
 > **Despliegue alternativo con PostgreSQL gestionado (Neon, RDS, Supabase, Railway):**
 > Si se utiliza una base de datos gestionada externa en lugar del servicio `postgres` de Docker Compose, asegurate de que el proveedor permita habilitar la extensión `btree_gist` (`CREATE EXTENSION IF NOT EXISTS btree_gist;`), requerida por la migración `002-esquema-definitivo.cjs` para la restricción de exclusión `reservas_sin_solapamiento`.

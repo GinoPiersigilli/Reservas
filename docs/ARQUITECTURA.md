@@ -9,7 +9,7 @@ Este documento describe la arquitectura técnica, modelo de datos, reglas de neg
 El sistema está diseñado bajo una arquitectura multicapa desacoplada y contenerizada:
 
 - **Frontend SPA:** Desarrollado en React 19 con Vite, modularizado mediante CSS Modules y tokens CSS (`tokens.css`). Implementa autenticación híbrida (Clerk y JWT local) y comunicación REST mediante Axios con interceptores de autorización.
-- **Reverse Proxy y Servidor Web:** Nginx 1.27 en contenedor Alpine, encargado del servicio de estáticos, terminación de proxy hacia la API backend y endurecimiento de cabeceras HTTP con una Content-Security-Policy (CSP) estricta.
+- **Reverse Proxy y Servidor Web:** Nginx 1.31 en contenedor Alpine, encargado del servicio de estáticos, terminación de proxy hacia la API backend y endurecimiento de cabeceras HTTP con una Content-Security-Policy (CSP) estricta.
 - **Backend API:** Servidor Node.js (ESM) con Express, ORM Sequelize 6 y validación de esquemas Zod en middleware. Todas las operaciones críticas de escritura se ejecutan dentro de transacciones de base de datos gestionadas.
 - **Motor de Base de Datos:** PostgreSQL 16 con extensión `btree_gist`, configurado con restricciones de integridad referencial, checks y una restricción de exclusión a nivel de motor contra solapamientos horarios.
 
@@ -308,14 +308,14 @@ stateDiagram-v2
 
 2. **Política de Desactivación Atómica y Cancelación en Cascada:**
    - Se prohíbe la eliminación física (`DELETE`) de aulas en base de datos para preservar la integridad de auditoría histórica (`ON DELETE RESTRICT`).
-   - Si un aula registra reservas futuras activas (`fecha >= hoy` en `America/Argentina/Cordoba`, con estado `pendiente` o `aprobada`):
+   - Si un aula registra reservas futuras activas (`condicionReservaFutura`: `fecha > hoy` o `fecha === hoy` con `horaFin > horaActualArgentina` en `America/Argentina/Cordoba`, con estado `pendiente` o `aprobada`):
      - La solicitud de desactivación sin confirmación responde inmediatamente `409 Conflict`, informando la cantidad exacta de reservas afectadas (`reservasAfectadas`).
      - Al confirmar explícitamente (`{ "cancelarReservasFuturas": true, "motivo": "..." }`), en una **única transacción atómica**:
        - Se establece `aula.activa = false`.
        - Se cancelan todas las reservas futuras afectadas (`estado = 'cancelada'`).
        - Se escribe el historial individual en `historial_reservas` con acción `'cancelada'`, motivo ingresado y referencia a la baja del aula.
        - Se registra el evento en `historial_aulas` (`accion = 'desactivacion'`).
-     - Las reservas pasadas permanecen intactas en su estado original.
+     - Las reservas pasadas —incluidas las franjas del día corriente cuya `horaFin` ya transcurrió— permanecen intactas en su estado original.
 
 3. **Invariante de Capacidad vs. Reservas Futuras:**
    - La reducción de capacidad de un aula está restringida por sus compromisos vigentes. Si la nueva capacidad solicitada es menor a la mayor cantidad de personas de una reserva futura pendiente o aprobada, la API responde `409 Conflict` detallando la capacidad máxima requerida y el número de reservas afectadas.
@@ -364,6 +364,8 @@ El sistema parametriza su configuración exclusivamente a través de variables d
 - `RATE_LIMIT_ESCRITURAS_MAX`
 - `RATE_LIMIT_USUARIO_WINDOW_MS`
 - `RATE_LIMIT_USUARIO_MAX`
+- `RATE_LIMIT_LOGIN_WINDOW_MS`
+- `RATE_LIMIT_LOGIN_MAX`
 
 ### Frontend (`frontend/.env`)
 
@@ -380,12 +382,12 @@ Para prevenir reservas duplicadas producto de reintentos de red, reconexiones m�
 
 - **Clave del Cliente:** UUID v4 generado por el frontend por intento de envío (`crypto.randomUUID()`). Si el usuario reintenta o experimenta un timeout de red sin alterar los datos del formulario, la clave se preserva. Si los datos cambian o el envío resulta exitoso, se regenera una nueva clave. El botón de envío se bloquea (`disabled` y estado de carga) durante la transmisión.
 - **Persistencia y Hash Canónico:** La tabla `idempotency_keys` almacena la tupla `(usuarioId, clave)` con índice único, junto al hash criptográfico SHA-256 del cuerpo canónico (claves ordenadas alfabéticamente de forma recursiva), el código HTTP de respuesta y el cuerpo JSONB resultante.
-- **Transaccionalidad Atómica y Serialización:** La inserción de la clave se efectúa dentro de la misma transacción de base de datos que crea la reserva y su historial mediante `ON CONFLICT ("usuarioId", "clave") DO NOTHING`.
+- **Transaccionalidad Atómica y Serialización:** La inserción de la clave se efectúa dentro de la misma transacción de base de datos que crea la reserva y su historial mediante `ON CONFLICT ("usuarioId", "clave") DO UPDATE ... WHERE idempotency_keys."expiresAt" < NOW()`, lo que permite renovar claves ya expiradas sin sobreescribir claves vigentes.
   - **Misma clave y mismo cuerpo ya procesados:** Se retorna la respuesta almacenada (código 201 y JSON original) con el encabezado HTTP `Idempotent-Replay: true`, sin interactuar nuevamente con las tablas de negocio.
   - **Misma clave con cuerpo divergente:** Responde `422 Unprocessable Entity`, alertando sobre el intento de reutilización ilegítima de la clave.
-  - **Pedidos concurrentes simultáneos:** Si múltiples solicitudes con la misma clave compiten en milisegundos, la restricción única y el bloqueo GiST serializan las transacciones; la primera crea el registro y las demás devuelven la réplica exacta con `Idempotent-Replay: true`.
+  - **Pedidos concurrentes simultáneos:** Si múltiples solicitudes con la misma clave compiten en milisegundos, la primera crea el registro y las siguientes detectan el conflicto de solapamiento o unicidad y recuperan la réplica exacta con `Idempotent-Replay: true`.
   - **Peticiones fallidas (4xx):** Cualquier error de validación o conflicto de negocio aborta la transacción (`ROLLBACK`), por lo que **no consume la clave**, permitiendo subsanar el error y reintentar.
-  - **Retención y Purga:** Las claves tienen un período de vigencia de **24 horas** (`expiresAt`). El sistema ejecuta una purga automática al inicio del servidor y cuenta con un índice dedicado sobre `expiresAt` para mantenimiento programado.
+  - **Retención y Purga:** Las claves tienen un período de vigencia de **24 horas** (`expiresAt`). El sistema ejecuta una purga automática al inicio del servidor y periódicamente cada una hora (fuera del entorno de pruebas), y cuenta con un índice dedicado sobre `expiresAt`.
 
 ### 7.2 Pruebas de Alta Concurrencia (100 pedidos simultáneos)
 
