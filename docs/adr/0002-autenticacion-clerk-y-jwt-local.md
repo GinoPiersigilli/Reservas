@@ -52,10 +52,30 @@ Reglas comunes a las dos vías:
   14/11/2026 ese formulario llamaba a `POST /api/auth/register`, una ruta que
   nunca existió: el registro con correo y contraseña devolvía `404` desde el
   primer día, y solo funcionaba el botón de Google.
-- **El JWT local** lo usan las pruebas (los 206 casos de API y los 20 de
-  extremo a extremo firman sus propios tokens), el modo de desarrollo sin red,
-  y las cuentas sembradas por los seeders. No hay ruta de registro local: el
-  alta de cuentas pasa siempre por Clerk o por un seeder.
+- **El JWT local** lo usan las pruebas (los casos de API y los 20 de extremo a
+  extremo firman sus propios tokens), el modo de desarrollo sin red, y las
+  cuentas sembradas por los seeders. No hay ruta de registro local: el alta de
+  cuentas pasa siempre por Clerk o por un seeder.
+
+### El formulario de ingreso consulta las dos (15/11/2026)
+
+Hay dos lugares donde puede vivir una contraseña, así que el formulario de
+correo y contraseña pregunta a los dos: primero a Clerk con
+`signIn.create({ identifier, password })` y, si esa vía no abre sesión, al
+ingreso local.
+
+Antes preguntaba solo al segundo, y eso dejaba afuera a cualquiera que se
+hubiera dado de alta desde la aplicación: su fila en `usuarios` existe —la crea
+el aprovisionamiento al vuelo— pero con `passwordHash` nulo, y `loginUsuario`
+rechaza explícitamente ese caso. El resultado era que alguien se registraba,
+verificaba su correo, entraba, cerraba sesión, y al volver con las mismas
+credenciales recibía «credenciales inválidas». Sin Google no había otra puerta.
+
+El orden tiene una consecuencia práctica: solo la vía local llega a
+`POST /api/auth/login`, así que un ingreso correcto por Clerk no consume cupo
+del limitador de intentos. Y si Clerk no responde —o ni siquiera cargó—, se va
+derecho a la vía local, que es lo que mantiene la demostración en pie sin
+conexión.
 
 ### Qué pasa en cada situación
 
@@ -67,6 +87,8 @@ Reglas comunes a las dos vías:
 | El token de Clerk vence                                 | Lo rechaza `verifyToken`; el SDK del frontend lo renueva solo mientras la sesión de Clerk siga viva.                                                            |
 | El usuario existe en Clerk pero no localmente           | Se crea la cuenta local en el momento (JIT), siempre con rol `usuario` salvo que `publicMetadata.rol` —escribible solo desde el backend de Clerk— diga `admin`. |
 | El usuario de Clerk tiene el correo de una cuenta local | Se vinculan **solo** si Clerk informa el correo como verificado.                                                                                                |
+| Una cuenta de Clerk ingresa por correo y contraseña     | Clerk verifica la contraseña y abre la sesión; la vía local no llega a intentarse, y es mejor así: esa fila tiene `passwordHash` nulo y la rechazaría.          |
+| Una cuenta semilla ingresa y Clerk no responde          | Clerk no abre sesión, el formulario pasa a la vía local y la cuenta entra igual: la demostración no depende de que el proveedor esté en pie.                    |
 
 ### Por qué las dos vías no pueden dar privilegios distintos
 
@@ -91,7 +113,12 @@ intercambio deliberado: revocación inmediata a cambio de una lectura indexada.
 **En contra**
 
 - Dos caminos de autenticación que mantener y probar, con el riesgo de que una
-  regla de seguridad se aplique en uno y se olvide en el otro.
+  regla de seguridad se aplique en uno y se olvide en el otro. **Ese riesgo se
+  materializó**, aunque no por una regla de seguridad sino por una de acceso: el
+  alta se mudó a Clerk y el formulario de ingreso siguió preguntando solo a la
+  base propia, así que durante un tiempo nadie que se registrara desde la
+  aplicación podía volver a entrar. Lo corrigió la fase 15; la lección es que
+  cada vez que se mueve una de las dos vías hay que revisar la otra.
 - El token se guarda en `localStorage`, expuesto a XSS. Es un riesgo aceptado y
   documentado: mitigarlo requiere cookies `HttpOnly` con protección CSRF, que
   es el paso natural siguiente y está anotado como pendiente en

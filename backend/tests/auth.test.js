@@ -399,4 +399,40 @@ describe('Auth routes, token verification & env validation', () => {
       authSpy.mockRestore();
     }
   });
+
+  /**
+   * Las cuentas que llegan por Clerk no tienen contraseña en esta base: la
+   * contraseña vive en Clerk. Que el ingreso local las rechace es correcto —no
+   * hay nada contra qué comparar, y aceptar sería peor—, pero significa que el
+   * formulario de ingreso no puede preguntarle solo a esta vía. De ahí que el
+   * frontend consulte primero a Clerk y use esta como respaldo.
+   *
+   * Si alguna vez este caso dejara de dar 401, habría que mirar `loginUsuario`:
+   * quiere decir que alguien sacó el resguardo contra el hash nulo.
+   */
+  it('rejects local login for a Clerk-provisioned account with no password hash', async () => {
+    const usuario = await sincronizarUsuarioClerk({
+      id: 'user_sin_password',
+      primaryEmailAddressId: 'idem_1',
+      emailAddresses: [
+        {
+          id: 'idem_1',
+          emailAddress: 'solo-clerk@example.com',
+          verification: { status: 'verified' }
+        }
+      ],
+      firstName: 'Solo',
+      lastName: 'Clerk',
+      publicMetadata: {}
+    });
+
+    expect(usuario.passwordHash).toBeNull();
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'solo-clerk@example.com', password: 'la-que-uso-en-clerk' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/credenciales/i);
+  });
 });

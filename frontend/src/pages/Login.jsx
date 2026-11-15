@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useSignIn } from '@clerk/clerk-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Field, Input, Toast } from '../components/ui/index.js';
-import { useAuth } from '../context/AuthContext.jsx';
 import { useGoogleOAuth } from '../hooks/useGoogleOAuth.js';
+import { useIngreso } from './ingreso/useIngreso.js';
 import { TEXTOS } from '../textos.js';
 import styles from './Auth.module.css';
 
@@ -31,12 +30,19 @@ function GoogleIcon({ size = 18, ...props }) {
 }
 
 export default function Login() {
-  const { iniciarSesionLocal } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const mensajeInicial = location.state?.mensaje || null;
 
-  const { isLoaded, signIn } = useSignIn();
+  const {
+    isLoaded,
+    signIn,
+    error: errorIngreso,
+    setError: setErrorIngreso,
+    cargando,
+    ingresar
+  } = useIngreso({ alIngresar: () => navigate('/reservas') });
+
   const { redirigiendoGoogle, errorGoogle, setErrorGoogle, iniciarOAuth } = useGoogleOAuth({
     authResource: signIn,
     isLoaded,
@@ -45,7 +51,7 @@ export default function Login() {
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [erroresCampo, setErroresCampo] = useState({});
-  const [errorGeneral, setErrorGeneral] = useState(() => {
+  const [errorInicial, setErrorInicial] = useState(() => {
     try {
       const authError = sessionStorage.getItem('auth_error');
       if (authError) {
@@ -57,7 +63,19 @@ export default function Login() {
     }
     return location.state?.error || null;
   });
-  const [cargando, setCargando] = useState(false);
+
+  /**
+   * Dos orígenes para un mismo renglón: el motivo con el que se llegó a esta
+   * pantalla (una sesión vencida) y el error del intento de ingreso. El segundo
+   * pisa al primero, porque es sobre lo que la persona acaba de actuar.
+   */
+  const errorGeneral = errorIngreso || errorInicial;
+
+  const limpiarErrores = () => {
+    setErrorIngreso(null);
+    setErrorInicial(null);
+    setErrorGoogle(null);
+  };
 
   const handleChange = (evento) => {
     const { name, value } = evento.target;
@@ -83,24 +101,15 @@ export default function Login() {
 
   const handleSubmitLocal = async (evento) => {
     evento.preventDefault();
-    setErrorGeneral(null);
-    setErrorGoogle(null);
+    limpiarErrores();
 
     if (!validar()) return;
 
-    setCargando(true);
-    try {
-      await iniciarSesionLocal(form.email.trim(), form.password);
-      navigate('/reservas');
-    } catch (err) {
-      setErrorGeneral(err.message || 'Credenciales inválidas');
-    } finally {
-      setCargando(false);
-    }
+    await ingresar({ email: form.email.trim(), password: form.password });
   };
 
   const handleGoogleLogin = async () => {
-    setErrorGeneral(null);
+    limpiarErrores();
     await iniciarOAuth();
   };
 
@@ -114,7 +123,7 @@ export default function Login() {
 
         {mensajeInicial ? <Toast tipo="exito" mensaje={mensajeInicial} /> : null}
         {errorGeneral ? (
-          <Toast tipo="error" mensaje={errorGeneral} onCerrar={() => setErrorGeneral(null)} />
+          <Toast tipo="error" mensaje={errorGeneral} onCerrar={limpiarErrores} />
         ) : null}
         {errorGoogle ? (
           <Toast tipo="error" mensaje={errorGoogle} onCerrar={() => setErrorGoogle(null)} />

@@ -57,7 +57,10 @@ export const TEXTOS = {
     errorGoogle: 'No se pudo iniciar sesión con Google. Intente nuevamente.',
     noCompletadoGoogle: 'No se completó el ingreso con Google. Intente de nuevo.',
     sinCuenta: '¿No tiene cuenta?',
-    crearCuenta: 'Crear cuenta'
+    crearCuenta: 'Crear cuenta',
+    credencialesInvalidas: 'Credenciales inválidas',
+    requiereOtroFactor:
+      'Su cuenta pide un paso más de verificación que esta pantalla todavía no resuelve.'
   },
   registro: {
     titulo: 'Crear cuenta',
