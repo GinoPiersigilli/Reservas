@@ -62,6 +62,27 @@ export const TEXTOS = {
     requiereOtroFactor:
       'Su cuenta pide un paso más de verificación que esta pantalla todavía no resuelve.'
   },
+  recuperacion: {
+    titulo: 'Restablecer contraseña',
+    subtitulo: 'Le enviamos un código al correo de su cuenta.',
+    aclaracionCuentas:
+      'Sirve para las cuentas creadas desde esta aplicación. Si bedelía le entregó la suya, pídale a bedelía el cambio de contraseña.',
+    correo: 'Correo electrónico',
+    enviarCodigo: 'Enviar código',
+    codigo: 'Código de verificación',
+    nuevaContrasena: 'Contraseña nueva',
+    confirmarContrasena: 'Repetir la contraseña nueva',
+    guardar: 'Guardar la contraseña nueva',
+    tituloPaso2: 'Ingrese el código',
+    subtituloPaso2: 'Escriba el código que le llegó y elija una contraseña nueva.',
+    codigoEnviado: 'Si hay una cuenta con ese correo, le enviamos un código.',
+    errorCodigo: 'El código no es válido o venció. Pida uno nuevo.',
+    requiereOtroFactor:
+      'Su cuenta pide un paso más de verificación que esta pantalla todavía no resuelve.',
+    usarOtroCorreo: 'Usar otro correo',
+    volverAlIngreso: 'Volver al ingreso',
+    enlaceOlvide: '¿Olvidó su contraseña?'
+  },
   registro: {
     usarOtroCorreo: 'Usar otro correo',
     volverAlIngreso: 'Volver al ingreso',

@@ -160,6 +160,12 @@ export default function Login() {
           </Button>
         </form>
 
+        <p className={styles.olvide}>
+          <Link to="/recuperar" className={styles.enlace}>
+            {TEXTOS.recuperacion.enlaceOlvide}
+          </Link>
+        </p>
+
         <div className={styles.separador} aria-hidden="true">
           <span>{TEXTOS.login.separadorO}</span>
         </div>

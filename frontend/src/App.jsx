@@ -13,6 +13,7 @@ import Aulas from './pages/Aulas.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import Recuperar from './pages/Recuperar.jsx';
 
 const GuiaEstilos = import.meta.env.DEV ? lazy(() => import('./pages/GuiaEstilos.jsx')) : null;
 
@@ -23,6 +24,7 @@ function App() {
         <Route path="/" element={<Navigate to="/reservas" replace />} />
         <Route path="/login/*" element={<Login />} />
         <Route path="/register/*" element={<Register />} />
+        <Route path="/recuperar" element={<Recuperar />} />
         <Route
           path="/sso-callback"
           element={
