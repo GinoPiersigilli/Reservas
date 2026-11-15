@@ -30,7 +30,8 @@ router.post('/login', limiteLogin, validar(loginSchema), async (req, res, next) 
     const resultado = await loginUsuario(email, password);
     res.status(200).json(resultado);
   } catch (error) {
-    error.status = 401;
+    // El servicio ya elige el código; 401 es solo el respaldo.
+    error.status = error.status || 401;
     next(error);
   }
 });

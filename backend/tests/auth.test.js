@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import env, { validarEnv } from '../src/config/env.js';
 import app from '../src/app.js';
+import { setTestRateLimits, resetTestRateLimits } from '../src/middleware/rateLimit.middleware.js';
 import sequelize from '../src/config/database.js';
 import Usuario from '../src/models/usuario.model.js';
 import { sincronizarUsuarioClerk } from '../src/middleware/auth.middleware.js';
@@ -544,6 +545,108 @@ describe('Auth routes, token verification & env validation', () => {
     it('sin token responde 401', async () => {
       const res = await request(app).get('/api/auth/me');
       expect(res.status).toBe(401);
+    });
+  });
+
+  /**
+   * El login no distingue por qué no se entró. Decir «esa cuenta está
+   * desactivada» le confirma a quien prueba correos que ese existe, que es la
+   * misma filtración que el resto de los mensajes se cuidan de evitar.
+   */
+  describe('POST /api/auth/login no cuenta de más', () => {
+    // Estas pruebas hacen varios intentos seguidos; sin correr el límite
+    // chocarían con el limitador de ingresos y medirían 429 en vez del caso.
+    beforeAll(() => {
+      setTestRateLimits({ login: 1000 });
+    });
+
+    afterAll(() => {
+      resetTestRateLimits();
+    });
+
+    it('una cuenta desactivada responde igual que una contraseña equivocada', async () => {
+      const password = 'login123';
+      const claveIncorrecta = 'wrongpassword';
+      await Usuario.create({
+        nombre: 'Baja',
+        email: 'baja@example.com',
+        passwordHash: await bcrypt.hash(password, 10),
+        rol: 'usuario',
+        activo: false
+      });
+      await Usuario.create({
+        nombre: 'Alta',
+        email: 'alta@example.com',
+        passwordHash: await bcrypt.hash(password, 10),
+        rol: 'usuario',
+        activo: true
+      });
+
+      const desactivada = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'baja@example.com', password });
+      const claveMal = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'alta@example.com', password: claveIncorrecta });
+
+      expect(desactivada.status).toBe(401);
+      expect(desactivada.status).toBe(claveMal.status);
+      expect(desactivada.body.error).toBe(claveMal.body.error);
+    });
+
+    it('un correo sin cuenta responde igual que uno con cuenta y mala contraseña', async () => {
+      const password = 'login123';
+      const claveIncorrecta = 'wrongpassword';
+      await Usuario.create({
+        nombre: 'Existe',
+        email: 'existe@example.com',
+        passwordHash: await bcrypt.hash(password, 10),
+        rol: 'usuario',
+        activo: true
+      });
+
+      const sinCuenta = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'no-existe@example.com', password: claveIncorrecta });
+      const conCuenta = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'existe@example.com', password: claveIncorrecta });
+
+      expect(sinCuenta.status).toBe(conCuenta.status);
+      expect(sinCuenta.body.error).toBe(conCuenta.body.error);
+    });
+
+    /**
+     * Sin comparar contra un hash de descarte, el correo inexistente contesta
+     * en un milisegundo y el que existe en unos ochenta, porque solo el segundo
+     * pasa por bcrypt. Esa diferencia se mide desde afuera.
+     */
+    it('y tarda parecido, que es la otra forma de contarlo', async () => {
+      const password = 'login123';
+      const claveIncorrecta = 'wrongpassword';
+      await Usuario.create({
+        nombre: 'Medible',
+        email: 'medible@example.com',
+        passwordHash: await bcrypt.hash(password, 10),
+        rol: 'usuario',
+        activo: true
+      });
+
+      const medir = async (email) => {
+        const desde = process.hrtime.bigint();
+        await request(app).post('/api/auth/login').send({ email, password: claveIncorrecta });
+        return Number(process.hrtime.bigint() - desde) / 1e6;
+      };
+
+      // Una vuelta previa para no medir el arranque en frío de la conexión.
+      await medir('medible@example.com');
+
+      const conCuenta = await medir('medible@example.com');
+      const sinCuenta = await medir('fantasma@example.com');
+
+      // El umbral es generoso a propósito: alcanza con que el caso sin cuenta
+      // deje de ser un orden de magnitud más rápido.
+      expect(sinCuenta).toBeGreaterThan(conCuenta / 3);
     });
   });
 });

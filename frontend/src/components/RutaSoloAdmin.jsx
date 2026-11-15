@@ -12,14 +12,14 @@ import EsperaDeSesion from './EsperaDeSesion.jsx';
  * frontend decidía qué mostrar mirando la copia.
  */
 const RutaSoloAdmin = ({ children }) => {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded } = useUser();
   const { usuario, cargandoPerfil } = useAuth();
 
   if (cargandoPerfil) return <EsperaDeSesion />;
   if (!isLoaded && !usuario) return <EsperaDeSesion />;
 
-  if (!isSignedIn && !usuario) return <Navigate to="/login" replace />;
-  if (usuario?.rol !== 'admin') return <Navigate to="/reservas" replace />;
+  if (!usuario) return <Navigate to="/login" replace />;
+  if (usuario.rol !== 'admin') return <Navigate to="/reservas" replace />;
 
   return children;
 };

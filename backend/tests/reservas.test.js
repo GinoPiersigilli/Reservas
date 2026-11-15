@@ -1522,30 +1522,51 @@ describe('Reservas API', () => {
         email: usuario.email
       });
 
-      // Resumen: proximasHoy incluye usuario con nombre y email
-      const fechaHoy = hoyArgentina();
-      const reservaHoy = await Reserva.create({
-        aulaId: aula.id,
-        usuarioId: usuario.id,
-        fecha: fechaHoy,
-        horaInicio: '23:30',
-        horaFin: '23:59',
-        cantidadPersonas: 5,
-        motivo: 'Revisión nocturna',
-        estado: 'aprobada'
+      // Resumen: proximasHoy incluye usuario con nombre y email.
+      //
+      // `proximasHoy` solo trae lo que todavía no empezó, así que el reloj se
+      // fija: con la hora real del sistema, esta prueba fallaba si la suite
+      // corría entre las 23:30 y la medianoche de Córdoba.
+      const mediodiaArgentina = new Date('2026-11-07T15:00:00.000Z');
+      jest.useFakeTimers({
+        doNotFake: [
+          'nextTick',
+          'setImmediate',
+          'clearImmediate',
+          'setInterval',
+          'clearInterval',
+          'setTimeout',
+          'clearTimeout'
+        ]
       });
+      jest.setSystemTime(mediodiaArgentina);
 
-      const resResumen = await request(app)
-        .get('/api/reservas/resumen')
-        .set('Authorization', `Bearer ${adminToken}`);
-      expect(resResumen.status).toBe(200);
-      const itemHoy = resResumen.body.proximasHoy.find((r) => r.id === reservaHoy.id);
-      expect(itemHoy).toBeDefined();
-      expect(itemHoy.usuario).toEqual({
-        id: usuario.id,
-        nombre: usuario.nombre,
-        email: usuario.email
-      });
+      try {
+        const reservaHoy = await Reserva.create({
+          aulaId: aula.id,
+          usuarioId: usuario.id,
+          fecha: hoyArgentina(),
+          horaInicio: '23:30',
+          horaFin: '23:59',
+          cantidadPersonas: 5,
+          motivo: 'Revisión nocturna',
+          estado: 'aprobada'
+        });
+
+        const resResumen = await request(app)
+          .get('/api/reservas/resumen')
+          .set('Authorization', `Bearer ${adminToken}`);
+        expect(resResumen.status).toBe(200);
+        const itemHoy = resResumen.body.proximasHoy.find((r) => r.id === reservaHoy.id);
+        expect(itemHoy).toBeDefined();
+        expect(itemHoy.usuario).toEqual({
+          id: usuario.id,
+          nombre: usuario.nombre,
+          email: usuario.email
+        });
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('(c) regular user does NOT receive usuario field and only sees own reservations', async () => {

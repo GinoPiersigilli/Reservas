@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
    * anterior no se dé por bueno durante el instante que tarda el pedido nuevo.
    */
   const [perfilClerk, setPerfilClerk] = useState(null);
-  const [falloPerfil, setFalloPerfil] = useState(false);
+  const [falloPerfil, setFalloPerfil] = useState(null);
 
   const [usuarioLocal, setUsuarioLocal] = useState(() => {
     const guardado = localStorage.getItem('usuario');
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('usuario');
       setUsuarioLocal(null);
       setPerfilClerk(null);
-      setFalloPerfil(false);
+      setFalloPerfil(null);
       registrarGetToken(null);
       if (user && typeof signOut === 'function') {
         try {
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
         if (!cancelado) setPerfilClerk({ clerkId: user.id, datos: data });
       })
       .catch(() => {
-        if (!cancelado) setFalloPerfil(true);
+        if (!cancelado) setFalloPerfil(user.id);
       });
 
     return () => {
@@ -85,13 +85,14 @@ export const AuthProvider = ({ children }) => {
   // `user &&` primero: sin sesión de Clerk los dos lados son `undefined` y la
   // comparación daría verdadera sobre un perfil que no existe.
   const perfilVigente = user && perfilClerk?.clerkId === user.id ? perfilClerk.datos : null;
+  const falloVigente = Boolean(user) && falloPerfil === user.id;
 
   /**
    * Mientras el perfil viaja no hay identidad que dar. Devolver una provisoria
    * armada con los datos de Clerk es lo que causaba el problema: decidiría
    * permisos y comparaciones con un identificador que no es el de esta base.
    */
-  const cargandoPerfil = Boolean(user) && !perfilVigente && !falloPerfil;
+  const cargandoPerfil = Boolean(user) && !perfilVigente && !falloVigente;
 
   const usuario = user ? perfilVigente : usuarioLocal;
 
@@ -126,7 +127,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('usuario');
     setUsuarioLocal(null);
     setPerfilClerk(null);
-    setFalloPerfil(false);
+    setFalloPerfil(null);
     registrarGetToken(null);
     if (user) signOut();
     else window.location.href = '/login';

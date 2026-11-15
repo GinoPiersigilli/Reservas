@@ -5,17 +5,20 @@ import env from '../config/env.js';
 let testLimitGeneral = null;
 let testLimitEscrituras = null;
 let testLimitUsuario = null;
+let testLimitLogin = null;
 
-export const setTestRateLimits = ({ general, escrituras, usuario } = {}) => {
+export const setTestRateLimits = ({ general, escrituras, usuario, login } = {}) => {
   if (general !== undefined) testLimitGeneral = general;
   if (escrituras !== undefined) testLimitEscrituras = escrituras;
   if (usuario !== undefined) testLimitUsuario = usuario;
+  if (login !== undefined) testLimitLogin = login;
 };
 
 export const resetTestRateLimits = () => {
   testLimitGeneral = null;
   testLimitEscrituras = null;
   testLimitUsuario = null;
+  testLimitLogin = null;
 };
 
 export const crearLimitador = ({
@@ -96,8 +99,14 @@ export const limiteEscriturasUsuario = crearLimitador({
     'Demasiadas solicitudes de modificación para este usuario, por favor intente nuevamente más tarde'
 });
 
+// Era el único de los cuatro con el máximo fijo, así que una prueba que hiciera
+// unos cuantos intentos de ingreso chocaba con él sin poder correrlo.
 export const limiteLogin = crearLimitador({
   windowMs: env.RATE_LIMIT_LOGIN_WINDOW_MS,
-  max: env.RATE_LIMIT_LOGIN_MAX,
+  max: () => {
+    if (testLimitLogin !== null) return testLimitLogin;
+    if (process.env.RATE_LIMIT_LOGIN_MAX) return Number(process.env.RATE_LIMIT_LOGIN_MAX);
+    return env.RATE_LIMIT_LOGIN_MAX;
+  },
   message: 'Demasiados intentos de inicio de sesión, intente más tarde'
 });

@@ -57,6 +57,19 @@ Reglas comunes a las dos vías:
   cuentas sembradas por los seeders. No hay ruta de registro local: el alta de
   cuentas pasa siempre por Clerk o por un seeder.
 
+### El ingreso no dice por qué no entró (15/11/2026)
+
+`POST /api/auth/login` responde `401` con el mismo mensaje en los tres casos que
+no son un ingreso válido: el correo no existe, la contraseña no coincide, o la
+cuenta está desactivada. Antes el tercero devolvía `403` con «el usuario está
+desactivado», y eso le confirma a quien prueba correos que esa cuenta existe. El
+motivo real queda en el log, que es donde hace falta.
+
+Por la misma razón, la comparación con bcrypt se hace siempre, aun cuando no
+haya contraseña contra qué compararla. Sin eso, un correo sin cuenta contestaba
+en un milisegundo y uno con cuenta en unos ochenta, y esa diferencia se mide
+desde afuera: la respuesta callaba lo que el reloj contaba.
+
 ### A Clerk se le pregunta lo menos posible (15/11/2026)
 
 Al llegar un token de Clerk, primero se busca la fila por `clerkId` en esta
