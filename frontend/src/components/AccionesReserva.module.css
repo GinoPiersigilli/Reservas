@@ -7,16 +7,6 @@
   border-top: var(--borde-ancho) solid var(--borde);
 }
 
-.error {
-  padding: var(--espacio-3) var(--espacio-4);
-  background-color: var(--peligro-fondo);
-  border: var(--borde-ancho) solid var(--peligro);
-  border-radius: var(--radio-control);
-  color: var(--peligro-texto);
-  font-size: var(--texto-sm);
-  font-weight: var(--peso-medio);
-}
-
 .botones {
   display: flex;
   align-items: center;

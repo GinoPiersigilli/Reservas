@@ -71,20 +71,20 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
       setDialogoActivo(null);
       onAccion?.(accion.mensajeExito);
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo completar la acción.');
+      setError(err.response?.data?.error || TEXTOS.dialogos.accionFallida);
     } finally {
       setCargando(false);
     }
   };
 
+  /** Cerrar el diálogo descarta el error: ya no hay a qué acción atribuirlo. */
+  const cerrarDialogo = () => {
+    setDialogoActivo(null);
+    setError(null);
+  };
+
   return (
     <div className={styles.barraAcciones}>
-      {error ? (
-        <div role="alert" className={styles.error}>
-          {error}
-        </div>
-      ) : null}
-
       <div className={styles.botones}>
         {mostrarEditar ? (
           <Button
@@ -118,7 +118,8 @@ const AccionesReserva = ({ reserva, usuario, onAccion }) => {
           textoCancelar={TEXTOS.acciones.cancelar}
           variante={accion.variante}
           cargando={cargando}
-          onCancelar={() => setDialogoActivo(null)}
+          error={dialogoActivo === clave ? error : null}
+          onCancelar={cerrarDialogo}
           onConfirmar={() => ejecutar(accion)}
         />
       ))}

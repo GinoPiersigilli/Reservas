@@ -74,6 +74,15 @@
   color: var(--tinta-2);
 }
 
+/*
+ * Las salidas del paso de verificación. Van apiladas y separadas porque son
+ * tres caminos distintos —pedir otro código, cambiar el correo, dejarlo para
+ * después— y no una lista de opciones equivalentes.
+ */
+.pie > * + * {
+  margin-top: var(--espacio-3);
+}
+
 .enlace {
   color: var(--acento);
   font-weight: var(--peso-medio);

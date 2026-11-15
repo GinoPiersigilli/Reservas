@@ -21,6 +21,25 @@ const partirNombre = (completo) => {
 };
 
 /**
+ * Confirma el código del correo. Vive fuera del hook porque no necesita nada de
+ * React: recibe lo que usa y avisa el resultado por `setError`.
+ */
+const confirmarCodigo = async ({ signUp, codigo, abrirSesion, setError }) => {
+  try {
+    const resultado = await signUp.attemptEmailAddressVerification({ code: codigo });
+
+    if (resultado.status !== 'complete') {
+      setError(TEXTOS.registro.errorCodigo);
+      return;
+    }
+
+    await abrirSesion(resultado);
+  } catch (err) {
+    setError(mensajeDeClerk(err, TEXTOS.registro.errorCodigo));
+  }
+};
+
+/**
  * Alta de cuenta contra Clerk.
  *
  * La identidad es responsabilidad de Clerk (ver docs/adr/0002): no hay registro
@@ -79,19 +98,26 @@ export const useRegistroClerk = ({ alCompletar } = {}) => {
     setEnviando(true);
 
     try {
-      const resultado = await signUp.attemptEmailAddressVerification({ code: codigo });
-
-      if (resultado.status !== 'complete') {
-        setError(TEXTOS.registro.errorCodigo);
-        return;
-      }
-
-      await abrirSesion(resultado);
-    } catch (err) {
-      setError(mensajeDeClerk(err, TEXTOS.registro.errorCodigo));
+      await confirmarCodigo({ signUp, codigo, abrirSesion, setError });
     } finally {
       setEnviando(false);
     }
+  };
+
+  /**
+   * Abandona el alta en curso y vuelve al formulario.
+   *
+   * Clerk no ofrece cancelar un registro empezado: el intento queda de su lado
+   * hasta que vence solo. Lo que sí se puede es dejar de usarlo —el próximo
+   * `signUp.create` abre uno nuevo—, así que esta salida sirve para corregir un
+   * correo mal escrito, que es para lo que se la pide. Reintentar con el mismo
+   * correo seguirá chocando con el duplicado, y eso está bien: esa cuenta ya
+   * existe y lo que corresponde es ingresar, no volver a crearla.
+   */
+  const usarOtroCorreo = () => {
+    setError(null);
+    setAviso(null);
+    setPaso('datos');
   };
 
   const reenviarCodigo = async () => {
@@ -116,7 +142,8 @@ export const useRegistroClerk = ({ alCompletar } = {}) => {
     enviando,
     registrar,
     verificar,
-    reenviarCodigo
+    reenviarCodigo,
+    usarOtroCorreo
   };
 };
 
