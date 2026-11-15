@@ -32,5 +32,32 @@ const crearRegistrador =
     );
   };
 
+/**
+ * La misma fila que `crearRegistrador`, pero para varias de una vez.
+ *
+ * Existe para que quien registre en lote no tenga que repetir la forma de la
+ * fila: si algún día el historial suma una columna, se agrega acá y vale para
+ * los dos caminos.
+ */
+const crearRegistradorEnLote =
+  (Modelo, campoId) =>
+  async (entradas, options = {}) => {
+    if (entradas.length === 0) return;
+
+    const fechaHora = new Date();
+    await Modelo.bulkCreate(
+      entradas.map((entrada) => ({
+        [campoId]: entrada.idEntidad,
+        usuarioId: entrada.usuarioId,
+        accion: entrada.accion,
+        fechaHora,
+        valorAnterior: entrada.valorAnterior || null,
+        valorNuevo: entrada.valorNuevo || null
+      })),
+      normalizarOpciones(options)
+    );
+  };
+
 export const registrarAccion = crearRegistrador(HistorialReserva, 'reservaId');
+export const registrarAccionesEnLote = crearRegistradorEnLote(HistorialReserva, 'reservaId');
 export const registrarAccionAula = crearRegistrador(HistorialAula, 'aulaId');

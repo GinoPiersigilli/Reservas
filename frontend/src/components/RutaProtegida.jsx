@@ -17,13 +17,13 @@ import EsperaDeSesion from './EsperaDeSesion.jsx';
  * llegue no se sabe con qué identificador ni con qué rol se está operando.
  */
 const RutaProtegida = ({ children }) => {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded } = useUser();
   const { usuario, cargandoPerfil } = useAuth();
 
   if (cargandoPerfil) return <EsperaDeSesion />;
   if (!isLoaded && !usuario) return <EsperaDeSesion />;
 
-  if (!isSignedIn && !usuario) return <Navigate to="/login" replace />;
+  if (!usuario) return <Navigate to="/login" replace />;
 
   return children;
 };

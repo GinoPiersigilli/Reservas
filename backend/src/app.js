@@ -15,8 +15,25 @@ import logger from './utils/logger.js';
 
 const app = express();
 
-// Purgar claves de idempotencia vencidas al iniciar
-purgarClavesVencidas().catch(() => {});
+/**
+ * Purga de claves de idempotencia vencidas.
+ *
+ * En pruebas no corre: era un efecto al importar `app.js`, así que cada suite
+ * disparaba una escritura contra la base sin pedirla y a espaldas de la prueba.
+ *
+ * Fuera de pruebas, además del barrido inicial queda uno cada hora: antes solo
+ * se purgaba al arrancar, y un proceso encendido durante semanas acumulaba
+ * claves vencidas sin que nada las sacara. El `unref()` es para que este
+ * temporizador no mantenga el proceso vivo cuando ya no hay nada más que hacer.
+ */
+const UNA_HORA_MS = 60 * 60 * 1000;
+
+if (env.NODE_ENV !== 'test') {
+  purgarClavesVencidas().catch(() => {});
+  setInterval(() => {
+    purgarClavesVencidas().catch(() => {});
+  }, UNA_HORA_MS).unref();
+}
 
 if (env.TRUST_PROXY_HOPS > 0) {
   app.set('trust proxy', env.TRUST_PROXY_HOPS);

@@ -66,6 +66,16 @@ describe('RutaProtegida con Clerk caído', () => {
     expect(screen.queryByText('contenido protegido')).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
+
+  it('no deja pasar con usuario null aunque Clerk indique isSignedIn si falló la carga del perfil', () => {
+    mockClerk = { isLoaded: true, isSignedIn: true };
+    mockAuth = { usuario: null, cargandoPerfil: false };
+
+    montar();
+
+    expect(screen.queryByText('contenido protegido')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
 });
 
 describe('RutaSoloAdmin', () => {

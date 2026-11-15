@@ -6,31 +6,46 @@ import Usuario from '../models/usuario.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
+import logger from '../utils/logger.js';
+
+/**
+ * Hash de descarte, para gastar el mismo tiempo cuando no hay con qué comparar.
+ *
+ * Sin esto, un correo sin cuenta responde en un milisegundo y uno con cuenta en
+ * unos ochenta, porque el segundo pasa por bcrypt. Esa diferencia es medible
+ * desde afuera y alcanza para averiguar qué correos tienen contraseña local,
+ * que es justo lo que el resto de los mensajes se cuidan de no decir.
+ *
+ * El contenido no importa mientras sea un hash válido del mismo costo: lo único
+ * que se busca es que la comparación tarde lo que tarda.
+ */
+const HASH_DE_DESCARTE = bcrypt.hashSync('contraseña que no es de nadie', 10);
+
+/** Mismo mensaje y mismo código para todo lo que no sea un ingreso válido. */
+const credencialesInvalidas = () => {
+  const error = new Error('Credenciales inválidas');
+  error.status = 401;
+  return error;
+};
 
 export const loginUsuario = async (email, password) => {
   // 1. Buscar al usuario por email
   const usuario = await Usuario.findOne({ where: { email } });
-  if (!usuario) {
-    const error = new Error('Credenciales inválidas');
-    error.status = 400;
-    throw error;
+
+  // 2. Comparar siempre, haya o no contra qué: ver HASH_DE_DESCARTE.
+  const hashAComparar = usuario?.passwordHash || HASH_DE_DESCARTE;
+  const passwordValida = await bcrypt.compare(password, hashAComparar);
+
+  if (!usuario || !usuario.passwordHash || !passwordValida) {
+    throw credencialesInvalidas();
   }
 
-  // 2. Verificar si la cuenta está activa
+  // 3. Una cuenta desactivada responde como cualquier credencial que no entra.
+  //    Decir «está desactivada» sería confirmarle a quien prueba correos que
+  //    ese existe. El motivo real queda en el log, que es donde hace falta.
   if (!usuario.activo) {
-    const error = new Error('El usuario está desactivado o bloqueado');
-    error.status = 403;
-    throw error;
-  }
-
-  // 3. Comparar la contraseña enviada con el hash guardado en la BD
-  const passwordValida = usuario.passwordHash
-    ? await bcrypt.compare(password, usuario.passwordHash)
-    : false;
-  if (!passwordValida) {
-    const error = new Error('Credenciales inválidas');
-    error.status = 400;
-    throw error;
+    logger.warn('intento de ingreso de una cuenta desactivada', { usuarioId: usuario.id });
+    throw credencialesInvalidas();
   }
 
   // 4. Armar el payload del JWT (Sin incluir la contraseña)

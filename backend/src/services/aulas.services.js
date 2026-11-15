@@ -3,8 +3,27 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import Aula from '../models/aula.model.js';
 import Reserva from '../models/reserva.model.js';
-import { registrarAccion, registrarAccionAula } from './historial.services.js';
-import { esFechaValida, hoyArgentina } from '../utils/fecha.js';
+import { registrarAccionesEnLote, registrarAccionAula } from './historial.services.js';
+import { esFechaValida, hoyArgentina, horaActualArgentina } from '../utils/fecha.js';
+
+/**
+ * Lo que todavía no terminó: de mañana en adelante, o de hoy si aún no pasó.
+ *
+ * Con `fecha >= hoy` a secas, una reserva de hoy a las ocho de la mañana seguía
+ * contando como futura a las seis de la tarde. Eso bloqueaba reducciones de
+ * capacidad por una reserva ya dada, y una baja de aula cancelaba
+ * retroactivamente reservas que ya habían ocurrido.
+ */
+const condicionReservaFutura = (ahora = new Date()) => {
+  const hoy = hoyArgentina(ahora);
+  return {
+    estado: { [Op.in]: ['pendiente', 'aprobada'] },
+    [Op.or]: [
+      { fecha: { [Op.gt]: hoy } },
+      { fecha: hoy, horaFin: { [Op.gt]: horaActualArgentina(ahora) } }
+    ]
+  };
+};
 
 // Función para obtener la lista de todas las aulas
 export const obtenerTodasLasAulas = async () => {
@@ -206,11 +225,7 @@ const verificarCapacidadSuficiente = async (id, capacidad, transaction) => {
 
   const nuevaCapacidad = Number(capacidad);
   const reservasFuturas = await Reserva.findAll({
-    where: {
-      aulaId: id,
-      fecha: { [Op.gte]: hoyArgentina() },
-      estado: { [Op.in]: ['pendiente', 'aprobada'] }
-    },
+    where: { aulaId: id, ...condicionReservaFutura() },
     attributes: ['id', 'cantidadPersonas', 'fecha', 'horaInicio'],
     transaction
   });
@@ -295,13 +310,8 @@ export const desactivarAula = async (
       throw error;
     }
 
-    const hoy = hoyArgentina();
     const reservasFuturas = await Reserva.findAll({
-      where: {
-        aulaId: id,
-        fecha: { [Op.gte]: hoy },
-        estado: { [Op.in]: ['pendiente', 'aprobada'] }
-      },
+      where: { aulaId: id, ...condicionReservaFutura() },
       transaction
     });
 
@@ -313,20 +323,24 @@ export const desactivarAula = async (
     }
 
     if (reservasFuturas.length > 0 && cancelarReservasFuturas) {
-      for (const r of reservasFuturas) {
-        const estadoAnterior = r.estado;
-        r.estado = 'cancelada';
-        await r.save({ transaction });
+      // En lote y no una por una: el bucle hacía dos consultas por reserva con
+      // el bloqueo del aula tomado, así que dar de baja un aula muy reservada
+      // mantenía esa transacción abierta más de lo necesario.
+      await Reserva.update(
+        { estado: 'cancelada' },
+        { where: { id: { [Op.in]: reservasFuturas.map((r) => r.id) } }, transaction }
+      );
 
-        await registrarAccion(
-          r.id,
-          usuarioIdAdmin,
-          'cancelada',
-          { estado: estadoAnterior },
-          { estado: 'cancelada', motivo: `Baja del aula: ${motivo}` },
-          { transaction }
-        );
-      }
+      await registrarAccionesEnLote(
+        reservasFuturas.map((r) => ({
+          idEntidad: r.id,
+          usuarioId: usuarioIdAdmin,
+          accion: 'cancelada',
+          valorAnterior: { estado: r.estado },
+          valorNuevo: { estado: 'cancelada', motivo: `Baja del aula: ${motivo}` }
+        })),
+        { transaction }
+      );
     }
 
     const valorAnterior = { activa: aula.activa };

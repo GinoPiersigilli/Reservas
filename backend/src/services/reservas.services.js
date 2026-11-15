@@ -298,6 +298,26 @@ const intentarCrearReserva = async (datosReserva, opciones = {}) => {
 };
 
 /**
+ * Edita una reserva con el mismo resguardo que la creación.
+ *
+ * La cola por aula y día evita el grueso de los deadlocks, pero una edición
+ * toca dos franjas y compite además con las creaciones, así que el conflicto
+ * transitorio sigue siendo posible. Reintentar es seguro: la transacción
+ * abortada no dejó nada escrito.
+ */
+export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
+  for (let intento = 0; ; intento += 1) {
+    try {
+      return await intentarEditarReserva(reservaId, datos, usuarioIdAdmin);
+    } catch (err) {
+      if (!esConflictoTransitorio(err) || intento >= ESPERAS_REINTENTO_MS.length) throw err;
+      const base = ESPERAS_REINTENTO_MS[intento];
+      await esperar(base + Math.floor(Math.random() * base));
+    }
+  }
+};
+
+/**
  * Crea una reserva, reintentando ante un conflicto transitorio de PostgreSQL.
  *
  * Sin este reintento, un deadlock entre pedidos simultáneos por la misma franja
@@ -596,6 +616,26 @@ const validarDatosEdicion = (valores) => {
 };
 
 /** Igual que en el alta, pero ignorando la propia reserva al buscar conflictos. */
+/**
+ * Toma la cola de los pares (aula, día) que una edición toca, en orden fijo.
+ *
+ * Una edición que cambia de aula o de fecha compite con dos franjas: la que
+ * libera y la que ocupa. Si cada transacción las tomara en el orden que le
+ * queda cómodo, dos ediciones cruzadas —una que va de A a B mientras otra va de
+ * B a A— se esperarían en cruz y PostgreSQL mataría a una por deadlock.
+ * Ordenarlas siempre igual hace que ese ciclo no pueda formarse.
+ */
+const encolarParesDeEdicion = async (pares, transaction) => {
+  const unicos = [...new Map(pares.map((par) => [`${par.aulaId}|${par.fecha}`, par])).values()];
+  unicos.sort((uno, otro) =>
+    `${uno.aulaId}|${uno.fecha}`.localeCompare(`${otro.aulaId}|${otro.fecha}`)
+  );
+
+  for (const par of unicos) {
+    await encolarPorAulaYFecha(par.aulaId, par.fecha, transaction);
+  }
+};
+
 const verificarAulaYDisponibilidadAlEditar = async (reservaId, valores, transaction) => {
   const aula = await Aula.findByPk(valores.aulaId, { transaction, lock: transaction.LOCK.SHARE });
   if (!aula) {
@@ -628,6 +668,9 @@ const verificarAulaYDisponibilidadAlEditar = async (reservaId, valores, transact
 };
 
 const datosParaHistorial = (reserva) => ({
+  // El aula va primero y va siempre: sin ella, mover una reserva de aula no
+  // dejaba rastro de a dónde se movió, aunque el historial sí la muestra.
+  aulaId: reserva.aulaId,
   fecha: reserva.fecha,
   horaInicio: reserva.horaInicio,
   horaFin: reserva.horaFin,
@@ -635,7 +678,7 @@ const datosParaHistorial = (reserva) => ({
   motivo: reserva.motivo
 });
 
-export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
+const intentarEditarReserva = async (reservaId, datos, usuarioIdAdmin) => {
   try {
     return await sequelize.transaction(async (transaction) => {
       const reserva = await Reserva.findByPk(reservaId, { transaction });
@@ -649,6 +692,16 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
 
       const valores = combinarCambios(reserva, datos);
       validarDatosEdicion(valores);
+
+      // La franja que se deja y la que se toma, antes de mirar nada más.
+      await encolarParesDeEdicion(
+        [
+          { aulaId: reserva.aulaId, fecha: reserva.fecha },
+          { aulaId: valores.aulaId, fecha: valores.fecha }
+        ],
+        transaction
+      );
+
       await verificarAulaYDisponibilidadAlEditar(reservaId, valores, transaction);
 
       const valorAnterior = datosParaHistorial(reserva);
@@ -682,7 +735,19 @@ export const editarReserva = async (reservaId, datos, usuarioIdAdmin) => {
 // RESUMEN ADMINISTRATIVO
 // ==========================================
 const ESTADOS_POSIBLES = ['aprobada', 'pendiente', 'rechazada', 'cancelada'];
-const HORAS_OPERATIVAS_POR_DIA = 14; // franja operativa entre 08:00 y 22:00
+/**
+ * Las horas que el edificio está abierto, derivadas de la configuración.
+ *
+ * Antes era un 14 escrito a mano con la franja 08:00–22:00 en un comentario al
+ * lado. Si alguien cambiaba `WORK_HOUR_START` o `WORK_HOUR_END`, las reservas
+ * respetaban el horario nuevo y el panel seguía calculando la ocupación contra
+ * el viejo, sin que nada avisara.
+ */
+const horasOperativasPorDia = () => {
+  const [horaInicio, minutoInicio] = env.WORK_HOUR_START.split(':').map(Number);
+  const [horaFin, minutoFin] = env.WORK_HOUR_END.split(':').map(Number);
+  return (horaFin * 60 + minutoFin - (horaInicio * 60 + minutoInicio)) / 60;
+};
 
 const totalDeFila = (item) => parseInt(item.dataValues?.total || item.total, 10) || 0;
 
@@ -749,31 +814,38 @@ const limitesDelMes = (fechaHoy) => {
   };
 };
 
-const horasEntre = (horaInicio, horaFin) => {
-  const [hI, mI] = String(horaInicio).split(':').map(Number);
-  const [hF, mF] = String(horaFin).split(':').map(Number);
-  return Math.max(0, (hF * 60 + mF - (hI * 60 + mI)) / 60);
-};
-
 /** Horas reservadas por aula en el mes actual sobre las horas operativas. */
 const calcularTasaOcupacion = async (fechaHoy, aulas) => {
   const { inicioMes, finMes, ultimoDia } = limitesDelMes(fechaHoy);
 
-  const reservasMes = await Reserva.findAll({
+  // La suma la hace PostgreSQL y vuelve una fila por aula. Antes viajaban a
+  // memoria de Node todas las reservas del mes para sumarlas acá: con el mes
+  // cargado eso es traer miles de filas para quedarse con una docena de
+  // números.
+  const totalesPorAula = await Reserva.findAll({
+    attributes: [
+      'aulaId',
+      [
+        sequelize.fn(
+          'SUM',
+          sequelize.literal('EXTRACT(EPOCH FROM ("horaFin" - "horaInicio")) / 3600')
+        ),
+        'horas'
+      ]
+    ],
     where: {
       estado: { [Op.in]: ['pendiente', 'aprobada'] },
       fecha: { [Op.between]: [inicioMes, finMes] }
     },
-    attributes: ['aulaId', 'horaInicio', 'horaFin']
+    group: ['aulaId'],
+    raw: true
   });
 
-  const horasPorAula = new Map();
-  for (const reserva of reservasMes) {
-    const acumuladas = horasPorAula.get(reserva.aulaId) || 0;
-    horasPorAula.set(reserva.aulaId, acumuladas + horasEntre(reserva.horaInicio, reserva.horaFin));
-  }
+  const horasPorAula = new Map(
+    totalesPorAula.map((fila) => [fila.aulaId, Number(fila.horas) || 0])
+  );
 
-  const horasOperativasMes = ultimoDia * HORAS_OPERATIVAS_POR_DIA;
+  const horasOperativasMes = ultimoDia * horasOperativasPorDia();
 
   return aulas.map((aula) => {
     const horasOcupadas = horasPorAula.get(aula.id) || 0;
