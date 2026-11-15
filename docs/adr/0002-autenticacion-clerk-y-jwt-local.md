@@ -57,6 +57,24 @@ Reglas comunes a las dos vías:
   cuentas sembradas por los seeders. No hay ruta de registro local: el alta de
   cuentas pasa siempre por Clerk o por un seeder.
 
+### Recuperar la contraseña (15/11/2026)
+
+`/recuperar` usa `signIn.create({ strategy: 'reset_password_email_code' })` y
+después `attemptFirstFactor` con el código y la contraseña nueva. Queda del lado
+del frontend, igual que el alta, porque la contraseña que cambia vive en Clerk y
+el backend no la ve nunca.
+
+**Solo alcanza a las cuentas de Clerk.** Las sembradas tienen su contraseña en
+esta base y Clerk no sabe nada de ellas, así que para esas no hay recuperación
+posible. La pantalla lo dice antes del formulario y no después de intentarlo,
+para que nadie quede esperando un correo que no va a llegar.
+
+La pantalla **no informa si el correo tiene cuenta**: responde lo mismo en los
+dos casos y avanza igual al paso del código. Si la respuesta cambiara, pedir
+códigos para direcciones cualesquiera sería una forma cómoda de averiguar quién
+está dado de alta en el sistema. El precio es que un correo mal escrito no
+avisa, y se paga con gusto.
+
 ### El formulario de ingreso consulta las dos (15/11/2026)
 
 Hay dos lugares donde puede vivir una contraseña, así que el formulario de

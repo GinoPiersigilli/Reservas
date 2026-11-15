@@ -83,6 +83,28 @@
   margin-top: var(--espacio-3);
 }
 
+/*
+ * El alcance de la recuperación, antes del formulario y no después de intentar:
+ * quien tiene una cuenta de las que no alcanza se entera a tiempo.
+ */
+/* Debajo del formulario y antes del separador: es la salida de quien no pudo
+   entrar, no una opción más de ingreso. */
+.olvide {
+  margin: var(--espacio-3) 0 0;
+  text-align: center;
+  font-size: var(--texto-sm);
+}
+
+.aclaracion {
+  margin: 0;
+  padding: var(--espacio-3);
+  background-color: var(--superficie-sutil);
+  border-radius: var(--radio-control);
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  line-height: var(--linea-base);
+}
+
 .enlace {
   color: var(--acento);
   font-weight: var(--peso-medio);

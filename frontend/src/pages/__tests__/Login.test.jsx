@@ -227,4 +227,16 @@ describe('Login page', () => {
 
     expect(await screen.findByText(/Credenciales inválidas/i)).toBeInTheDocument();
   });
+
+  it('ofrece recuperar la contraseña, que antes no existía en ningún lado', () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    expect(screen.getByRole('link', { name: /olvid/i })).toHaveAttribute('href', '/recuperar');
+  });
 });
