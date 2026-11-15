@@ -1,13 +1,19 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import FormularioReserva from '../FormularioReserva.jsx';
 import * as aulaService from '../../services/aula.service.js';
 import * as reservasService from '../../services/reservas.service.js';
 
 vi.mock('../../services/aula.service.js', () => ({
   getAulas: vi.fn(),
-  getDisponibilidadAula: vi.fn()
+  getDisponibilidadAula: vi.fn(),
+  getDisponibilidadDeTodas: vi.fn()
 }));
+
+/** Arma la respuesta del endpoint único: todas las aulas, ocupadas o no. */
+const disponibilidad = (porAula = {}) => ({
+  data: aulasMock.map((aula) => ({ aulaId: aula.id, franjas: porAula[aula.id] || [] }))
+});
 
 vi.mock('../../services/reservas.service.js', () => ({
   crearReserva: vi.fn(),
@@ -24,7 +30,7 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     aulaService.getAulas.mockResolvedValue({ data: aulasMock });
-    aulaService.getDisponibilidadAula.mockResolvedValue({ data: [] });
+    aulaService.getDisponibilidadDeTodas.mockResolvedValue(disponibilidad());
   });
 
   it('loads active classrooms and submits a new reservation successfully', async () => {
@@ -119,14 +125,11 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
   });
 
   it('disables occupied slots in the availability grid and synchronizes two-click selection on free slots', async () => {
-    aulaService.getDisponibilidadAula.mockImplementation((aulaId) => {
-      if (Number(aulaId) === 1) {
-        return Promise.resolve({
-          data: [{ horaInicio: '10:00', horaFin: '11:00', estado: 'aprobada' }]
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
+    aulaService.getDisponibilidadDeTodas.mockResolvedValue(
+      disponibilidad({
+        1: [{ id: 501, horaInicio: '10:00', horaFin: '11:00', estado: 'aprobada' }]
+      })
+    );
 
     render(
       <MemoryRouter>
@@ -162,14 +165,11 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
   });
 
   it('prefills start and end times in compact view when tapping a grouped free slot', async () => {
-    aulaService.getDisponibilidadAula.mockImplementation((aulaId) => {
-      if (Number(aulaId) === 1) {
-        return Promise.resolve({
-          data: [{ horaInicio: '11:00', horaFin: '13:00', estado: 'aprobada' }]
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
+    aulaService.getDisponibilidadDeTodas.mockResolvedValue(
+      disponibilidad({
+        1: [{ id: 502, horaInicio: '11:00', horaFin: '13:00', estado: 'aprobada' }]
+      })
+    );
 
     render(
       <MemoryRouter>
@@ -193,5 +193,100 @@ describe('FormularioReserva page y GrillaDisponibilidad', () => {
     expect(screen.getByLabelText(/^Hora de inicio/i)).toHaveValue('08:00');
     expect(screen.getByLabelText(/^Hora de fin/i)).toHaveValue('11:00');
     expect(screen.getByText(/Seleccionado: Aula 910/i)).toHaveTextContent('08:00 a 11:00');
+  });
+
+  /**
+   * Antes la grilla pedía la disponibilidad aula por aula —una petición HTTP
+   * cada una, en cada cambio de fecha— y lo que fallaba se mostraba «sin
+   * franjas», que en pantalla es indistinguible de «libre».
+   */
+  describe('la disponibilidad del día', () => {
+    it('se pide una sola vez, no una por aula', async () => {
+      render(
+        <MemoryRouter>
+          <FormularioReserva />
+        </MemoryRouter>
+      );
+
+      await screen.findByRole('option', { name: /Aula 910/i });
+      fireEvent.change(screen.getByLabelText(/^Fecha/i), {
+        target: { name: 'fecha', value: '2027-11-20' }
+      });
+
+      await waitFor(() => {
+        expect(aulaService.getDisponibilidadDeTodas).toHaveBeenCalledWith('2027-11-20');
+      });
+      expect(aulaService.getDisponibilidadDeTodas).toHaveBeenCalledTimes(1);
+      expect(aulaService.getDisponibilidadAula).not.toHaveBeenCalled();
+    });
+
+    it('si falla la consulta lo dice, en vez de pintar todo libre', async () => {
+      aulaService.getDisponibilidadDeTodas.mockRejectedValue(new Error('429'));
+
+      render(
+        <MemoryRouter>
+          <FormularioReserva />
+        </MemoryRouter>
+      );
+
+      await screen.findByRole('option', { name: /Aula 910/i });
+      fireEvent.change(screen.getByLabelText(/^Fecha/i), {
+        target: { name: 'fecha', value: '2027-11-20' }
+      });
+
+      expect(await screen.findByText(/No se pudo consultar la ocupación/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Aula 910, 10:00 a 10:30, libre/i })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * En edición, la grilla mostraba la propia reserva como bloque ocupado, así
+   * que no se podía usar para extenderla ni correrla un rato: el horario que se
+   * quería tocar aparecía bloqueado por uno mismo.
+   */
+  it('en edición, la reserva que se está moviendo no se ocupa a sí misma', async () => {
+    reservasService.getReserva.mockResolvedValue({
+      data: {
+        id: 77,
+        aulaId: 1,
+        fecha: '2027-11-20',
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        cantidadPersonas: 10,
+        motivo: 'Clase de prueba'
+      }
+    });
+    aulaService.getDisponibilidadDeTodas.mockResolvedValue(
+      disponibilidad({
+        1: [
+          { id: 77, horaInicio: '10:00', horaFin: '11:00', estado: 'aprobada' },
+          { id: 88, horaInicio: '15:00', horaFin: '16:00', estado: 'aprobada' }
+        ]
+      })
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/reservas/77/editar']}>
+        <Routes>
+          <Route path="/reservas/:id/editar" element={<FormularioReserva />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // La franja de otra reserva sigue bloqueada...
+    expect(
+      await screen.findByRole('button', { name: /Aula 910, 15:00 a 16:00, ocupada/i })
+    ).toBeDisabled();
+
+    // ...pero la propia no: aparece como seleccionada, que es una celda viva
+    // sobre la que se puede volver a elegir, y no como un bloque ocupado.
+    expect(
+      screen.queryByRole('button', { name: /Aula 910, 10:00 a 10:30, ocupada/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Aula 910, 10:00 a 10:30, seleccionado/i })
+    ).toBeEnabled();
   });
 });

@@ -118,17 +118,21 @@ export default function FormularioReserva() {
           onChange={handleChange}
         />
 
-        <GrillaDisponibilidad
-          id="paso-franja-horaria"
-          aulas={aulas}
-          fecha={form.fecha}
-          disponibilidadPorAula={disponibilidadPorAula}
-          cargando={cargandoDisponibilidad}
-          aulaIdSeleccionada={form.aulaId}
-          horaInicioSeleccionada={form.horaInicio}
-          horaFinSeleccionada={form.horaFin}
-          onSeleccionarFranja={handleSeleccionarFranja}
-        />
+        {/* Sin disponibilidad conocida no hay grilla: una grilla toda libre
+            sería una invitación a reservar un horario que puede estar tomado. */}
+        {disponibilidadPorAula === null ? null : (
+          <GrillaDisponibilidad
+            id="paso-franja-horaria"
+            aulas={aulas}
+            fecha={form.fecha}
+            disponibilidadPorAula={disponibilidadPorAula}
+            cargando={cargandoDisponibilidad}
+            aulaIdSeleccionada={form.aulaId}
+            horaInicioSeleccionada={form.horaInicio}
+            horaFinSeleccionada={form.horaFin}
+            onSeleccionarFranja={handleSeleccionarFranja}
+          />
+        )}
 
         <section className={styles.panelSeccion} id="paso-datos">
           <CamposHorario form={form} errores={erroresCampo} onChange={handleChange} />

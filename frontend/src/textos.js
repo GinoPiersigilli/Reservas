@@ -64,7 +64,7 @@ export const TEXTOS = {
   },
   recuperacion: {
     titulo: 'Restablecer contraseña',
-    subtitulo: 'Le enviamos un código al correo de su cuenta.',
+    subtitulo: 'Le enviaremos un código al correo de su cuenta.',
     aclaracionCuentas:
       'Sirve para las cuentas creadas desde esta aplicación. Si bedelía le entregó la suya, pídale a bedelía el cambio de contraseña.',
     correo: 'Correo electrónico',
@@ -77,6 +77,7 @@ export const TEXTOS = {
     subtituloPaso2: 'Escriba el código que le llegó y elija una contraseña nueva.',
     codigoEnviado: 'Si hay una cuenta con ese correo, le enviamos un código.',
     errorCodigo: 'El código no es válido o venció. Pida uno nuevo.',
+    errorEnvio: 'No se pudo pedir el código. Revise la conexión e intente de nuevo.',
     requiereOtroFactor:
       'Su cuenta pide un paso más de verificación que esta pantalla todavía no resuelve.',
     usarOtroCorreo: 'Usar otro correo',
@@ -167,7 +168,9 @@ export const TEXTOS = {
     horaInicio: 'Hora de inicio',
     horaFin: 'Hora de fin',
     cantidadPersonas: 'Cantidad de personas',
-    motivo: 'Motivo'
+    motivo: 'Motivo',
+    errorDisponibilidad:
+      'No se pudo consultar la ocupación de las aulas para esa fecha. Vuelva a intentar: hasta entonces la grilla no muestra qué está libre.'
   },
   dialogos: {
     cancelarTitulo: 'Cancelar reserva',

@@ -3,6 +3,7 @@ import express from 'express';
 import {
   listarAulas,
   obtenerDisponibilidadAula,
+  obtenerDisponibilidadDeTodas,
   crearAula,
   editarAula,
   desactivarAula,
@@ -22,6 +23,10 @@ import {
 const router = express.Router();
 
 router.get('/', verificarToken, validar(queryAulasSchema, 'query'), listarAulas);
+// Va antes que `/:id/disponibilidad`: si no, Express toma «disponibilidad»
+// como un identificador de aula y nunca llega acá.
+router.get('/disponibilidad', verificarToken, obtenerDisponibilidadDeTodas);
+
 router.get(
   '/:id/disponibilidad',
   verificarToken,

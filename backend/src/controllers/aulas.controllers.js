@@ -24,6 +24,16 @@ export const obtenerDisponibilidadAula = async (req, res, next) => {
   }
 };
 
+export const obtenerDisponibilidadDeTodas = async (req, res, next) => {
+  try {
+    const { fecha } = req.query;
+    const disponibilidad = await aulasService.obtenerDisponibilidadDeTodas(fecha);
+    res.status(200).json(disponibilidad);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const crearAula = async (req, res, next) => {
   try {
     const nuevaAula = await aulasService.crearAula(req.body, req.usuario.id);

@@ -26,6 +26,12 @@ vi.mock('react-router-dom', async () => ({
   useNavigate: () => mockNavigate
 }));
 
+/** Como avisa Clerk que ese correo no tiene cuenta. */
+const cuentaInexistente = () =>
+  Object.assign(new Error('not found'), {
+    errors: [{ code: 'form_identifier_not_found' }]
+  });
+
 const montar = () =>
   render(
     <MemoryRouter>
@@ -77,11 +83,7 @@ describe('Recuperar contraseña', () => {
     unmount();
 
     vi.clearAllMocks();
-    mockCreate.mockRejectedValue(
-      Object.assign(new Error('not found'), {
-        errors: [{ code: 'form_identifier_not_found' }]
-      })
-    );
+    mockCreate.mockRejectedValue(cuentaInexistente());
 
     montar();
     await pedirCodigoPara('no-existe@example.com');
@@ -91,7 +93,7 @@ describe('Recuperar contraseña', () => {
   });
 
   it('avanza al paso del código aunque el correo no exista', async () => {
-    mockCreate.mockRejectedValue(new Error('not found'));
+    mockCreate.mockRejectedValue(cuentaInexistente());
 
     montar();
     expect(await pedirCodigoPara('no-existe@example.com')).toBeInTheDocument();
@@ -178,5 +180,67 @@ describe('Recuperar contraseña', () => {
 
     expect(await screen.findByText('El código es incorrecto.')).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  /**
+   * El paso 1 calla si el correo existe, pero cuando no existía `signIn.create`
+   * falló y no quedó ningún intento abierto: llamar después a
+   * `attemptFirstFactor` devolvía un error de Clerk diciendo que no hay un
+   * inicio de sesión en curso, y mostrarlo delataba lo que el paso 1 calló.
+   */
+  it('un código sobre un correo inexistente falla igual que un código equivocado', async () => {
+    mockCreate.mockRejectedValue(cuentaInexistente());
+
+    montar();
+    await pedirCodigoPara('no-existe@example.com');
+
+    fireEvent.input(screen.getByLabelText(/Código de verificación/i), {
+      target: { name: 'codigo', value: '123456' }
+    });
+    fireEvent.input(screen.getByLabelText(/^Contraseña nueva/i), {
+      target: { name: 'contrasena', value: 'nuevaclave1' }
+    });
+    fireEvent.input(screen.getByLabelText(/Repetir la contraseña/i), {
+      target: { name: 'repetida', value: 'nuevaclave1' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar la contraseña/i }));
+
+    // Ni se intenta: sin intento abierto, Clerk contestaría contando de más.
+    await waitFor(() => {
+      expect(screen.getByText(/El código no es válido o venció/i)).toBeInTheDocument();
+    });
+    expect(mockAttemptFirstFactor).not.toHaveBeenCalled();
+  });
+
+  it('un corte de red no se hace pasar por un código enviado', async () => {
+    mockCreate.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    montar();
+    fireEvent.input(screen.getByLabelText(/Correo electrónico/i), {
+      target: { name: 'email', value: 'santi@example.com' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar código/i }));
+
+    expect(await screen.findByText(/No se pudo pedir el código/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Código de verificación/i)).not.toBeInTheDocument();
+    // El aviso de envío, no el subtítulo de la pantalla, que habla en futuro.
+    expect(screen.queryByText(/Si hay una cuenta con ese correo/i)).not.toBeInTheDocument();
+  });
+
+  it('tampoco un 429 de Clerk', async () => {
+    mockCreate.mockRejectedValue(
+      Object.assign(new Error('rate limited'), {
+        errors: [{ code: 'rate_limit_exceeded', longMessage: 'Demasiados intentos.' }]
+      })
+    );
+
+    montar();
+    fireEvent.input(screen.getByLabelText(/Correo electrónico/i), {
+      target: { name: 'email', value: 'santi@example.com' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar código/i }));
+
+    expect(await screen.findByText(/Demasiados intentos/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Código de verificación/i)).not.toBeInTheDocument();
   });
 });
