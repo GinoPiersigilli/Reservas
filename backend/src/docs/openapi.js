@@ -260,6 +260,24 @@ export const openapi = {
         }
       }
     },
+    '/auth/me': {
+      get: {
+        tags: ['Autenticación'],
+        summary: 'Devuelve la identidad del portador del token',
+        description:
+          'Responde con la fila de `usuarios` que corresponde al token, cualquiera sea su origen. Es la forma de conocer el identificador numérico y el rol efectivo de quien entró con Clerk, donde el identificador del proveedor y el rol de `publicMetadata` no sirven para comparar contra los datos propios.',
+        responses: {
+          200: {
+            description: 'Identidad del portador',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/Usuario' } }
+            }
+          },
+          401: ERRORES_COMUNES[401],
+          429: ERRORES_COMUNES[429]
+        }
+      }
+    },
     '/reservas': {
       get: {
         tags: ['Reservas'],

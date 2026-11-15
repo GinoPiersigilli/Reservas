@@ -435,4 +435,115 @@ describe('Auth routes, token verification & env validation', () => {
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/credenciales/i);
   });
+
+  /**
+   * El frontend no puede deducir la identidad del token de Clerk: ahí el
+   * identificador es la cadena `user_2…` y el rol vive en `publicMetadata`,
+   * mientras que las reservas referencian la clave primaria entera de
+   * `usuarios`. Compararlas no da error, da `false` siempre.
+   */
+  describe('GET /api/auth/me', () => {
+    it('devuelve la fila de la base para un token local', async () => {
+      const usuario = await Usuario.create({
+        nombre: 'Perfil Local',
+        email: 'perfil-local@example.com',
+        passwordHash: await bcrypt.hash('clave12345', 10),
+        rol: 'admin',
+        activo: true
+      });
+
+      const token = jwt.sign(
+        { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        id: usuario.id,
+        nombre: 'Perfil Local',
+        email: 'perfil-local@example.com',
+        rol: 'admin'
+      });
+    });
+
+    it('el identificador es el numérico de PostgreSQL, comparable con reserva.usuarioId', async () => {
+      const usuario = await sincronizarUsuarioClerk({
+        id: 'user_2PerfilClerk',
+        primaryEmailAddressId: 'idem_1',
+        emailAddresses: [
+          {
+            id: 'idem_1',
+            emailAddress: 'perfil-clerk@example.com',
+            verification: { status: 'verified' }
+          }
+        ],
+        firstName: 'Perfil',
+        lastName: 'Clerk',
+        publicMetadata: {}
+      });
+
+      const token = jwt.sign(
+        { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+
+      expect(typeof res.body.id).toBe('number');
+      expect(res.body.id).toBe(usuario.id);
+      expect(String(res.body.id)).not.toBe('user_2PerfilClerk');
+    });
+
+    it('el rol sale de la base, no de lo que diga el token', async () => {
+      const usuario = await Usuario.create({
+        nombre: 'Degradado',
+        email: 'degradado@example.com',
+        passwordHash: await bcrypt.hash('clave12345', 10),
+        rol: 'usuario',
+        activo: true
+      });
+
+      // El token miente: dice admin.
+      const token = jwt.sign(
+        { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: 'admin' },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+
+      expect(res.body.rol).toBe('usuario');
+    });
+
+    it('no publica el hash de la contraseña ni el identificador de Clerk', async () => {
+      const usuario = await Usuario.create({
+        nombre: 'Sin Filtrar',
+        email: 'sin-filtrar@example.com',
+        passwordHash: await bcrypt.hash('clave12345', 10),
+        clerkId: 'user_2NoDeberiaSalir',
+        rol: 'usuario',
+        activo: true
+      });
+
+      const token = jwt.sign(
+        { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+        env.JWT_SECRET,
+        { algorithm: 'HS256', issuer: 'reservas-api', expiresIn: '2h' }
+      );
+
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+
+      expect(res.body).not.toHaveProperty('passwordHash');
+      expect(res.body).not.toHaveProperty('clerkId');
+    });
+
+    it('sin token responde 401', async () => {
+      const res = await request(app).get('/api/auth/me');
+      expect(res.status).toBe(401);
+    });
+  });
 });

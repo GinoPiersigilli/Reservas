@@ -58,10 +58,13 @@ describe('AccionesReserva cuando la acción falla', () => {
     montar();
     await aprobarYConfirmar();
 
+    // Las dos aserciones van adentro: `cargando` vuelve a false en el `finally`,
+    // un tick después de que aparece el error, y afuera del `waitFor` esta
+    // prueba fallaba en CI por llegar antes que ese tick.
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Cancelar$/i })).toBeEnabled();
     });
-    expect(screen.getByRole('button', { name: /^Cancelar$/i })).toBeEnabled();
   });
 
   it('descarta el error al cerrar: ya no hay acción a la que atribuirlo', async () => {
@@ -89,5 +92,46 @@ describe('AccionesReserva cuando la acción falla', () => {
       expect(onAccion).toHaveBeenCalled();
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * `usuario.id` llegaba de Clerk como la cadena `user_2…` y `reserva.usuarioId`
+ * es la clave primaria entera de PostgreSQL. La comparación estricta entre las
+ * dos no fallaba: devolvía `false` siempre, así que nadie que entrara por Clerk
+ * veía el botón para cancelar su propia reserva.
+ */
+describe('AccionesReserva y el dueño de la reserva', () => {
+  const RESERVA_PROPIA = { id: 7, estado: 'pendiente', usuarioId: 42 };
+
+  const montarComo = (usuario, reserva = RESERVA_PROPIA) =>
+    render(
+      <MemoryRouter>
+        <AccionesReserva reserva={reserva} usuario={usuario} />
+      </MemoryRouter>
+    );
+
+  it('quien pidió la reserva puede cancelarla', () => {
+    montarComo({ id: 42, rol: 'usuario' });
+
+    expect(screen.getByRole('button', { name: /cancelar reserva/i })).toBeInTheDocument();
+  });
+
+  it('también cuando el identificador llega como cadena', () => {
+    montarComo({ id: '42', rol: 'usuario' });
+
+    expect(screen.getByRole('button', { name: /cancelar reserva/i })).toBeInTheDocument();
+  });
+
+  it('otra persona no puede cancelar una reserva ajena', () => {
+    montarComo({ id: 99, rol: 'usuario' });
+
+    expect(screen.queryByRole('button', { name: /cancelar reserva/i })).not.toBeInTheDocument();
+  });
+
+  it('un identificador vacío no convierte a nadie en propietario', () => {
+    montarComo({ id: undefined, rol: 'usuario' }, { ...RESERVA_PROPIA, usuarioId: undefined });
+
+    expect(screen.queryByRole('button', { name: /cancelar reserva/i })).not.toBeInTheDocument();
   });
 });
