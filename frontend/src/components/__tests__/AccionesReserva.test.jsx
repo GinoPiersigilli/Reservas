@@ -58,10 +58,13 @@ describe('AccionesReserva cuando la acción falla', () => {
     montar();
     await aprobarYConfirmar();
 
+    // Las dos aserciones van adentro: `cargando` vuelve a false en el `finally`,
+    // un tick después de que aparece el error, y afuera del `waitFor` esta
+    // prueba fallaba en CI por llegar antes que ese tick.
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Cancelar$/i })).toBeEnabled();
     });
-    expect(screen.getByRole('button', { name: /^Cancelar$/i })).toBeEnabled();
   });
 
   it('descarta el error al cerrar: ya no hay acción a la que atribuirlo', async () => {
