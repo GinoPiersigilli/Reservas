@@ -42,3 +42,9 @@ e2e/test-results/
 e2e/salida-capturas/
 e2e/playwright-report/
 e2e/.auth/
+
+# Guía de estudio personal. Se sacó del repositorio a propósito (commit
+# 9c7476b5): es material de preparación, no documentación del proyecto.
+# Queda ignorada para que volver a dejarla en la carpeta no la republique.
+/ESTUDIO.md
+docs/ESTUDIO.md
