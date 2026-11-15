@@ -165,7 +165,7 @@ export const openapi = {
           id: { type: 'integer' },
           accion: {
             type: 'string',
-            enum: ['creacion', 'edicion', 'aprobacion', 'rechazo', 'cancelacion']
+            enum: ['creacion', 'edicion', 'aprobacion', 'rechazo', 'cancelacion', 'cancelada']
           },
           usuarioId: { type: 'integer' },
           usuario: {
@@ -305,7 +305,10 @@ export const openapi = {
           {
             name: 'sortBy',
             in: 'query',
-            schema: { type: 'string', enum: ['fecha', 'createdAt', 'estado'] }
+            schema: {
+              type: 'string',
+              enum: ['createdAt', 'fecha', 'horaInicio', 'estado', 'aulaId', 'id']
+            }
           },
           { name: 'order', in: 'query', schema: { type: 'string', enum: ['ASC', 'DESC'] } }
         ],
@@ -663,7 +666,15 @@ export const openapi = {
             'application/json': {
               schema: {
                 type: 'object',
-                properties: { cancelarReservasFuturas: { type: 'boolean', default: false } }
+                properties: {
+                  cancelarReservasFuturas: { type: 'boolean', default: false },
+                  motivo: {
+                    type: 'string',
+                    maxLength: 255,
+                    description: 'Obligatorio cuando cancelarReservasFuturas es true',
+                    example: 'Refacción eléctrica'
+                  }
+                }
               }
             }
           }

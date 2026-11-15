@@ -9,8 +9,8 @@ obtienen ejecutando los comandos indicados, no de estimaciones.
 
 | Nivel              | Herramienta                    | Cantidad               | Qué cubre                                                                                                           | Dónde corre                        |
 | ------------------ | ------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Integración de API | Jest + Supertest               | 211 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
-| Componentes        | Vitest + Testing Library + axe | 121 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
+| Integración de API | Jest + Supertest               | 233 pruebas            | Negocio, autorización, concurrencia, idempotencia, límites, errores de PostgreSQL, observabilidad, contrato OpenAPI | CI (job `backend`)                 |
+| Componentes        | Vitest + Testing Library + axe | 171 pruebas            | Render, interacción, accesibilidad, contrato con la API                                                             | CI (job `frontend`)                |
 | Extremo a extremo  | Playwright                     | 20 pruebas en 7 flujos | Los recorridos completos del usuario sobre la aplicación compilada                                                  | CI (job `e2e`)                     |
 | Carga              | k6                             | 1 escenario            | Latencia, throughput y tasa de errores                                                                              | Manual (ver `carga/README.md`)     |
 | Volumen de datos   | Script propio                  | 1 benchmark            | Planes de consulta con 200.000 reservas                                                                             | Manual (ver `docs/RENDIMIENTO.md`) |
@@ -165,7 +165,7 @@ validación en `validarAula.js` y `validarReserva.js`.
 
 Activar estos límites obligó a reorganizar el frontend. Los archivos grandes se
 dividieron en piezas con una sola responsabilidad, sin cambiar el
-comportamiento (las 121 pruebas de componentes y las 20 de extremo a extremo
+comportamiento (las 171 pruebas de componentes y las 20 de extremo a extremo
 siguen pasando):
 
 Las líneas de «antes» son las que tenía cada archivo al activarse los límites;
@@ -271,22 +271,24 @@ de desarrollo y se caía en CI.
 ## 5.0. Cuántos mocks hay, y dónde
 
 Una suite puede tener muchas pruebas y no probar nada si todo está simulado, así
-que vale la pena mirar la proporción. Sobre las 211 pruebas de API hay **26
+que vale la pena mirar la proporción. Sobre las 233 pruebas de API hay **29
 usos de mock**, concentrados donde simular es lo correcto:
 
-| Archivo                      | Mocks | Qué simula y por qué                                                         |
-| ---------------------------- | ----- | ---------------------------------------------------------------------------- |
-| `clerk-verification.test.js` | 10    | La API de red de Clerk, que no se puede alcanzar desde CI                    |
-| `observabilidad.test.js`     | 7     | El reloj y la salida del logger, para poder afirmar sobre ellos              |
-| `reservas.test.js`           | 4     | Fuerza el fallo del `INSERT` de historial, única forma de probar el rollback |
-| `auth.test.js`               | 2     | Tokens de Clerk                                                              |
-| `error-handling.test.js`     | 2     | La salida del logger                                                         |
-| `aulas.test.js`              | 1     | Fallo del historial, como arriba                                             |
+| Archivo                        | Mocks | Qué simula y por qué                                                                |
+| ------------------------------ | ----- | ----------------------------------------------------------------------------------- |
+| `clerk-verification.test.js`   | 10    | La API de red de Clerk, que no se puede alcanzar desde CI                           |
+| `observabilidad.test.js`       | 7     | El reloj y la salida del logger, para poder afirmar sobre ellos                     |
+| `reservas.test.js`             | 4     | Fuerza el fallo del `INSERT` de historial, única forma de probar el rollback        |
+| `auth.test.js`                 | 2     | Tokens de Clerk                                                                     |
+| `error-handling.test.js`       | 2     | La salida del logger                                                                |
+| `concurrencia.test.js`         | 2     | Inyección de `40P01` para verificar el reintento y el `503` tras agotarlo           |
+| `aulas.test.js`                | 1     | Fallo del historial, como arriba                                                    |
+| `clerk-sincronizacion.test.js` | 1     | Simula un fallo de base en `Usuario.findOne` para verificar que el error se propaga |
 
-Las suites que sostienen las afirmaciones del proyecto —`concurrencia`,
-`contrato-frontend`, `idempotencia`, `seguridad`, `rate-limit`,
-`esquema-constraint`— tienen **cero mocks**: corren contra un PostgreSQL real
-con las migraciones aplicadas. Es por eso que el experimento de la sección
+Las pruebas de cien pedidos simultáneos y las demás suites que sostienen las
+afirmaciones del proyecto —`contrato-frontend`, `idempotencia`, `seguridad`,
+`rate-limit`, `esquema-constraint`— corren **sin mocks** contra un PostgreSQL
+real con las migraciones aplicadas. Es por eso que el experimento de la sección
 siguiente puede medir algo.
 
 ---
