@@ -1,0 +1,15 @@
+/*
+ * Centrado en la ventana: mientras se verifica la sesión todavía no hay barra
+ * lateral ni contenido alrededor del cual acomodarse.
+ */
+.esperando {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espacio-6);
+  background-color: var(--fondo);
+  color: var(--tinta-2);
+  font-size: var(--texto-md);
+}
