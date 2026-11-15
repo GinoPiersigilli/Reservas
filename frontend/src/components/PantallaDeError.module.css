@@ -1,0 +1,63 @@
+.contenedor {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espacio-6);
+  background-color: var(--fondo);
+}
+
+.panel {
+  max-width: var(--dialogo-max-ancho);
+  width: 100%;
+  background-color: var(--superficie);
+  border: var(--borde-ancho) solid var(--borde);
+  border-radius: var(--radio-panel);
+  padding: var(--espacio-8);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espacio-3);
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-semibold);
+  color: var(--tinta);
+  line-height: var(--linea-titulo);
+}
+
+.descripcion {
+  margin: 0;
+  font-size: var(--texto-md);
+  color: var(--tinta-2);
+  line-height: var(--linea-base);
+}
+
+/*
+ * El detalle es para quien está instalando el proyecto: nombra la variable que
+ * falta o el error que lanzó. Monoespaciado porque casi siempre es algo que hay
+ * que copiar tal cual, y con ajuste de línea porque un mensaje de excepción no
+ * entra en el ancho del panel.
+ */
+.detalle {
+  margin: 0;
+  align-self: stretch;
+  padding: var(--espacio-3);
+  background-color: var(--superficie-sutil);
+  border-radius: var(--radio-control);
+  font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--texto-sm);
+  color: var(--tinta-2);
+  line-height: var(--linea-base);
+  overflow-wrap: anywhere;
+}
+
+.acciones {
+  margin-top: var(--espacio-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}

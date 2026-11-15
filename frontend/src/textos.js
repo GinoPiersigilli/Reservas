@@ -165,6 +165,26 @@ export const TEXTOS = {
     descripcion: 'La dirección solicitada no existe o fue movida.',
     volver: 'Ir a Reservas'
   },
+  errorCritico: {
+    titulo: 'La aplicación no pudo continuar',
+    descripcion:
+      'Ocurrió un error inesperado al dibujar la pantalla. Recargue la página; si vuelve a pasar, avise a bedelía.',
+    recargar: 'Recargar la página'
+  },
+  configuracion: {
+    titulo: 'Falta configurar la aplicación',
+    descripcion:
+      'El frontend no tiene la clave pública de Clerk, así que no puede verificar sesiones. Copie frontend/.env.example a frontend/.env, complete la clave y vuelva a iniciar el servidor de desarrollo.',
+    variableFaltante: 'Falta la variable VITE_CLERK_PUBLISHABLE_KEY'
+  },
+  sesion: {
+    verificando: 'Verificando su sesión…',
+    sinRespuestaTitulo: 'No se pudo verificar su sesión',
+    sinRespuestaDescripcion:
+      'El servicio de identidad no respondió. Puede ser su conexión o una caída del servicio.',
+    reintentar: 'Reintentar',
+    irAlIngreso: 'Ir a la pantalla de ingreso'
+  },
   ui: {
     tablaVaciaTitulo: 'Sin resultados',
     tablaVaciaDescripcion: 'No hay registros para mostrar.',
