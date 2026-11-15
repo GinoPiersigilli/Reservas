@@ -189,4 +189,106 @@ describe('SEC-AUTH-03: verificación de tokens de Clerk con authorizedParties', 
       expect(userRecargado.email).toBe('existente@utnfrc.edu.ar');
     });
   });
+
+  /**
+   * Cada petición con token de Clerk consultaba su API por red antes de mirar
+   * la base, aunque la fila local ya tuviera todo lo necesario para armar
+   * `req.usuario`. Eso sumaba una ida y vuelta externa a cada GET y gastaba el
+   * cupo de la API de Clerk sin ninguna necesidad.
+   */
+  describe('cuántas veces se le pregunta a Clerk', () => {
+    const PERFIL_COMPLETO = {
+      id: 'user_clerk_reiterado',
+      firstName: 'Reiterado',
+      lastName: 'Usuario',
+      primaryEmailAddressId: 'email_1',
+      emailAddresses: [
+        {
+          id: 'email_1',
+          emailAddress: 'reiterado@utnfrc.edu.ar',
+          verification: { status: 'verified' }
+        }
+      ],
+      publicMetadata: {}
+    };
+
+    it('la primera vez sí, porque todavía no hay fila local', async () => {
+      verifyToken.mockResolvedValue({ sub: 'user_clerk_reiterado' });
+      const clerk = createClerkClient();
+      clerk.users.getUser.mockResolvedValue(PERFIL_COMPLETO);
+
+      const res = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', 'Bearer token_reiterado');
+
+      expect(res.status).toBe(200);
+      expect(clerk.users.getUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('las siguientes no: la fila local ya alcanza', async () => {
+      verifyToken.mockResolvedValue({ sub: 'user_clerk_reiterado' });
+      const clerk = createClerkClient();
+      clerk.users.getUser.mockResolvedValue(PERFIL_COMPLETO);
+
+      await request(app).get('/api/reservas').set('Authorization', 'Bearer token_reiterado');
+      const llamadasTrasLaPrimera = clerk.users.getUser.mock.calls.length;
+
+      await request(app).get('/api/reservas').set('Authorization', 'Bearer token_reiterado');
+      await request(app).get('/api/aulas').set('Authorization', 'Bearer token_reiterado');
+      await request(app).get('/api/reservas').set('Authorization', 'Bearer token_reiterado');
+
+      expect(clerk.users.getUser).toHaveBeenCalledTimes(llamadasTrasLaPrimera);
+    });
+
+    it('pero sí cuando a la fila le faltan datos que solo Clerk tiene', async () => {
+      await Usuario.create({
+        nombre: '[PLACEHOLDER] Migrado',
+        email: 'user_clerk_migrado@placeholder.clerk.local',
+        passwordHash: null,
+        clerkId: 'user_clerk_migrado',
+        rol: 'usuario',
+        activo: true
+      });
+
+      verifyToken.mockResolvedValue({ sub: 'user_clerk_migrado' });
+      const clerk = createClerkClient();
+      clerk.users.getUser.mockResolvedValue({
+        ...PERFIL_COMPLETO,
+        id: 'user_clerk_migrado',
+        emailAddresses: [
+          {
+            id: 'email_1',
+            emailAddress: 'migrado@utnfrc.edu.ar',
+            verification: { status: 'verified' }
+          }
+        ]
+      });
+
+      await request(app).get('/api/reservas').set('Authorization', 'Bearer token_migrado');
+
+      expect(clerk.users.getUser).toHaveBeenCalled();
+      const completado = await Usuario.findOne({ where: { clerkId: 'user_clerk_migrado' } });
+      expect(completado.email).toBe('migrado@utnfrc.edu.ar');
+      expect(completado.nombre).not.toContain('[PLACEHOLDER');
+    });
+
+    it('una cuenta desactivada responde 401, igual que por la vía del token local', async () => {
+      await Usuario.create({
+        nombre: 'Desactivado Clerk',
+        email: 'desactivado-clerk@utnfrc.edu.ar',
+        passwordHash: null,
+        clerkId: 'user_clerk_inactivo',
+        rol: 'usuario',
+        activo: false
+      });
+
+      verifyToken.mockResolvedValue({ sub: 'user_clerk_inactivo' });
+
+      const res = await request(app)
+        .get('/api/reservas')
+        .set('Authorization', 'Bearer token_inactivo');
+
+      expect(res.status).toBe(401);
+    });
+  });
 });

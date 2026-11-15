@@ -57,6 +57,29 @@ Reglas comunes a las dos vías:
   cuentas sembradas por los seeders. No hay ruta de registro local: el alta de
   cuentas pasa siempre por Clerk o por un seeder.
 
+### A Clerk se le pregunta lo menos posible (15/11/2026)
+
+Al llegar un token de Clerk, primero se busca la fila por `clerkId` en esta
+base. Si existe y está completa, se usa. Solo se llama a
+`clerkClient.users.getUser` cuando no existe todavía o le faltan datos que solo
+Clerk tiene —las cuentas migradas entraron con correo y nombre de relleno—.
+
+Antes esa llamada iba en **cada** petición, antes de mirar la base: una ida y
+vuelta por red en cada `GET`, y cupo de la API de Clerk gastado para releer algo
+que ya estaba acá.
+
+**Consecuencia que conviene tener presente:** un cambio de `publicMetadata.rol`
+en Clerk ya no se refleja solo en la petición siguiente. Es coherente con la
+regla de arriba —el rol efectivo es el de esta base— y deja a ese metadato como
+lo que siempre debió ser: el rol con el que nace la cuenta, no su fuente de
+verdad. Para cambiar el rol de alguien se cambia la fila en `usuarios`, y eso
+tiene efecto en la petición siguiente, como siempre.
+
+El primer ingreso dispara varias peticiones en paralelo y todas encuentran la
+fila inexistente. Una la crea y las demás chocan contra la restricción de
+unicidad; ese choque salía como «token inválido» y deslogueaba a quien acababa
+de entrar. Ahora se relee la fila que creó la que ganó.
+
 ### El frontend también lee la identidad de la base (15/11/2026)
 
 `GET /api/auth/me` devuelve la fila de `usuarios` que corresponde al token, sea
@@ -119,7 +142,7 @@ conexión.
 
 | Situación                                               | Qué ocurre                                                                                                                                                      |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| La cuenta se desactiva (`activo = false`)               | La petición siguiente responde `401`, aunque el token siga vigente: el middleware relee el usuario en cada petición.                                            |
+| La cuenta se desactiva (`activo = false`)               | La petición siguiente responde `401` por las dos vías, aunque el token siga vigente: el middleware relee el usuario en cada petición.                           |
 | Se le quita el rol de administrador                     | Lo mismo: el rol efectivo sale de la base, no del token, así que el cambio vale desde la petición siguiente.                                                    |
 | El token local vence (2 h)                              | `jsonwebtoken` lo rechaza y la respuesta es `401`. El frontend borra la sesión y lleva al login.                                                                |
 | El token de Clerk vence                                 | Lo rechaza `verifyToken`; el SDK del frontend lo renueva solo mientras la sesión de Clerk siga viva.                                                            |
