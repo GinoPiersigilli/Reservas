@@ -4,6 +4,8 @@
 [![CodeQL Analysis](https://github.com/GinoPiersigilli/Reservas/actions/workflows/codeql.yml/badge.svg)](https://github.com/GinoPiersigilli/Reservas/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+🌐 **Idioma / Language:** **Español** | [English](README.en.md)
+
 Plataforma web institucional full-stack para la gestión, consulta visual de disponibilidad horaria y asignación de aulas académicas sin riesgo de solapamiento.
 
 > **In English** — A full-stack classroom booking system for a university
@@ -17,7 +19,8 @@ Plataforma web institucional full-stack para la gestión, consulta visual de dis
 > end-to-end tests across 7 complete user flows, with Trivy, Semgrep, CodeQL
 > and Gitleaks running on every push. The interface and the documentation are in Spanish; the code, including
 > identifiers and comments, is in Spanish as well, since that is the language of
-> the institution it was written for.
+> the institution it was written for. Read the full documentation in English in
+> [README.en.md](README.en.md).
 
 ---
 
