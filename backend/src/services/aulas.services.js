@@ -80,6 +80,58 @@ export const obtenerDisponibilidadAula = async (aulaId, fecha) => {
   }));
 };
 
+/**
+ * La disponibilidad de todas las aulas activas en una fecha, de una sola vez.
+ *
+ * La grilla necesita el día entero, y pedirlo aula por aula significaba una
+ * petición HTTP por aula cada vez que alguien cambiaba la fecha. Con unas
+ * decenas de aulas, unos pocos cambios de fecha agotan el límite por IP y la
+ * persona queda bloqueada con un 429 sin haber hecho nada raro.
+ *
+ * Devuelve las franjas agrupadas por aula, con el `id` de cada reserva: el
+ * formulario de edición lo necesita para no contarse a sí mismo como ocupado.
+ */
+export const obtenerDisponibilidadDeTodas = async (fecha) => {
+  if (!esFechaValida(fecha)) {
+    const error = new Error('La fecha debe tener un formato válido YYYY-MM-DD');
+    error.status = 400;
+    throw error;
+  }
+
+  const aulas = await Aula.findAll({
+    attributes: ['id'],
+    where: { activa: true },
+    order: [['id', 'ASC']]
+  });
+
+  const reservas = await Reserva.findAll({
+    attributes: ['id', 'aulaId', 'horaInicio', 'horaFin', 'estado'],
+    where: {
+      aulaId: { [Op.in]: aulas.map((a) => a.id) },
+      fecha,
+      estado: { [Op.in]: ['pendiente', 'aprobada'] }
+    },
+    order: [
+      ['aulaId', 'ASC'],
+      ['horaInicio', 'ASC']
+    ]
+  });
+
+  // Todas las aulas activas aparecen, también las que no tienen nada: su
+  // ausencia y «no pude consultarla» no pueden parecer lo mismo.
+  const porAula = new Map(aulas.map((a) => [a.id, []]));
+  reservas.forEach((r) => {
+    porAula.get(r.aulaId)?.push({
+      id: r.id,
+      horaInicio: r.horaInicio,
+      horaFin: r.horaFin,
+      estado: r.estado
+    });
+  });
+
+  return [...porAula.entries()].map(([aulaId, franjas]) => ({ aulaId, franjas }));
+};
+
 export const crearAula = async (datos, usuarioIdAdmin) => {
   const { nombre, ubicacion, capacidad, recursos } = datos;
   const nombreTrim = nombre.trim();

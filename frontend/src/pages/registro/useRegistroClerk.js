@@ -2,9 +2,16 @@ import { useState } from 'react';
 import { useSignUp } from '@clerk/clerk-react';
 import { TEXTOS } from '../../textos.js';
 
-/** Clerk devuelve sus errores en `errors[]`; el primero es el que se muestra. */
+/**
+ * El mensaje que Clerk trae para mostrar.
+ *
+ * Solo se usa lo que viene en `errors[]`, que es texto escrito para una
+ * persona. El `message` del error no: en un corte de red dice «Failed to
+ * fetch», que no le explica nada a nadie y encima es el mensaje crudo de una
+ * biblioteca en una pantalla de la aplicación.
+ */
 const mensajeDeClerk = (err, porDefecto) =>
-  err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || porDefecto;
+  err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || porDefecto;
 
 /**
  * Clerk acepta nombre y apellido por separado. El formulario pide un nombre

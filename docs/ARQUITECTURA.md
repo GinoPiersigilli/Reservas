@@ -218,6 +218,7 @@ Todos los endpoints bajo `/api/reservas` y `/api/aulas/:id/disponibilidad` requi
 | `POST`  | `/api/auth/login`               | Público            | Inicio de sesión local con tasa limitada (rate limit)                                        |
 | `GET`   | `/api/auth/me`                  | Usuario, Admin     | Identidad del portador del token, leída de `usuarios`: identificador numérico y rol efectivo |
 | `GET`   | `/api/aulas`                    | Usuario, Admin     | Lista de aulas activas (para admin admite `?incluirInactivas=true` para auditoría y gestión) |
+| `GET`   | `/api/aulas/disponibilidad`     | Usuario, Admin     | Franjas ocupadas de todas las aulas activas en una fecha, en una sola consulta               |
 | `POST`  | `/api/aulas`                    | Solo Admin         | Creación de aula con nombre único (case-insensitive), capacidad 1-1000 y auditoría           |
 | `PUT`   | `/api/aulas/:id`                | Solo Admin         | Edición integral de aula (valida no reducir capacidad bajo reservas futuras activas -> 409)  |
 | `PATCH` | `/api/aulas/:id/desactivar`     | Solo Admin         | Baja lógica de aula; con reservas futuras exige confirmación y las cancela atómicamente      |

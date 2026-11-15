@@ -5,6 +5,7 @@ import { verificarParesTokens } from '../../../scripts/verificar-contraste.js';
 import AppShell from '../../components/AppShell.jsx';
 import Login from '../Login.jsx';
 import Register from '../Register.jsx';
+import Recuperar from '../Recuperar.jsx';
 import Reservas from '../Reservas.jsx';
 import FormularioReserva from '../FormularioReserva.jsx';
 import DetalleReserva from '../DetalleReserva.jsx';
@@ -18,7 +19,15 @@ import * as reservasService from '../../services/reservas.service.js';
 vi.mock('@clerk/clerk-react', () => ({
   SignIn: () => <div data-testid="clerk-signin">Clerk SignIn</div>,
   SignUp: () => <div data-testid="clerk-signup">Clerk SignUp</div>,
-  useSignIn: () => ({ isLoaded: true, signIn: { authenticateWithRedirect: vi.fn() } }),
+  useSignIn: () => ({
+    isLoaded: true,
+    setActive: vi.fn(),
+    signIn: {
+      authenticateWithRedirect: vi.fn(),
+      create: vi.fn().mockResolvedValue({}),
+      attemptFirstFactor: vi.fn()
+    }
+  }),
   useSignUp: () => ({ isLoaded: true, signUp: { authenticateWithRedirect: vi.fn() } }),
   AuthenticateWithRedirectCallback: () => null
 }));
@@ -29,7 +38,8 @@ vi.mock('../../context/AuthContext.jsx', () => ({
 
 vi.mock('../../services/aula.service.js', () => ({
   getAulas: vi.fn(),
-  getDisponibilidadAula: vi.fn()
+  getDisponibilidadAula: vi.fn(),
+  getDisponibilidadDeTodas: vi.fn()
 }));
 
 vi.mock('../../services/reservas.service.js', () => ({
@@ -119,6 +129,36 @@ describe('Fase 3b-4 — Accesibilidad (axe, teclado, contraste) y Estados', () =
       </MemoryRouter>
     );
     sinViolacionesAxe(await axe(registerContainer));
+  });
+
+  /** Los dos pasos, en los dos temas: la pantalla nueva de la fase 15. */
+  it('passes axe accessibility audit on the password recovery screen, both steps and themes', async () => {
+    const auditarAmbosPasos = async () => {
+      const { container, unmount } = render(
+        <MemoryRouter>
+          <Recuperar />
+        </MemoryRouter>
+      );
+      sinViolacionesAxe(await axe(container));
+
+      fireEvent.input(screen.getByLabelText(/Correo electrónico/i), {
+        target: { name: 'email', value: 'persona@example.com' }
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Enviar código/i }));
+      await screen.findByLabelText(/Código de verificación/i);
+
+      sinViolacionesAxe(await axe(container));
+      unmount();
+    };
+
+    await auditarAmbosPasos();
+
+    document.documentElement.setAttribute('data-theme', 'dark');
+    try {
+      await auditarAmbosPasos();
+    } finally {
+      document.documentElement.removeAttribute('data-theme');
+    }
   });
 
   it('passes axe accessibility audit on main screens in dark theme', async () => {

@@ -4,9 +4,20 @@ import { TEXTOS } from '../../textos.js';
 
 const ESTRATEGIA = 'reset_password_email_code';
 
-/** Clerk devuelve sus errores en `errors[]`; el primero es el que se muestra. */
+/** Clerk avisa así que ese correo no tiene cuenta. */
+const esCuentaInexistente = (err) =>
+  err?.errors?.some((e) => e?.code === 'form_identifier_not_found');
+
+/**
+ * El mensaje que Clerk trae para mostrar.
+ *
+ * Solo se usa lo que viene en `errors[]`, que es texto escrito para una
+ * persona. El `message` del error no: en un corte de red dice «Failed to
+ * fetch», que no le explica nada a nadie y encima es el mensaje crudo de una
+ * biblioteca en una pantalla de la aplicación.
+ */
 const mensajeDeClerk = (err, porDefecto) =>
-  err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || porDefecto;
+  err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || porDefecto;
 
 /**
  * Restablecer la contraseña olvidada.
@@ -26,6 +37,16 @@ export const useRecuperacion = ({ alCompletar } = {}) => {
   const { isLoaded, signIn, setActive } = useSignIn();
 
   const [paso, setPaso] = useState('correo');
+  /**
+   * Si el paso 1 dejó un intento de verdad abierto en Clerk.
+   *
+   * Cuando el correo no existe, `signIn.create` falla y no queda ningún intento
+   * activo. Igual se avanza al paso del código —no revelar nada es el punto—
+   * pero hay que recordarlo: llamar a `attemptFirstFactor` sin intento activo
+   * devuelve un error de Clerk que dice justamente que no hay un inicio de
+   * sesión en curso, y mostrarlo delataría lo que el paso 1 calló.
+   */
+  const [hayIntento, setHayIntento] = useState(false);
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -37,12 +58,22 @@ export const useRecuperacion = ({ alCompletar } = {}) => {
 
     try {
       await signIn.create({ strategy: ESTRATEGIA, identifier: email });
-    } catch {
-      // A propósito: un correo desconocido no se distingue de uno conocido.
-    } finally {
-      setEnviando(false);
+      setHayIntento(true);
+    } catch (err) {
+      // Un correo sin cuenta sigue adelante como si nada: no revelar cuáles
+      // existen es el punto de esta pantalla.
+      if (!esCuentaInexistente(err)) {
+        // Lo demás —la red cortada, un 429 de Clerk— sí se dice. Avisar que se
+        // envió un código cuando la petición ni salió deja a la persona
+        // esperando un correo que nadie mandó.
+        setError(mensajeDeClerk(err, TEXTOS.recuperacion.errorEnvio));
+        setEnviando(false);
+        return;
+      }
+      setHayIntento(false);
     }
 
+    setEnviando(false);
     setAviso(TEXTOS.recuperacion.codigoEnviado);
     setPaso('codigo');
   };
@@ -52,6 +83,15 @@ export const useRecuperacion = ({ alCompletar } = {}) => {
     setError(null);
     setAviso(null);
     setEnviando(true);
+
+    // Sin intento abierto, el código no puede ser válido. Se responde igual
+    // que ante un código equivocado: el motivo real diría que la cuenta del
+    // paso 1 no existe.
+    if (!hayIntento) {
+      setError(TEXTOS.recuperacion.errorCodigo);
+      setEnviando(false);
+      return;
+    }
 
     try {
       const resultado = await signIn.attemptFirstFactor({
@@ -77,6 +117,7 @@ export const useRecuperacion = ({ alCompletar } = {}) => {
   const volverAlCorreo = () => {
     setError(null);
     setAviso(null);
+    setHayIntento(false);
     setPaso('correo');
   };
 

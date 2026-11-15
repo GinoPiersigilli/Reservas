@@ -582,6 +582,49 @@ export const openapi = {
         }
       }
     },
+    '/aulas/disponibilidad': {
+      get: {
+        tags: ['Aulas'],
+        summary: 'Franjas ocupadas de todas las aulas activas en una fecha',
+        description:
+          'Resuelve en una consulta lo que antes exigía una petición por aula. Cada aula activa aparece aunque no tenga reservas, para que «sin franjas ocupadas» no se confunda con «no se pudo consultar». Cada franja incluye el identificador de su reserva, que el formulario de edición necesita para no contarse a sí mismo como ocupado.',
+        parameters: [
+          { name: 'fecha', in: 'query', required: true, schema: { type: 'string', format: 'date' } }
+        ],
+        responses: {
+          200: {
+            description: 'Disponibilidad de todas las aulas activas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      aulaId: { type: 'integer' },
+                      franjas: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer' },
+                            horaInicio: { type: 'string' },
+                            horaFin: { type: 'string' },
+                            estado: { type: 'string', enum: ['pendiente', 'aprobada'] }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          400: ERRORES_COMUNES[400],
+          401: ERRORES_COMUNES[401]
+        }
+      }
+    },
     '/aulas/{id}/disponibilidad': {
       parameters: [{ $ref: '#/components/parameters/Id' }],
       get: {
