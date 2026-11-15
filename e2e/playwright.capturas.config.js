@@ -25,6 +25,7 @@ export default defineConfig({
     baseURL: URL_WEB,
     locale: 'es-AR',
     timezoneId: 'America/Argentina/Cordoba',
+    reducedMotion: 'no-preference',
     // Los campos nativos de fecha y hora se formatean según el idioma de la
     // interfaz del navegador, no según el `locale` de la página: sin esto las
     // capturas salen con «12/04/2026» y «11:00 AM» en lugar de «04/12/2026» y

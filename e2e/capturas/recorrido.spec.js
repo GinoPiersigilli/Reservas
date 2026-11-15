@@ -6,6 +6,13 @@ const DIA = fechaEnDias(28);
 /** Pausa deliberada: sin ella el video pasa de una pantalla a la otra sin que se lea nada. */
 const leer = (page, ms = 1100) => page.waitForTimeout(ms);
 
+/** Mueve el cursor sobre el control para que se aprecie el `:hover` antes del clic. */
+const apuntarYClick = async (locator, page, pausaMs = 260) => {
+  await locator.hover();
+  await leer(page, pausaMs);
+  await locator.click();
+};
+
 /**
  * Recorrido completo para el GIF del README: solicitar una reserva como
  * docente y aprobarla como administración.
@@ -18,7 +25,8 @@ const leer = (page, ms = 1100) => page.waitForTimeout(ms);
 // de un `describe`.
 test.use({
   viewport: { width: 1280, height: 720 },
-  video: { mode: 'on', size: { width: 1280, height: 720 } }
+  video: { mode: 'on', size: { width: 1280, height: 720 } },
+  reducedMotion: 'no-preference'
 });
 
 test.describe('Recorrido para el GIF', () => {
@@ -33,7 +41,7 @@ test.describe('Recorrido para el GIF', () => {
       .getByRole('textbox', { name: 'Contraseña' })
       .pressSequentially(CREDENCIALES.usuario.password, { delay: 45 });
     await leer(page, 400);
-    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await apuntarYClick(page.getByRole('button', { name: 'Ingresar' }), page, 220);
     await expect(page).toHaveURL(/\/reservas$/);
 
     // 2. La agenda del docente.
@@ -41,7 +49,7 @@ test.describe('Recorrido para el GIF', () => {
     await leer(page, 1600);
 
     // 3. Elegir fecha y franja en la grilla.
-    await page.getByRole('button', { name: 'Nueva reserva' }).click();
+    await apuntarYClick(page.getByRole('button', { name: 'Nueva reserva' }), page);
     await expect(page.getByRole('heading', { name: 'Nueva reserva', level: 1 })).toBeVisible();
     await leer(page, 700);
 
@@ -49,8 +57,17 @@ test.describe('Recorrido para el GIF', () => {
     await leer(page, 900);
 
     const grilla = page.getByRole('region', { name: 'Grilla de disponibilidad horaria' });
-    await grilla.getByRole('button', { name: /Aula Magna, 14:00 a 14:30, libre/i }).click();
-    await leer(page, 500);
+    await apuntarYClick(
+      grilla.getByRole('button', { name: /Aula Magna, 14:00 a 14:30, libre/i }),
+      page
+    );
+    await leer(page, 350);
+    await grilla.getByRole('button', { name: /Aula Magna, 14:30 a 15:00, libre/i }).hover();
+    await leer(page, 240);
+    await grilla.getByRole('button', { name: /Aula Magna, 15:00 a 15:30, libre/i }).hover();
+    await leer(page, 240);
+    await grilla.getByRole('button', { name: /Aula Magna, 15:30 a 16:00, libre/i }).hover();
+    await leer(page, 400);
     await grilla.getByRole('button', { name: /Aula Magna, 15:30 a 16:00, libre/i }).click();
     await leer(page, 900);
 
@@ -60,7 +77,7 @@ test.describe('Recorrido para el GIF', () => {
       .getByRole('textbox', { name: 'Motivo' })
       .pressSequentially('Defensa de tesina — Ingeniería en Sistemas', { delay: 25 });
     await leer(page, 1200);
-    await page.getByRole('button', { name: 'Reservar aula' }).click();
+    await apuntarYClick(page.getByRole('button', { name: 'Reservar aula' }), page);
 
     // 5. El detalle, con la reserva pendiente y su historial.
     await expect(page.getByRole('heading', { name: /Reserva #/, level: 1 })).toBeVisible();
@@ -68,7 +85,7 @@ test.describe('Recorrido para el GIF', () => {
     await leer(page, 1800);
 
     // 6. Administración la aprueba desde el panel.
-    await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await apuntarYClick(page.getByRole('button', { name: 'Cerrar sesión' }), page);
     await expect(page).toHaveURL(/\/login/);
     await leer(page, 500);
 
@@ -78,11 +95,11 @@ test.describe('Recorrido para el GIF', () => {
     await page
       .getByRole('textbox', { name: 'Contraseña' })
       .pressSequentially(CREDENCIALES.admin.password, { delay: 40 });
-    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await apuntarYClick(page.getByRole('button', { name: 'Ingresar' }), page, 220);
     await expect(page).toHaveURL(/\/reservas$/);
     await leer(page, 700);
 
-    await page.goto('/resumen');
+    await apuntarYClick(page.getByRole('link', { name: 'Panel' }), page, 320);
     await expect(page.getByRole('heading', { name: 'Panel', level: 1 })).toBeVisible();
     await leer(page, 1600);
 
@@ -91,12 +108,12 @@ test.describe('Recorrido para el GIF', () => {
     const cola = page.getByRole('table', { name: /Cola de reservas pendientes/i });
     const fila = cola.getByRole('row').filter({ hasText: `#${idReserva}` });
     await expect(fila).toBeVisible();
-    await fila.getByRole('button', { name: 'Aprobar' }).click();
+    await apuntarYClick(fila.getByRole('button', { name: 'Aprobar' }), page);
 
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toBeVisible();
     await leer(page, 1200);
-    await dialogo.getByRole('button', { name: 'Aprobar' }).click();
+    await apuntarYClick(dialogo.getByRole('button', { name: 'Aprobar' }), page);
 
     // 7. La solicitud desaparece de la cola.
     await expect(fila).toHaveCount(0);
