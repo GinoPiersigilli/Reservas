@@ -9,6 +9,24 @@ const clerkClient = createClerkClient({
 });
 
 const SUFIJO_PLACEHOLDER = '@placeholder.clerk.local';
+const MARCA_NOMBRE_PLACEHOLDER = '[PLACEHOLDER';
+
+/**
+ * Si a esta fila todavía le faltan datos que solo Clerk puede dar.
+ *
+ * Las cuentas migradas del esquema viejo entraron con un correo y un nombre de
+ * relleno; hasta completarlos hay que preguntarle a Clerk. Una vez completos,
+ * la fila local alcanza y la consulta por red deja de hacer falta.
+ */
+const tieneDatosProvisorios = (usuarioLocal) =>
+  usuarioLocal.email.endsWith(SUFIJO_PLACEHOLDER) ||
+  usuarioLocal.nombre.includes(MARCA_NOMBRE_PLACEHOLDER);
+
+/** Sequelize y PostgreSQL nombran distinto la misma violación de unicidad. */
+const esViolacionDeUnicidad = (error) =>
+  error?.name === 'SequelizeUniqueConstraintError' ||
+  error?.parent?.code === '23505' ||
+  error?.original?.code === '23505';
 
 /** Datos del usuario de Clerk que se reflejan en la tabla local. */
 const extraerDatosClerk = (clerkUser) => {
@@ -41,7 +59,7 @@ const actualizarUsuarioVinculado = async (usuarioLocal, datos) => {
       cambiado = true;
     }
   }
-  if (usuarioLocal.nombre.includes('[PLACEHOLDER') && datos.nombre) {
+  if (usuarioLocal.nombre.includes(MARCA_NOMBRE_PLACEHOLDER) && datos.nombre) {
     usuarioLocal.nombre = datos.nombre;
     cambiado = true;
   }
@@ -68,7 +86,7 @@ const exigirEmailVerificado = (datos) => {
   throw error;
 };
 
-export async function sincronizarUsuarioClerk(clerkUser) {
+async function vincularOCrearUsuario(clerkUser) {
   const datos = extraerDatosClerk(clerkUser);
 
   // 1. Buscar primero por clerkId (ej. usuario migrado con placeholder o ya vinculado)
@@ -101,6 +119,51 @@ export async function sincronizarUsuarioClerk(clerkUser) {
     activo: true
   });
 }
+
+/**
+ * Da de alta o vincula la cuenta local de quien llega con un token de Clerk.
+ *
+ * El primer ingreso dispara varias peticiones a la vez —la pantalla pide aulas
+ * y reservas en paralelo— y todas encuentran la fila inexistente y la intentan
+ * crear. Una gana y las demás chocan contra la restricción de unicidad. Antes
+ * ese choque salía como «token inválido» y deslogueaba a quien acababa de
+ * entrar; ahora se relee la fila que creó la que ganó, que es lo que se quería
+ * desde el principio.
+ */
+export async function sincronizarUsuarioClerk(clerkUser) {
+  try {
+    return await vincularOCrearUsuario(clerkUser);
+  } catch (error) {
+    if (!esViolacionDeUnicidad(error)) throw error;
+
+    const creadoPorOtra = await Usuario.findOne({ where: { clerkId: clerkUser.id } });
+    if (creadoPorOtra) return creadoPorOtra;
+
+    throw error;
+  }
+}
+
+/**
+ * La cuenta local de un token de Clerk, preguntándole a Clerk lo menos posible.
+ *
+ * Antes cada petición llamaba a `clerkClient.users.getUser` antes de mirar la
+ * base, lo que sumaba una ida y vuelta por red a cada `GET` y gastaba cupo de
+ * la API de Clerk sin necesidad. La fila local ya tiene todo lo que hace falta
+ * para armar `req.usuario`, así que solo se consulta a Clerk cuando esa fila no
+ * existe todavía o le faltan datos.
+ *
+ * Consecuencia a tener presente: un cambio de `publicMetadata.rol` en Clerk ya
+ * no se refleja solo en la petición siguiente. Es coherente con el ADR 0002
+ * —el rol efectivo es el de esta base— y ese metadato queda como lo que
+ * siempre debió ser: el rol con el que nace la cuenta, no su fuente de verdad.
+ */
+const resolverUsuarioDeClerk = async (clerkId) => {
+  const yaVinculado = await Usuario.findOne({ where: { clerkId } });
+  if (yaVinculado && !tieneDatosProvisorios(yaVinculado)) return yaVinculado;
+
+  const clerkUser = await clerkClient.users.getUser(clerkId);
+  return sincronizarUsuarioClerk(clerkUser);
+};
 
 export const verificarToken = async (req, res, next) => {
   const authorization = req.get('authorization');
@@ -147,11 +210,12 @@ export const verificarToken = async (req, res, next) => {
       secretKey: env.CLERK_SECRET_KEY,
       authorizedParties: env.CORS_ORIGINS
     });
-    const clerkUser = await clerkClient.users.getUser(verified.sub);
-    const usuarioLocal = await sincronizarUsuarioClerk(clerkUser);
+    const usuarioLocal = await resolverUsuarioDeClerk(verified.sub);
 
+    // 401 y no 403, igual que la vía del token local: las dos describen la
+    // misma situación, y el interceptor del frontend limpia la sesión con 401.
     if (!usuarioLocal.activo) {
-      return res.status(403).json({ error: 'Usuario inactivo' });
+      return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
     }
 
     req.usuario = {
