@@ -8,6 +8,10 @@
 
 Plataforma web institucional full-stack para la gestión, consulta visual de disponibilidad horaria y asignación de aulas académicas sin riesgo de solapamiento.
 
+## Contexto y rol
+
+Proyecto académico de la carrera de Ingeniería en Sistemas (UTN FRC), basado en el flujo de reserva de aulas de bedelía. Lo diseñé, desarrollé, probé y documenté de punta a punta, con herramientas de IA como asistencia (detalle al final de este README).
+
 ## Capturas de Pantalla
 
 El recorrido completo: un docente consulta la grilla, elige una franja libre y

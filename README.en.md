@@ -12,6 +12,12 @@ Full-stack institutional web platform for managing classroom reservations, check
 
 ---
 
+## Context & Role
+
+Academic project for my Systems Engineering degree at UTN FRC, modeled on the university registrar's classroom-booking workflow. I designed, built, tested, and documented it end to end, using AI tools as assistants (see Development Process below).
+
+---
+
 ## Screenshots & Live Walkthrough
 
 End-to-end flow: a lecturer checks the availability grid and submits a booking request; registrar staff approves it from the admin panel.
